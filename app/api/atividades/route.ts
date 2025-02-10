@@ -6,7 +6,7 @@ export async function GET() {
     console.log('🔵 Iniciando consulta ao banco de dados...');
     
     const atividades = await executeQuery({
-      query: 'SELECT * FROM atividades',
+      query: 'SELECT * FROM u711845530_gestao.atividades',
     });
     
     console.log('✅ Dados recuperados com sucesso:');

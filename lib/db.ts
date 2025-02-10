@@ -1,10 +1,10 @@
 import mysql from 'mysql2/promise';
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'auth-db1724.hstgr.io',
-  user: process.env.DB_USER || 'u711845530_gestao',
-  password: process.env.DB_PASSWORD || '*Desenvolvimento2023',
-  database: process.env.DB_DATABASE || 'u711845530_gestao',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -27,7 +27,7 @@ export async function executeQuery<T>({
 }): Promise<T> {
   try {
     console.log('📝 Executando query:', query);
-    console.log('📝 Valores:', values || 'Nenhum');
+    console.log('📝 Valores:', values);
     
     const [results] = await pool.execute(query, values);
     
