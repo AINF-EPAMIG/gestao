@@ -34,66 +34,76 @@ export default function PlanilhaPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="rounded-md border max-h-[calc(100vh-8rem)] overflow-auto">
-        <Table>
-          <TableHeader className="sticky top-0 bg-white">
-            <TableRow>
-              <TableHead className="font-medium">ID</TableHead>
-              <TableHead className="font-medium">Título</TableHead>
-              <TableHead className="font-medium">Responsável</TableHead>
-              <TableHead className="font-medium">Status</TableHead>
-              <TableHead className="font-medium">Prioridade</TableHead>
-              <TableHead className="font-medium">Sistema</TableHead>
-              <TableHead className="font-medium">Estimativa</TableHead>
-              <TableHead className="font-medium">Data de Início</TableHead>
-              <TableHead className="font-medium">Data de Fim</TableHead>
-              <TableHead className="font-medium">ID da Release</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tasks.map((task) => (
-              <TableRow key={task.id}>
-                <TableCell className="font-medium whitespace-nowrap">{task.id}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{task.titulo}</TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage email={task.responsavel_email} />
-                      <AvatarFallback>
-                        {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    {getResponsavelName(task.responsavel_id, task.responsavel_email)}
-                  </div>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <Badge variant="outline">{getStatusName(task.status_id)}</Badge>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <Badge
-                    className={
-                      getPriorityName(task.prioridade_id) === "Alta"
-                        ? "bg-red-500"
-                        : getPriorityName(task.prioridade_id) === "Média"
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }
-                  >
-                    {getPriorityName(task.prioridade_id)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  {task.sistema_nome || `Sistema ${task.sistema_id}`}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{task.estimativa_horas || "-"}</TableCell>
-                <TableCell className="whitespace-nowrap">{task.data_inicio || "-"}</TableCell>
-                <TableCell className="whitespace-nowrap">{task.data_fim || "-"}</TableCell>
-                <TableCell className="whitespace-nowrap">{task.id_release || "-"}</TableCell>
+    <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
+      <div className="flex items-center justify-between space-y-2">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Planilha de Atividades</h2>
+          <p className="text-muted-foreground">
+            Lista completa de todas as atividades do sistema
+          </p>
+        </div>
+      </div>
+      <div className="border rounded-md">
+        <div className="relative w-full overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 bg-white">
+              <TableRow>
+                <TableHead className="w-[100px]">ID</TableHead>
+                <TableHead className="min-w-[200px]">Título</TableHead>
+                <TableHead className="min-w-[180px]">Responsável</TableHead>
+                <TableHead className="min-w-[120px]">Status</TableHead>
+                <TableHead className="min-w-[120px]">Prioridade</TableHead>
+                <TableHead className="min-w-[150px]">Sistema</TableHead>
+                <TableHead className="min-w-[100px]">Estimativa</TableHead>
+                <TableHead className="min-w-[120px]">Data de Início</TableHead>
+                <TableHead className="min-w-[120px]">Data de Fim</TableHead>
+                <TableHead className="min-w-[100px]">ID Release</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {tasks.map((task) => (
+                <TableRow key={task.id}>
+                  <TableCell className="font-medium">{task.id}</TableCell>
+                  <TableCell className="max-w-[300px] truncate">
+                    {task.titulo}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage email={task.responsavel_email} />
+                        <AvatarFallback>
+                          {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{getStatusName(task.status_id)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        getPriorityName(task.prioridade_id) === "Alta"
+                          ? "bg-red-500"
+                          : getPriorityName(task.prioridade_id) === "Média"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }
+                    >
+                      {getPriorityName(task.prioridade_id)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{task.sistema_nome || `Sistema ${task.sistema_id}`}</TableCell>
+                  <TableCell>{task.estimativa_horas || "-"}</TableCell>
+                  <TableCell>{task.data_inicio || "-"}</TableCell>
+                  <TableCell>{task.data_fim || "-"}</TableCell>
+                  <TableCell>{task.id_release || "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )

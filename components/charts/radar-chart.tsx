@@ -14,27 +14,40 @@ const CustomAxisTick = ({ x, y, payload }: any) => {
   // Ajusta a posição baseada no ângulo
   let adjustX = 0;
   let adjustY = 0;
+  let textAnchor = "middle";
   
   // Ajusta posição baseada no ângulo para manter sempre nas extremidades
   if (payload.angle === 0) {
-    adjustX = 60;
+    adjustX = 100;
     adjustY = 0;
+    textAnchor = "start";
   } else if (payload.angle === 90) {
     adjustX = 0;
-    adjustY = 60;
+    adjustY = 80;
   } else if (payload.angle === 180) {
-    adjustX = -60;
+    adjustX = -100;
     adjustY = 0;
+    textAnchor = "end";
   } else if (payload.angle === 270) {
     adjustX = 0;
-    adjustY = -60;
+    adjustY = -80;
   }
 
   return (
     <g transform={`translate(${x + adjustX},${y + adjustY})`}>
-      <foreignObject x="-50" y="-12" width="100" height="24">
-        <div className="flex items-center gap-2 bg-white/80 rounded-full px-2 py-1">
-          <Avatar className="w-5 h-5">
+      <foreignObject 
+        x="-60" 
+        y="-12" 
+        width="120" 
+        height="24" 
+        style={{ overflow: 'visible' }}
+      >
+        <div className={`flex items-center gap-2 bg-white/80 rounded-full px-2 py-1 w-fit ${
+          textAnchor === "end" ? "justify-end" : 
+          textAnchor === "start" ? "justify-start" : 
+          "justify-center"
+        }`}>
+          <Avatar className="w-5 h-5 shrink-0">
             <AvatarImage email={email} />
             <AvatarFallback>{name[0]}</AvatarFallback>
           </Avatar>
@@ -84,9 +97,9 @@ export function RadarChart() {
         <RechartsRadarChart 
           cx="50%" 
           cy="50%" 
-          outerRadius="60%" 
+          outerRadius="50%" 
           data={data}
-          margin={{ top: 30, right: 30, bottom: 30, left: 30 }}
+          margin={{ top: 80, right: 80, bottom: 80, left: 80 }}
         >
           <PolarGrid gridType="circle" />
           <PolarAngleAxis 

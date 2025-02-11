@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt">
-      <body className={GeistSans.className}>
+    <html lang="pt-BR">
+      <body className="bg-white min-h-screen">
         <Providers>
           <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
