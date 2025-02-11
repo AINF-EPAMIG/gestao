@@ -34,21 +34,18 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   updateTaskStatus: async (taskId, newStatusId) => {
     try {
-      const response = await fetch(`/api/atividades/${taskId}`, {
+      const response = await fetch('/api/atividades', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status_id: newStatusId }),
+        body: JSON.stringify({ id: taskId, status_id: newStatusId }),
       });
 
       if (!response.ok) throw new Error('Falha ao atualizar status');
 
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === taskId ? { ...task, status_id: newStatusId } : task
-        ),
-      }));
+      const updatedTasks = await response.json();
+      set({ tasks: updatedTasks });
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
     }
