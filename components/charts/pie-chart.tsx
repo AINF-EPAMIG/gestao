@@ -7,24 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 const COLORS = {
   "Em desenvolvimento": "#10b981",
   "Não iniciada": "#3b82f6",
-  Concluída: "#f97316",
+  "Concluída": "#f97316",
   "Em testes": "#fbbf24",
 }
 
 const RADIAN = Math.PI / 180
-
-// Em vez de usar any, vamos definir uma interface para os dados
-interface ChartData {
-  name: string;
-  value: number;
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  innerRadius?: number;
-  outerRadius?: number;
-  percent?: number;
-  index?: number;
-}
 
 const renderCustomizedLabel = (props: {
   cx: number;
@@ -48,17 +35,27 @@ const renderCustomizedLabel = (props: {
       dominantBaseline="central" 
       className="text-xs"
     >
-      {`${props.name} ${props.value}`}
+      {`${props.name} (${props.value})`}
     </text>
   );
 };
 
 export function PieChart() {
   const [isLoading, setIsLoading] = useState(true)
-  const getTaskDistribution = useTaskStore((state) => state.getTaskDistribution)
   const tasks = useTaskStore((state) => state.tasks)
 
-  const data = useMemo(() => getTaskDistribution(), [getTaskDistribution])
+  const data = useMemo(() => {
+    const statusCount = tasks.reduce((acc, task) => {
+      const statusName = getStatusName(task.status_id);
+      acc[statusName] = (acc[statusName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(statusCount).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [tasks]);
 
   useEffect(() => {
     if (tasks.length > 0) {
@@ -75,7 +72,7 @@ export function PieChart() {
   }
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RechartsPieChart>
           <Pie
@@ -84,17 +81,32 @@ export function PieChart() {
             cy="50%"
             labelLine={true}
             label={renderCustomizedLabel}
-            outerRadius={100}
+            outerRadius={120}
+            innerRadius={60}
             fill="#8884d8"
+            paddingAngle={5}
             dataKey="value"
           >
             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={COLORS[entry.name as keyof typeof COLORS]} 
+              />
             ))}
           </Pie>
         </RechartsPieChart>
       </ResponsiveContainer>
     </div>
   )
+}
+
+function getStatusName(statusId: number): string {
+  const statusMap: Record<number, string> = {
+    1: "Não iniciada",
+    2: "Em desenvolvimento",
+    3: "Em testes",
+    4: "Concluída"
+  }
+  return statusMap[statusId] || "Desconhecido"
 }
 

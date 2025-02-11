@@ -8,7 +8,10 @@ export async function GET() {
     // Buscar atividades e responsáveis em uma única consulta
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email 
+        SELECT a.*, r.email as responsavel_email,
+        CONCAT('https://lh3.googleusercontent.com/a/', 
+          SUBSTRING_INDEX(r.email, '@', 1), 
+          '=s80-c') as responsavel_foto
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
       `,
