@@ -13,29 +13,30 @@ const COLORS = {
 
 const RADIAN = Math.PI / 180
 
-const renderCustomizedLabel = (props: {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  name: string;
-  value: number;
-}) => {
-  const radius = props.innerRadius + (props.outerRadius - props.innerRadius) * 1.6;
-  const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-  const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+const renderCustomizedLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  name,
+  value,
+}: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 1.4;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
   return (
     <text 
       x={x} 
       y={y} 
       fill="gray" 
-      textAnchor={x > props.cx ? "start" : "end"} 
-      dominantBaseline="central" 
+      textAnchor={x > cx ? 'start' : 'end'} 
+      dominantBaseline="central"
       className="text-xs"
     >
-      {`${props.name} (${props.value})`}
+      {`${value}`}
     </text>
   );
 };
@@ -83,6 +84,8 @@ export function PieChart() {
             outerRadius={120}
             paddingAngle={2}
             dataKey="value"
+            label={renderCustomizedLabel}
+            labelLine={true}
           >
             {data.map((entry, index) => (
               <Cell 
