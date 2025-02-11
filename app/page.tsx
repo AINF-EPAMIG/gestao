@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart } from "@/components/charts/pie-chart"
 import { RadarChart } from "@/components/charts/radar-chart"
 import { TaskCard } from "@/components/task-card"
-import { useTaskStore } from "@/lib/store"
+import { Task, useTaskStore } from "@/lib/store"
 import { useMemo, useEffect } from "react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 
 function getStatusName(statusId: number): string {
   const statusMap: Record<number, string> = {
@@ -38,7 +40,26 @@ export default function DashboardPage() {
   const tasks = useTaskStore((state) => state.tasks)
   const setTasks = useTaskStore((state) => state.setTasks)
 
-  const displayTasks = useMemo(() => tasks.slice(0, 3), [tasks])
+  const responsavelTasks = useMemo(() => {
+    const emDesenvolvimento = tasks.filter(task => task.status_id === 2); // Status "Em desenvolvimento"
+    
+    // Agrupa por responsável
+    const tasksByResponsavel = emDesenvolvimento.reduce((acc, task) => {
+      if (task.responsavel_email) {
+        if (!acc[task.responsavel_email]) {
+          acc[task.responsavel_email] = [];
+        }
+        acc[task.responsavel_email].push(task);
+      }
+      return acc;
+    }, {} as Record<string, Task[]>);
+
+    // Pega apenas a tarefa mais recente de cada responsável
+    return Object.entries(tasksByResponsavel).map(([email, tasks]) => ({
+      email,
+      task: tasks[0] // Primeira tarefa do responsável
+    }));
+  }, [tasks]);
 
   useEffect(() => {
     async function fetchTasks() {
@@ -79,23 +100,47 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            user={getResponsavelName(task.responsavel_id, task.responsavel_email)}
-            email={task.responsavel_email || ''}
-            taskId={task.id}
-            title={task.titulo}
-            description={task.descricao}
-            system={String(task.sistema_id)}
-            status={getStatusName(task.status_id)}
-            priority={getPriorityName(task.prioridade_id)}
-            estimate={task.estimativa_horas || ""}
-            startDate={task.data_inicio || ""}
-            endDate={task.data_fim || ""}
-          />
-        ))}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {responsavelTasks.map(({ email, task }) => (
+            <Card key={email} className="flex items-start p-4 space-x-4">
+              <Avatar className="w-12 h-12">
+                <AvatarImage email={email} />
+                <AvatarFallback>
+                  {email[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="font-medium">
+                      {email.split('@')[0].replace('.', ' ')}
+                    </h3>
+                    <Badge variant="outline">Sistema {task.sistema_id}</Badge>
+                  </div>
+                  <Badge
+                    className={
+                      getPriorityName(task.prioridade_id) === "Alta"
+                        ? "bg-red-500"
+                        : getPriorityName(task.prioridade_id) === "Média"
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                    }
+                  >
+                    {getPriorityName(task.prioridade_id)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-2">
+                  {task.titulo}
+                </p>
+                <div className="text-sm text-gray-500">
+                  {task.estimativa_horas ? `${task.estimativa_horas}h` : "Sem estimativa"}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   )

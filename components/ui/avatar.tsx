@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
-import { cn } from "@/lib/utils"
+import { cn, getUserIcon } from "@/lib/utils"
 
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -28,10 +28,7 @@ const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
 >(({ className, email, ...props }, ref) => {
-  // Usa a imagem local baseada no email
-  const avatarUrl = email ? 
-    `/${email.split('@')[0].replace('.', '_')}_icon.jpg`
-    : props.src;
+  const avatarUrl = email ? getUserIcon(email) : props.src;
 
   return (
     <AvatarPrimitive.Image
