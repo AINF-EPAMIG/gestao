@@ -35,9 +35,9 @@ export default function PlanilhaPage() {
 
   return (
     <div className="p-8">
-      <div className="rounded-md border">
+      <div className="rounded-md border max-h-[calc(100vh-8rem)] overflow-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-white">
             <TableRow>
               <TableHead className="font-medium">ID</TableHead>
               <TableHead className="font-medium">Título</TableHead>
