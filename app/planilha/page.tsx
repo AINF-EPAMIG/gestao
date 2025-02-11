@@ -6,6 +6,13 @@ import { useTaskStore, getStatusName, getPriorityName } from "@/lib/store"
 import { useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
+const STATUS_COLORS = {
+  "Em desenvolvimento": "bg-blue-500",
+  "Não iniciada": "bg-orange-500",
+  "Concluída": "bg-emerald-500",
+  "Em testes": "bg-amber-500",
+} as const;
+
 export default function PlanilhaPage() {
   const tasks = useTaskStore((state) => state.tasks)
   const setTasks = useTaskStore((state) => state.setTasks)
@@ -79,7 +86,11 @@ export default function PlanilhaPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{getStatusName(task.status_id)}</Badge>
+                    <Badge 
+                      className={STATUS_COLORS[getStatusName(task.status_id) as keyof typeof STATUS_COLORS]}
+                    >
+                      {getStatusName(task.status_id)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge

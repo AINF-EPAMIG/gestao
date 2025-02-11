@@ -5,9 +5,9 @@ import { useMemo, useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const COLORS = {
-  "Em desenvolvimento": "#10b981",
-  "Não iniciada": "#3b82f6",
-  "Concluída": "#f97316",
+  "Em desenvolvimento": "#3b82f6",
+  "Não iniciada": "#f97316",
+  "Concluída": "#10b981",
   "Em testes": "#fbbf24",
 }
 
