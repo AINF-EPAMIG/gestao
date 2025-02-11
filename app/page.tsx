@@ -115,7 +115,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <h3 className="font-medium">
-                      {email.split('@')[0].replace('.', ' ')}
+                      {getResponsavelName(task.responsavel_id, email)}
                     </h3>
                     <Badge variant="outline">
                       {task.sistema_nome || `Sistema ${task.sistema_id}`}

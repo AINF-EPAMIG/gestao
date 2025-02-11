@@ -11,18 +11,28 @@ const CustomAxisTick = ({ x, y, payload }: any) => {
   const email = payload.value.toLowerCase().replace(' ', '.') + '@epamig.br'
   const name = payload.value
   
+  // Calcula a posição relativa ao centro
+  const cx = 250 // centro do gráfico
+  const cy = 250 // centro do gráfico
+  const radius = 180 // raio para posicionar os labels
+  
+  // Calcula o ângulo em radianos
+  const angle = (-payload.angle * Math.PI) / 180
+  
+  // Calcula a posição final
+  const fx = cx + radius * Math.cos(angle) - 60 // -60 para ajustar o offset do texto
+  const fy = cy + radius * Math.sin(angle) - 20 // -20 para centralizar verticalmente
+
   return (
-    <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-60" y="-20" width="120" height="40">
-        <div className="flex items-center gap-2">
-          <Avatar className="w-6 h-6">
-            <AvatarImage email={email} />
-            <AvatarFallback>{name[0]}</AvatarFallback>
-          </Avatar>
-          <span className="text-xs whitespace-nowrap">{name}</span>
-        </div>
-      </foreignObject>
-    </g>
+    <foreignObject x={fx} y={fy} width="120" height="40">
+      <div className="flex items-center gap-2 bg-white/80 rounded-full px-2 py-1">
+        <Avatar className="w-6 h-6">
+          <AvatarImage email={email} />
+          <AvatarFallback>{name[0]}</AvatarFallback>
+        </Avatar>
+        <span className="text-xs font-medium whitespace-nowrap">{name}</span>
+      </div>
+    </foreignObject>
   );
 };
 
@@ -60,9 +70,9 @@ export function RadarChart() {
   }
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[500px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsRadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
+        <RechartsRadarChart cx={250} cy={250} outerRadius={150} data={data}>
           <PolarGrid />
           <PolarAngleAxis 
             dataKey="subject" 

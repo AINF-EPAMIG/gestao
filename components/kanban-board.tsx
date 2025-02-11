@@ -3,9 +3,10 @@
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, type Status, type Task, getStatusName, getPriorityName } from "@/lib/store"
+import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName } from "@/lib/store"
 import { useMemo, useCallback, useState } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -75,10 +76,22 @@ export function KanbanBoard() {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="p-4 space-y-3"
+                          className={cn(
+                            "p-4 space-y-3 border-l-4",
+                            getPriorityName(task.prioridade_id) === "Alta"
+                              ? "border-l-red-500"
+                              : getPriorityName(task.prioridade_id) === "Média"
+                              ? "border-l-yellow-500"
+                              : "border-l-green-500"
+                          )}
                         >
                           <div className="flex items-center justify-between">
-                            <Badge variant="outline">{task.id}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{task.id}</Badge>
+                              <Badge variant="outline">
+                                {task.sistema_nome || `Sistema ${task.sistema_id}`}
+                              </Badge>
+                            </div>
                             <Badge
                               className={
                                 getPriorityName(task.prioridade_id) === "Alta"
@@ -88,14 +101,14 @@ export function KanbanBoard() {
                                   : "bg-green-500"
                               }
                             >
-                              {task.sistema_nome || `Sistema ${task.sistema_id}`}
+                              {getPriorityName(task.prioridade_id)}
                             </Badge>
                           </div>
                           <h4 className="font-medium">{task.titulo}</h4>
                           <p className="text-sm text-gray-500 line-clamp-2">
                             {task.descricao}
                           </p>
-                          <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center justify-between pt-2 border-t">
                             <div className="flex items-center gap-2">
                               <Avatar className="w-8 h-8">
                                 <AvatarImage email={task.responsavel_email} />
@@ -103,10 +116,20 @@ export function KanbanBoard() {
                                   {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
                                 </AvatarFallback>
                               </Avatar>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {task.estimativa_horas ? `${task.estimativa_horas}h` : "Sem estimativa"}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-gray-500">
-                              {task.estimativa_horas ? `${task.estimativa_horas}h` : "-"}
-                            </span>
+                            {task.data_inicio && (
+                              <span className="text-xs text-gray-500">
+                                Início: {new Date(task.data_inicio).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </Card>
                       )}
