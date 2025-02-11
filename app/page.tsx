@@ -78,23 +78,23 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <h1 className="text-2xl md:text-3xl font-bold mb-8">Painel de Controle Kanban</h1>
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">Painel de Controle Kanban</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader>
+        <Card className="p-4">
+          <CardHeader className="p-0 pb-4">
             <CardTitle>Distribuição por Etapa</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <PieChart />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="p-4">
+          <CardHeader className="p-0 pb-4">
             <CardTitle>Cards Atribuídos por Usuário</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <RadarChart />
           </CardContent>
         </Card>

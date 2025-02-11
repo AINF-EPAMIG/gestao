@@ -92,14 +92,14 @@ export function RadarChart() {
   }
 
   return (
-    <div className="h-[500px] w-full p-8">
+    <div className="h-[350px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RechartsRadarChart 
           cx="50%" 
           cy="50%" 
-          outerRadius="65%" 
+          outerRadius="75%" 
           data={data}
-          margin={{ top: 60, right: 60, bottom: 60, left: 60 }}
+          margin={{ top: 40, right: 40, bottom: 40, left: 40 }}
         >
           <PolarGrid gridType="circle" />
           <PolarAngleAxis 

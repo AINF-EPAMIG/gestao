@@ -1,5 +1,5 @@
 "use client"
-import { Cell, Pie, PieChart as RechartsPieChart, ResponsiveContainer } from "recharts"
+import { Cell, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { useTaskStore } from "@/lib/store"
 import { useMemo, useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -72,19 +72,16 @@ export function PieChart() {
   }
 
   return (
-    <div className="h-[400px] w-full">
+    <div className="h-[350px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RechartsPieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            labelLine={true}
-            label={renderCustomizedLabel}
-            outerRadius={120}
             innerRadius={60}
-            fill="#8884d8"
-            paddingAngle={5}
+            outerRadius={120}
+            paddingAngle={2}
             dataKey="value"
           >
             {data.map((entry, index) => (
@@ -94,6 +91,8 @@ export function PieChart() {
               />
             ))}
           </Pie>
+          <Tooltip />
+          <Legend verticalAlign="bottom" height={36} />
         </RechartsPieChart>
       </ResponsiveContainer>
     </div>
