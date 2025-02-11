@@ -7,11 +7,16 @@ import { useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 const STATUS_COLORS = {
-  "Em desenvolvimento": "bg-blue-500",
+  "Desenvolvimento": "bg-blue-500",
   "Não iniciada": "bg-orange-500",
   "Concluída": "bg-emerald-500",
   "Em testes": "bg-amber-500",
 } as const;
+
+function formatStatusName(statusId: number): string {
+  const status = getStatusName(statusId);
+  return status === "Em desenvolvimento" ? "Desenvolvimento" : status;
+}
 
 export default function PlanilhaPage() {
   const tasks = useTaskStore((state) => state.tasks)
@@ -87,19 +92,20 @@ export default function PlanilhaPage() {
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      className={STATUS_COLORS[getStatusName(task.status_id) as keyof typeof STATUS_COLORS]}
+                      className={STATUS_COLORS[formatStatusName(task.status_id) as keyof typeof STATUS_COLORS]}
                     >
-                      {getStatusName(task.status_id)}
+                      {formatStatusName(task.status_id)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge
+                      variant="outline"
                       className={
                         getPriorityName(task.prioridade_id) === "Alta"
-                          ? "bg-red-500"
+                          ? "text-red-500 border-red-200"
                           : getPriorityName(task.prioridade_id) === "Média"
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
+                          ? "text-yellow-600 border-yellow-200"
+                          : "text-green-500 border-green-200"
                       }
                     >
                       {getPriorityName(task.prioridade_id)}
