@@ -3,7 +3,7 @@
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName } from "@/lib/store"
+import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -121,7 +121,7 @@ export function KanbanBoard() {
                                   {getResponsavelName(task.responsavel_id, task.responsavel_email)}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {task.estimativa_horas ? `${task.estimativa_horas}h` : "Sem estimativa"}
+                                  {formatHours(task.estimativa_horas)}
                                 </span>
                               </div>
                             </div>

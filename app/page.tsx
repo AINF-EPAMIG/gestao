@@ -8,6 +8,7 @@ import { Task, useTaskStore } from "@/lib/store"
 import { useMemo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { formatHours } from "@/lib/store"
 
 function getStatusName(statusId: number): string {
   const statusMap: Record<number, string> = {
@@ -137,7 +138,7 @@ export default function DashboardPage() {
                   {task.descricao || "Sem descrição"}
                 </p>
                 <div className="text-sm text-gray-500">
-                  {task.estimativa_horas ? `${task.estimativa_horas}h` : "Sem estimativa"}
+                  {formatHours(task.estimativa_horas)}
                 </div>
               </div>
             </Card>

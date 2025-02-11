@@ -2,7 +2,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, getStatusName, getPriorityName } from "@/lib/store"
+import { useTaskStore, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
@@ -16,6 +16,11 @@ const STATUS_COLORS = {
 function formatStatusName(statusId: number): string {
   const status = getStatusName(statusId);
   return status === "Em desenvolvimento" ? "Desenvolvimento" : status;
+}
+
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString('pt-BR');
 }
 
 export default function PlanilhaPage() {
@@ -112,9 +117,9 @@ export default function PlanilhaPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>{task.sistema_nome || `Sistema ${task.sistema_id}`}</TableCell>
-                  <TableCell>{task.estimativa_horas || "-"}</TableCell>
-                  <TableCell>{task.data_inicio || "-"}</TableCell>
-                  <TableCell>{task.data_fim || "-"}</TableCell>
+                  <TableCell>{formatHours(task.estimativa_horas)}</TableCell>
+                  <TableCell>{formatDate(task.data_inicio)}</TableCell>
+                  <TableCell>{formatDate(task.data_fim)}</TableCell>
                   <TableCell>{task.id_release || "-"}</TableCell>
                 </TableRow>
               ))}

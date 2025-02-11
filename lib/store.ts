@@ -125,3 +125,8 @@ export function getResponsavelName(responsavelId: number | null, email?: string)
     .join(' ');
 }
 
+export function formatHours(hours: string | number | null): string {
+  if (!hours) return "Sem estimativa";
+  return `${Number(hours)}h`;
+}
+
