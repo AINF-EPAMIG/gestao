@@ -18,31 +18,31 @@ const CustomAxisTick = ({ x, y, payload }: any) => {
   
   // Ajusta posição baseada no ângulo para manter sempre nas extremidades
   if (payload.angle === 0) {
-    adjustX = 100;
+    adjustX = 80;
     adjustY = 0;
     textAnchor = "start";
   } else if (payload.angle === 90) {
     adjustX = 0;
-    adjustY = 80;
+    adjustY = 60;
   } else if (payload.angle === 180) {
-    adjustX = -100;
+    adjustX = -80;
     adjustY = 0;
     textAnchor = "end";
   } else if (payload.angle === 270) {
     adjustX = 0;
-    adjustY = -80;
+    adjustY = -60;
   }
 
   return (
     <g transform={`translate(${x + adjustX},${y + adjustY})`}>
       <foreignObject 
-        x="-60" 
+        x="-50" 
         y="-12" 
-        width="120" 
+        width="100" 
         height="24" 
         style={{ overflow: 'visible' }}
       >
-        <div className={`flex items-center gap-2 bg-white/80 rounded-full px-2 py-1 w-fit ${
+        <div className={`flex items-center gap-2 bg-white rounded-full px-2 py-1 w-fit shadow-sm ${
           textAnchor === "end" ? "justify-end" : 
           textAnchor === "start" ? "justify-start" : 
           "justify-center"
@@ -92,19 +92,20 @@ export function RadarChart() {
   }
 
   return (
-    <div className="h-[400px] w-full">
+    <div className="h-[500px] w-full p-8">
       <ResponsiveContainer width="100%" height="100%">
         <RechartsRadarChart 
           cx="50%" 
           cy="50%" 
-          outerRadius="50%" 
+          outerRadius="65%" 
           data={data}
-          margin={{ top: 80, right: 80, bottom: 80, left: 80 }}
+          margin={{ top: 60, right: 60, bottom: 60, left: 60 }}
         >
           <PolarGrid gridType="circle" />
           <PolarAngleAxis 
             dataKey="subject" 
             tick={CustomAxisTick}
+            tickSize={30}
           />
           <Radar 
             name="Tarefas" 
