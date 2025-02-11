@@ -8,6 +8,7 @@ export interface Task {
   responsavel_id: number | null
   responsavel_email?: string
   sistema_id: number
+  sistema_nome?: string
   titulo: string
   descricao: string
   prioridade_id: number

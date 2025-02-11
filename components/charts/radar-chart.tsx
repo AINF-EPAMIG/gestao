@@ -6,17 +6,21 @@ import { useMemo, useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
-// Componente customizado para renderizar os labels com avatar
+// Componente customizado para renderizar os labels com avatar e nome
 const CustomAxisTick = ({ x, y, payload }: any) => {
   const email = payload.value.toLowerCase().replace(' ', '.') + '@epamig.br'
+  const name = payload.value
   
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-15" y="-15" width="30" height="30">
-        <Avatar className="w-6 h-6">
-          <AvatarImage email={email} />
-          <AvatarFallback>{payload.value[0]}</AvatarFallback>
-        </Avatar>
+      <foreignObject x="-60" y="-20" width="120" height="40">
+        <div className="flex items-center gap-2">
+          <Avatar className="w-6 h-6">
+            <AvatarImage email={email} />
+            <AvatarFallback>{name[0]}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs whitespace-nowrap">{name}</span>
+        </div>
       </foreignObject>
     </g>
   );
@@ -58,7 +62,7 @@ export function RadarChart() {
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsRadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+        <RechartsRadarChart cx="50%" cy="50%" outerRadius="65%" data={data}>
           <PolarGrid />
           <PolarAngleAxis 
             dataKey="subject" 

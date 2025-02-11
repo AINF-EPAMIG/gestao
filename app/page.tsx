@@ -117,7 +117,9 @@ export default function DashboardPage() {
                     <h3 className="font-medium">
                       {email.split('@')[0].replace('.', ' ')}
                     </h3>
-                    <Badge variant="outline">Sistema {task.sistema_id}</Badge>
+                    <Badge variant="outline">
+                      {task.sistema_nome || `Sistema ${task.sistema_id}`}
+                    </Badge>
                   </div>
                   <Badge
                     className={
@@ -132,7 +134,7 @@ export default function DashboardPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-gray-500 line-clamp-2 mb-2">
-                  {task.titulo}
+                  {task.descricao || "Sem descrição"}
                 </p>
                 <div className="text-sm text-gray-500">
                   {task.estimativa_horas ? `${task.estimativa_horas}h` : "Sem estimativa"}

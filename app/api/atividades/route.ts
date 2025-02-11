@@ -8,9 +8,10 @@ export async function GET() {
     // Buscar atividades e responsáveis em uma única consulta
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email 
+        SELECT a.*, r.email as responsavel_email, s.nome as sistema_nome
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+        LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
       `,
     });
     

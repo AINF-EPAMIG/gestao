@@ -88,7 +88,7 @@ export function KanbanBoard() {
                                   : "bg-green-500"
                               }
                             >
-                              {`Sistema ${task.sistema_id}`}
+                              {task.sistema_nome || `Sistema ${task.sistema_id}`}
                             </Badge>
                           </div>
                           <h4 className="font-medium">{task.titulo}</h4>
@@ -97,7 +97,7 @@ export function KanbanBoard() {
                           </p>
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
-                              <Avatar className="w-6 h-6">
+                              <Avatar className="w-8 h-8">
                                 <AvatarImage email={task.responsavel_email} />
                                 <AvatarFallback>
                                   {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
