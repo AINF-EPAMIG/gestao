@@ -26,14 +26,12 @@ function getPriorityName(priorityId: number): "Alta" | "Média" | "Baixa" {
   return priorityMap[priorityId] || "Média"
 }
 
-function getResponsavelName(responsavelId: number | null): string {
-  if (!responsavelId) return "Não atribuído"
-  const responsavelMap: Record<number, string> = {
-    1: "Responsável 1",
-    2: "Responsável 2",
-    // Adicione mais responsáveis conforme necessário
-  }
-  return responsavelMap[responsavelId] || `Responsável ${responsavelId}`
+function getResponsavelName(responsavelId: number | null, email?: string): string {
+  if (!responsavelId || !email) return "Não atribuído";
+  return email.split('@')[0].replace('.', ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 export default function DashboardPage() {
@@ -85,7 +83,7 @@ export default function DashboardPage() {
         {displayTasks.map((task) => (
           <TaskCard
             key={task.id}
-            user={getResponsavelName(task.responsavel_id)}
+            user={getResponsavelName(task.responsavel_id, task.responsavel_email)}
             email={task.responsavel_email || ''}
             taskId={task.id}
             title={task.titulo}

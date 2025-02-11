@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName } from "@/lib/store"
 import { useMemo, useCallback, useState } from "react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -96,9 +97,12 @@ export function KanbanBoard() {
                           </p>
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                                {task.responsavel_id || "?"}
-                              </div>
+                              <Avatar className="w-6 h-6">
+                                <AvatarImage email={task.responsavel_email} />
+                                <AvatarFallback>
+                                  {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
+                                </AvatarFallback>
+                              </Avatar>
                             </div>
                             <span className="text-gray-500">
                               {task.estimativa_horas ? `${task.estimativa_horas}h` : "-"}
