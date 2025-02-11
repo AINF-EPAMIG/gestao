@@ -7,10 +7,22 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function RadarChart() {
   const [isLoading, setIsLoading] = useState(true)
-  const getAssigneeDistribution = useTaskStore((state) => state.getAssigneeDistribution)
   const tasks = useTaskStore((state) => state.tasks)
 
-  const data = useMemo(() => getAssigneeDistribution(), [getAssigneeDistribution])
+  const data = useMemo(() => {
+    const assigneeCounts = tasks.reduce((acc, task) => {
+      if (task.responsavel_email) {
+        const name = task.responsavel_email.split('@')[0].replace('.', ' ')
+        acc[name] = (acc[name] || 0) + 1
+      }
+      return acc
+    }, {} as Record<string, number>)
+
+    return Object.entries(assigneeCounts).map(([subject, count]) => ({
+      subject: subject.charAt(0).toUpperCase() + subject.slice(1),
+      A: count,
+    }))
+  }, [tasks])
 
   useEffect(() => {
     if (tasks.length > 0) {

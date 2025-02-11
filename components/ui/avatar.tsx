@@ -28,10 +28,9 @@ const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
 >(({ className, email, ...props }, ref) => {
-  // Usa a URL da foto do Google baseada no email
+  // Usa a imagem local baseada no email
   const avatarUrl = email ? 
-    `https://lh3.googleusercontent.com/a/default-user=s80-c` // URL base do Google
-    .replace('default-user', email.split('@')[0]) 
+    `/${email.split('@')[0].replace('.', '_')}_icon.jpg`
     : props.src;
 
   return (
