@@ -1,7 +1,8 @@
 "use client"
 import { Cell, Pie, PieChart as RechartsPieChart, ResponsiveContainer } from "recharts"
 import { useTaskStore } from "@/lib/store"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const COLORS = {
   "Em desenvolvimento": "#10b981",
@@ -53,59 +54,46 @@ const renderCustomizedLabel = (props: {
 };
 
 export function PieChart() {
+  const [isLoading, setIsLoading] = useState(true)
   const getTaskDistribution = useTaskStore((state) => state.getTaskDistribution)
+  const tasks = useTaskStore((state) => state.tasks)
 
-  const data = useMemo(() => {
-    const distribution = getTaskDistribution()
-    // Calcular o total para obter os valores absolutos
-    const total = distribution.reduce((acc, item) => acc + item.value, 0)
-    return distribution.map((item) => ({
-      ...item,
-      absoluteValue: Math.round((item.value * total) / 100),
-    }))
-  }, [getTaskDistribution])
+  const data = useMemo(() => getTaskDistribution(), [getTaskDistribution])
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setIsLoading(false)
+    }
+  }, [tasks])
+
+  if (isLoading) {
+    return (
+      <div className="h-[300px] w-full flex items-center justify-center">
+        <Skeleton className="h-[250px] w-[250px] rounded-full" />
+      </div>
+    )
+  }
 
   return (
-    <div className="h-[400px] flex flex-col">
-      <div className="flex-grow">
-        <ResponsiveContainer width="100%" height="100%">
-          <RechartsPieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={{
-                stroke: "#666666",
-                strokeWidth: 1,
-              }}
-              label={renderCustomizedLabel}
-              innerRadius="60%"
-              outerRadius="80%"
-              paddingAngle={5}
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
-              ))}
-            </Pie>
-          </RechartsPieChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs px-4">
-        {data.map((item, index) => (
-          <div key={index} className="flex items-center gap-1">
-            <div
-              className="h-3 w-3 rounded-full flex-shrink-0"
-              style={{
-                backgroundColor: COLORS[item.name as keyof typeof COLORS],
-              }}
-            />
-            <span className="text-gray-600 truncate">
-              {item.name} {item.absoluteValue}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="h-[300px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsPieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={true}
+            label={renderCustomizedLabel}
+            outerRadius={100}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+            ))}
+          </Pie>
+        </RechartsPieChart>
+      </ResponsiveContainer>
     </div>
   )
 }

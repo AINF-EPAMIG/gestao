@@ -46,10 +46,11 @@ export default function DashboardPage() {
     async function fetchTasks() {
       try {
         const response = await fetch('/api/atividades')
+        if (!response.ok) throw new Error('Falha ao carregar dados')
         const data = await response.json()
         setTasks(data)
       } catch (error) {
-        console.error('Erro ao buscar tarefas:', error)
+        console.error('Erro ao carregar tarefas:', error)
       }
     }
 
@@ -85,6 +86,7 @@ export default function DashboardPage() {
           <TaskCard
             key={task.id}
             user={getResponsavelName(task.responsavel_id)}
+            email={task.responsavel_email || ''}
             taskId={task.id}
             title={task.titulo}
             description={task.descricao}

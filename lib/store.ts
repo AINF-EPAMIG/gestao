@@ -6,6 +6,7 @@ export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Con
 export interface Task {
   id: string
   responsavel_id: number | null
+  responsavel_email?: string
   sistema_id: number
   titulo: string
   descricao: string
@@ -73,7 +74,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   getAssigneeDistribution: () => {
     const tasks = get().tasks;
     const assigneeCounts = tasks.reduce((acc, task) => {
-      const responsavel = getResponsavelName(task.responsavel_id);
+      const responsavel = getResponsavelName(task.responsavel_id, task.responsavel_email);
       if (responsavel) {
         acc[responsavel] = (acc[responsavel] || 0) + 1;
       }
@@ -106,13 +107,20 @@ export function getPriorityName(priorityId: number): Priority {
   return priorityMap[priorityId] || "Média"
 }
 
-export function getResponsavelName(responsavelId: number | null): string {
-  if (!responsavelId) return "Não atribuído";
-  const responsavelMap: Record<number, string> = {
-    1: "Responsável 1",
-    2: "Responsável 2",
-    // Adicione mais responsáveis conforme necessário
-  };
-  return responsavelMap[responsavelId] || `Responsável ${responsavelId}`;
+interface ResponsavelInfo {
+  email: string;
+  nome: string;
+  cargo?: string;
+}
+
+export function getResponsavelName(responsavelId: number | null, email?: string): string {
+  if (!responsavelId || !email) return "Não atribuído";
+  
+  const username = email.split('@')[0];
+  
+  return username
+    .split('.')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 

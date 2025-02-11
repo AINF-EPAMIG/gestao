@@ -20,16 +20,28 @@ const Avatar = React.forwardRef<
 ))
 Avatar.displayName = AvatarPrimitive.Root.displayName
 
+interface AvatarImageProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> {
+  email?: string;
+}
+
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
-))
+  AvatarImageProps
+>(({ className, email, ...props }, ref) => {
+  // Gera URL do avatar baseado no email
+  const avatarUrl = email ? 
+    `https://ui-avatars.com/api/?name=${email.split('@')[0].replace('.',' ')}&background=random` 
+    : props.src;
+
+  return (
+    <AvatarPrimitive.Image
+      ref={ref}
+      src={avatarUrl}
+      className={cn("aspect-square h-full w-full", className)}
+      {...props}
+    />
+  )
+})
 AvatarImage.displayName = AvatarPrimitive.Image.displayName
 
 const AvatarFallback = React.forwardRef<

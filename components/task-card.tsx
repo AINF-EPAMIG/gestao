@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
 interface TaskCardProps {
   user: string
+  email: string
   taskId: string
   title: string
   description: string
@@ -17,6 +18,7 @@ interface TaskCardProps {
 
 export function TaskCard({
   user,
+  email,
   title,
   description,
   system,
@@ -36,6 +38,7 @@ export function TaskCard({
     <Card>
       <CardHeader className="flex flex-row items-center gap-4">
         <Avatar>
+          <AvatarImage email={email} />
           <AvatarFallback>{user[0]}</AvatarFallback>
         </Avatar>
         <div>

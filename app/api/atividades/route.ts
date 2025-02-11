@@ -5,13 +5,14 @@ export async function GET() {
   try {
     console.log('🔵 Iniciando consulta ao banco de dados...');
     
+    // Buscar atividades e responsáveis em uma única consulta
     const atividades = await executeQuery({
-      query: 'SELECT * FROM u711845530_gestao.atividades',
+      query: `
+        SELECT a.*, r.email as responsavel_email 
+        FROM u711845530_gestao.atividades a
+        LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+      `,
     });
-    
-    console.log('✅ Dados recuperados com sucesso:');
-    console.log(JSON.stringify(atividades, null, 2));
-    console.log(`📊 Total de registros: ${Array.isArray(atividades) ? atividades.length : 0}`);
     
     return NextResponse.json(atividades);
   } catch (error) {
