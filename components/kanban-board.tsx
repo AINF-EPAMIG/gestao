@@ -3,7 +3,7 @@
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, type Status, type Task } from "@/lib/store"
+import { useTaskStore, type Status, type Task, getStatusName, getPriorityName } from "@/lib/store"
 import { useMemo, useCallback, useState } from "react"
 
 const columns: { id: Status; title: string }[] = [
@@ -13,42 +13,43 @@ const columns: { id: Status; title: string }[] = [
   { id: "Concluída", title: "Concluída" },
 ]
 
+const statusMap = {
+  "Não iniciada": 1,
+  "Em desenvolvimento": 2,
+  "Em testes": 3,
+  "Concluída": 4,
+} as const;
+
 export function KanbanBoard() {
-  const { tasks, updateTaskStatus } = useTaskStore()
-  const [localTasks, setLocalTasks] = useState(tasks)
+  const tasks = useTaskStore((state) => state.tasks)
+  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
+
+  const columnTasks = useMemo(() => {
+    return columns.reduce((acc, column) => {
+      acc[column.id] = tasks.filter(
+        task => getStatusName(task.status_id) === column.id
+      )
+      return acc
+    }, {} as Record<Status, Task[]>)
+  }, [tasks])
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
       const { destination, source, draggableId } = result
 
       if (!destination) return
-
-      if (destination.droppableId === source.droppableId && destination.index === source.index) {
+      if (
+        destination.droppableId === source.droppableId &&
+        destination.index === source.index
+      ) {
         return
       }
 
-      const newStatus = destination.droppableId as Status
-
-      // Update local state immediately
-      setLocalTasks((prevTasks) =>
-        prevTasks.map((task) => (task.id === draggableId ? { ...task, status: newStatus } : task)),
-      )
-
-      // Update global state
+      const newStatus = statusMap[destination.droppableId as Status]
       updateTaskStatus(draggableId, newStatus)
     },
-    [updateTaskStatus],
+    [updateTaskStatus]
   )
-
-  const columnTasks = useMemo(() => {
-    return columns.reduce(
-      (acc, column) => {
-        acc[column.id] = localTasks.filter((task) => task.status === column.id)
-        return acc
-      },
-      {} as Record<Status, Task[]>,
-    )
-  }, [localTasks])
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
@@ -61,7 +62,11 @@ export function KanbanBoard() {
             </div>
             <Droppable droppableId={column.id}>
               {(provided) => (
-                <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-3 min-h-[200px]">
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex flex-col gap-3 min-h-[200px]"
+                >
                   {columnTasks[column.id].map((task, index) => (
                     <Draggable key={task.id} draggableId={task.id} index={index}>
                       {(provided) => (
@@ -75,25 +80,29 @@ export function KanbanBoard() {
                             <Badge variant="outline">{task.id}</Badge>
                             <Badge
                               className={
-                                task.priority === "Alta"
+                                getPriorityName(task.prioridade_id) === "Alta"
                                   ? "bg-red-500"
-                                  : task.priority === "Média"
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
+                                  : getPriorityName(task.prioridade_id) === "Média"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
                               }
                             >
-                              {task.system}
+                              {`Sistema ${task.sistema_id}`}
                             </Badge>
                           </div>
-                          <h4 className="font-medium">{task.title}</h4>
-                          <p className="text-sm text-gray-500 line-clamp-2">{task.description}</p>
+                          <h4 className="font-medium">{task.titulo}</h4>
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {task.descricao}
+                          </p>
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                                {task.assigneeId}
+                                {task.responsavel_id || "?"}
                               </div>
                             </div>
-                            <span className="text-gray-500">{task.estimate}</span>
+                            <span className="text-gray-500">
+                              {task.estimativa_horas ? `${task.estimativa_horas}h` : "-"}
+                            </span>
                           </div>
                         </Card>
                       )}

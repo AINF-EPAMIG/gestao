@@ -2,7 +2,12 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore } from "@/lib/store"
+import { useTaskStore, getStatusName, getPriorityName, getResponsavelName } from "@/lib/store"
+
+function formatDate(dateString: string | null) {
+  if (!dateString) return "-"
+  return new Date(dateString).toLocaleDateString('pt-BR')
+}
 
 export default function PlanilhaPage() {
   const tasks = useTaskStore((state) => state.tasks)
@@ -32,29 +37,31 @@ export default function PlanilhaPage() {
                 {tasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium whitespace-nowrap">{task.id}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{task.title}</TableCell>
-                    <TableCell className="whitespace-nowrap">{task.assignee}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{task.titulo}</TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <Badge variant="outline">{task.status}</Badge>
+                      {getResponsavelName(task.responsavel_id)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge variant="outline">{getStatusName(task.status_id)}</Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <Badge
                         className={
-                          task.priority === "Alta"
+                          getPriorityName(task.prioridade_id) === "Alta"
                             ? "bg-red-500"
-                            : task.priority === "Média"
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
+                            : getPriorityName(task.prioridade_id) === "Média"
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
                         }
                       >
-                        {task.priority}
+                        {getPriorityName(task.prioridade_id)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{task.system}</TableCell>
-                    <TableCell className="whitespace-nowrap">{task.estimate}</TableCell>
-                    <TableCell className="whitespace-nowrap">{task.startDate}</TableCell>
-                    <TableCell className="whitespace-nowrap">{task.endDate}</TableCell>
-                    <TableCell className="whitespace-nowrap">{task.releaseId}</TableCell>
+                    <TableCell className="whitespace-nowrap">Sistema {task.sistema_id}</TableCell>
+                    <TableCell className="whitespace-nowrap">{task.estimativa_horas || "-"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(task.data_inicio)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(task.data_fim)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{task.id_release || "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
