@@ -61,18 +61,18 @@ export const useTaskStore = create<TaskStore>()(
           let newOrder: number
           
           if (destinationTasks.length === 0) {
-            // Se não houver cards na coluna de destino, use 1 como ordem
-            newOrder = 1
+            // Se não houver cards na coluna de destino, use 1000 como ordem inicial
+            newOrder = 1000
           } else if (newIndex === 0) {
-            // Se for inserido no início, use ordem anterior - 1
-            newOrder = (destinationTasks[0].order || 1) - 1
+            // Se for inserido no início, use metade da ordem do primeiro item
+            newOrder = (destinationTasks[0].order || 1000) / 2
           } else if (newIndex >= destinationTasks.length) {
-            // Se for inserido no final, use ordem posterior + 1
-            newOrder = ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1)
+            // Se for inserido no final, use ordem do último + 1000
+            newOrder = ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1000)
           } else {
-            // Se for inserido no meio, use a média entre as ordens anterior e posterior
+            // Se for inserido no meio, use a média entre as ordens dos itens adjacentes
             const prevOrder = destinationTasks[newIndex - 1]?.order || 0
-            const nextOrder = destinationTasks[newIndex]?.order || 0
+            const nextOrder = destinationTasks[newIndex]?.order || prevOrder + 2000
             newOrder = (prevOrder + nextOrder) / 2
           }
           
