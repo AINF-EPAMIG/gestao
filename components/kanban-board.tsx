@@ -61,9 +61,6 @@ const TaskCard = memo(function TaskCard({
       )}
     >
       <div className="flex items-center justify-between">
-        <Badge variant="outline">
-          {task.sistema_nome || `Sistema ${task.sistema_id}`}
-        </Badge>
         <Badge
           className={
             getPriorityName(task.prioridade_id) === "Alta"
@@ -74,6 +71,9 @@ const TaskCard = memo(function TaskCard({
           }
         >
           {getPriorityName(task.prioridade_id)}
+        </Badge>
+        <Badge variant="outline">
+          {task.sistema_nome || `Sistema ${task.sistema_id}`}
         </Badge>
       </div>
       <h4 className="font-medium">{task.titulo}</h4>

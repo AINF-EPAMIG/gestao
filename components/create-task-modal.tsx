@@ -20,14 +20,14 @@ export function CreateTaskModal() {
   const [titulo, setTitulo] = useState("")
   const [descricao, setDescricao] = useState("")
   const [sistemaId, setSistemaId] = useState<string>("")
+  const [responsavelEmail, setResponsavelEmail] = useState("")
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
   const [estimativaHoras, setEstimativaHoras] = useState("")
+  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState("")
   const [sistemas, setSistemas] = useState<Sistema[]>([])
+  const [responsaveis, setResponsaveis] = useState<{email: string}[]>([])
   const setTasks = useTaskStore((state) => state.setTasks)
-
-  const dataAtual = new Date().toLocaleDateString('pt-BR')
-  const dataAtualISO = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     // Carregar sistemas do banco
@@ -43,8 +43,27 @@ export function CreateTaskModal() {
       }
     }
 
+    // Carregar responsáveis do banco
+    const fetchResponsaveis = async () => {
+      try {
+        const response = await fetch('/api/responsaveis')
+        if (response.ok) {
+          const data = await response.json()
+          setResponsaveis(data)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar responsáveis:', error)
+      }
+    }
+
     fetchSistemas()
-  }, [])
+    fetchResponsaveis()
+    
+    // Preencher email do usuário logado
+    if (session?.user?.email) {
+      setResponsavelEmail(session.user.email)
+    }
+  }, [session?.user?.email])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,8 +78,8 @@ export function CreateTaskModal() {
           titulo,
           descricao,
           sistema_id: parseInt(sistemaId),
-          responsavel_email: session?.user?.email,
-          data_inicio: dataAtualISO,
+          responsavel_email: responsavelEmail,
+          data_inicio: dataInicio,
           data_fim: dataFim,
           status_id: 1, // Não iniciada
           prioridade_id: parseInt(prioridade),
@@ -116,68 +135,85 @@ export function CreateTaskModal() {
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Sistema *</label>
-            <Select required value={sistemaId} onValueChange={setSistemaId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um sistema" />
-              </SelectTrigger>
-              <SelectContent>
-                {sistemas.map((sistema) => (
-                  <SelectItem key={sistema.id} value={sistema.id.toString()}>
-                    {sistema.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Sistema</label>
+              <Select value={sistemaId} onValueChange={setSistemaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um sistema" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sistemas.map((sistema) => (
+                    <SelectItem key={sistema.id} value={sistema.id.toString()}>
+                      {sistema.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Responsável</label>
+              <Select value={responsavelEmail} onValueChange={setResponsavelEmail}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {responsaveis.map((resp) => (
+                    <SelectItem key={resp.email} value={resp.email}>
+                      {resp.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Responsável</label>
-            <Input
-              disabled
-              value={session?.user?.email || ""}
-              placeholder="Email do responsável"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Prioridade</label>
+              <Select value={prioridade} onValueChange={setPrioridade}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a prioridade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Alta</SelectItem>
+                  <SelectItem value="2">Média</SelectItem>
+                  <SelectItem value="3">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Estimativa (horas)</label>
+              <Input
+                type="number"
+                step="0.1"
+                value={estimativaHoras}
+                onChange={(e) => setEstimativaHoras(e.target.value)}
+                placeholder="Ex: 8.5"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Prioridade</label>
-            <Select value={prioridade} onValueChange={setPrioridade}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a prioridade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Alta</SelectItem>
-                <SelectItem value="2">Média</SelectItem>
-                <SelectItem value="3">Baixa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Data de Início</label>
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <label className="text-sm font-medium">Estimativa (horas)</label>
-            <Input
-              type="number"
-              step="0.1"
-              value={estimativaHoras}
-              onChange={(e) => setEstimativaHoras(e.target.value)}
-              placeholder="Ex: 8.5"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Data de Início</label>
-            <Input disabled value={dataAtual} />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Data de Fim Prevista</label>
-            <Input
-              type="date"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-            />
+            <div>
+              <label className="text-sm font-medium">Data de Fim Prevista</label>
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+              />
+            </div>
           </div>
 
           <Button type="submit" className="w-full bg-emerald-800 text-white hover:bg-emerald-700">
