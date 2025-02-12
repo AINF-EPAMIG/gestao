@@ -52,4 +52,42 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const { titulo, descricao, data_inicio, status_id, prioridade_id } = data;
+
+    console.log('🔵 Criando nova atividade...');
+    
+    await executeQuery({
+      query: `
+        INSERT INTO u711845530_gestao.atividades 
+        (titulo, descricao, data_inicio, status_id, prioridade_id) 
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      values: [titulo, descricao, data_inicio, status_id, prioridade_id],
+    });
+    
+    console.log('✅ Atividade criada com sucesso');
+    
+    // Buscar dados atualizados
+    const atividades = await executeQuery({
+      query: `
+        SELECT a.*, r.email as responsavel_email, s.nome as sistema_nome
+        FROM u711845530_gestao.atividades a
+        LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+        LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
+      `,
+    });
+    
+    return NextResponse.json(atividades);
+  } catch (error) {
+    console.error('❌ Erro ao criar atividade:', error);
+    return NextResponse.json(
+      { error: 'Erro ao criar atividade' },
+      { status: 500 }
+    );
+  }
 } 
