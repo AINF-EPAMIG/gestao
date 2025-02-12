@@ -160,15 +160,6 @@ export function KanbanBoard() {
     return () => clearInterval(interval)
   }, [syncPendingChanges])
 
-  const columnTasks = useMemo(() => {
-    return columns.reduce((acc, column) => {
-      acc[column.id] = tasks.filter(
-        task => getStatusName(task.status_id) === column.id
-      )
-      return acc
-    }, {} as Record<Status, Task[]>)
-  }, [tasks])
-
   const onDragEnd = useCallback(
     (result: DropResult) => {
       const { destination, source, draggableId } = result
@@ -182,10 +173,29 @@ export function KanbanBoard() {
       }
 
       const newStatus = statusMap[destination.droppableId as Status]
-      updateTaskStatus(draggableId, newStatus)
+      
+      // Adiciona o destination.index como terceiro argumento
+      updateTaskStatus(draggableId, newStatus, destination.index)
+      
+      useTaskStore.getState().reorderTasks(
+        source.droppableId as Status,
+        destination.droppableId as Status,
+        draggableId,
+        destination.index
+      )
     },
     [updateTaskStatus]
   )
+
+  const columnTasks = useMemo(() => {
+    return columns.reduce((acc, column) => {
+      // Filtra e ordena os cards por ordem personalizada
+      acc[column.id] = tasks
+        .filter(task => getStatusName(task.status_id) === column.id)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+      return acc
+    }, {} as Record<Status, Task[]>)
+  }, [tasks])
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>

@@ -19,17 +19,19 @@ export interface Task {
   data_fim: string | null
   data_conclusao: string | null
   id_release: string | null
+  order?: number
 }
 
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  updateTaskStatus: (taskId: string, newStatusId: number) => void
+  updateTaskStatus: (taskId: string, newStatusId: number, newIndex: number) => void
   syncPendingChanges: () => Promise<void>
   pendingChanges: { taskId: string; newStatusId: number }[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
+  reorderTasks: (sourceStatus: Status, destinationStatus: Status, taskId: string, newIndex: number) => void
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -40,16 +42,33 @@ export const useTaskStore = create<TaskStore>()(
       
       setTasks: (tasks) => set({ tasks }),
       
-      updateTaskStatus: (taskId, newStatusId) => {
-        // Atualiza localmente primeiro
-        set((state) => ({
-          tasks: state.tasks.map((task) =>
-            task.id === taskId ? { ...task, status_id: newStatusId } : task
-          ),
-          pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
-        }))
+      updateTaskStatus: (taskId, newStatusId, newIndex) => {
+        set((state) => {
+          const updatedTasks = state.tasks.map(task => {
+            if (task.id === taskId) {
+              return { ...task, status_id: newStatusId }
+            }
+            return task
+          })
+
+          // Reordena os cards da coluna de destino
+          const tasksInColumn = updatedTasks.filter(
+            task => getStatusName(task.status_id) === getStatusName(newStatusId)
+          )
+
+          // Atualiza a ordem dos cards
+          tasksInColumn.forEach((task, index) => {
+            if (index >= newIndex) {
+              task.order = index + 1
+            }
+          })
+
+          return {
+            tasks: updatedTasks,
+            pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
+          }
+        })
         
-        // Tenta sincronizar em background
         get().syncPendingChanges()
       },
       
@@ -112,11 +131,41 @@ export const useTaskStore = create<TaskStore>()(
           A: count,
         }));
       },
+
+      reorderTasks: (sourceStatus, destinationStatus, taskId, newIndex) => {
+        set((state) => {
+          const tasks = [...state.tasks]
+          const taskIndex = tasks.findIndex(t => t.id === taskId)
+          
+          if (taskIndex === -1) return state
+          
+          // Remove o card da posição atual
+          const [movedTask] = tasks.splice(taskIndex, 1)
+          
+          // Encontra o índice de inserção na coluna de destino
+          const destinationTasks = tasks.filter(
+            t => getStatusName(t.status_id) === destinationStatus
+          )
+          
+          // Insere o card na nova posição
+          const insertIndex = tasks.findIndex(
+            t => getStatusName(t.status_id) === destinationStatus
+          ) + newIndex
+          
+          tasks.splice(insertIndex, 0, movedTask)
+          
+          // Atualiza a ordem de todos os cards
+          return { tasks: tasks.map((task, index) => ({ ...task, order: index })) }
+        })
+      }
     }),
     {
       name: 'kanban-store',
       partialize: (state) => ({ 
-        tasks: state.tasks,
+        tasks: state.tasks.map(task => ({
+          ...task,
+          order: task.order || 0
+        })),
         pendingChanges: state.pendingChanges 
       })
     }
