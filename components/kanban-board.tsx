@@ -7,6 +7,7 @@ import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, g
 import { useMemo, useCallback, useState, memo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
+import { TaskDetailsModal } from "@/components/task-details-modal"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -45,60 +46,71 @@ const TaskCard = memo(function TaskCard({
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) {
+  const [showDetails, setShowDetails] = useState(false)
+
   return (
-    <Card
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
-      className={cn(
-        "p-4 space-y-3 border-l-4",
-        snapshot.isDragging && "dragging-card",
-        getPriorityName(task.prioridade_id) === "Alta"
-          ? "border-l-red-500"
-          : getPriorityName(task.prioridade_id) === "Média"
-          ? "border-l-yellow-500"
-          : "border-l-green-500"
-      )}
-    >
-      <div className="flex items-center justify-between">
-        <Badge
-          className={
-            getPriorityName(task.prioridade_id) === "Alta"
-              ? "bg-red-500"
-              : getPriorityName(task.prioridade_id) === "Média"
-              ? "bg-yellow-500"
-              : "bg-green-500"
-          }
-        >
-          {getPriorityName(task.prioridade_id)}
-        </Badge>
-        <Badge variant="outline">
-          {task.sistema_nome || `Sistema ${task.sistema_id}`}
-        </Badge>
-      </div>
-      <h4 className="font-medium">{task.titulo}</h4>
-      <p className="text-sm text-gray-500 line-clamp-2">
-        {task.descricao}
-      </p>
-      <div className="flex items-center justify-between pt-2 border-t">
-        <div className="flex items-center gap-2">
-          <MemoizedAvatar email={task.responsavel_email} />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">
-              {getResponsavelName(task.responsavel_id, task.responsavel_email)}
-            </span>
-            <span className="text-xs text-gray-500">
-              {formatHours(task.estimativa_horas)}
-            </span>
-          </div>
-        </div>
-        {task.data_inicio && (
-          <span className="text-xs text-gray-500">
-            Início: {new Date(task.data_inicio).toLocaleDateString()}
-          </span>
+    <>
+      <Card
+        ref={provided.innerRef}
+        {...provided.draggableProps}
+        {...provided.dragHandleProps}
+        className={cn(
+          "p-4 space-y-3 border-l-4 cursor-pointer",
+          snapshot.isDragging && "dragging-card",
+          getPriorityName(task.prioridade_id) === "Alta"
+            ? "border-l-red-500"
+            : getPriorityName(task.prioridade_id) === "Média"
+            ? "border-l-yellow-500"
+            : "border-l-green-500"
         )}
-      </div>
-    </Card>
+        onClick={() => setShowDetails(true)}
+      >
+        <div className="flex items-center justify-between">
+          <Badge
+            className={
+              getPriorityName(task.prioridade_id) === "Alta"
+                ? "bg-red-500"
+                : getPriorityName(task.prioridade_id) === "Média"
+                ? "bg-yellow-500"
+                : "bg-green-500"
+            }
+          >
+            {getPriorityName(task.prioridade_id)}
+          </Badge>
+          <Badge variant="outline">
+            {task.sistema_nome || `Sistema ${task.sistema_id}`}
+          </Badge>
+        </div>
+        <h4 className="font-medium">{task.titulo}</h4>
+        <p className="text-sm text-gray-500 line-clamp-2">
+          {task.descricao}
+        </p>
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <MemoizedAvatar email={task.responsavel_email} />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">
+                {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+              </span>
+              <span className="text-xs text-gray-500">
+                {formatHours(task.estimativa_horas)}
+              </span>
+            </div>
+          </div>
+          {task.data_inicio && (
+            <span className="text-xs text-gray-500">
+              Início: {new Date(task.data_inicio).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      </Card>
+
+      <TaskDetailsModal 
+        task={task}
+        open={showDetails}
+        onOpenChange={setShowDetails}
+      />
+    </>
   );
 });
 
