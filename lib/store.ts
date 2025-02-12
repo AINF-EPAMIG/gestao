@@ -44,27 +44,47 @@ export const useTaskStore = create<TaskStore>()(
       
       updateTaskStatus: (taskId, newStatusId, newIndex) => {
         set((state) => {
-          const updatedTasks = state.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, status_id: newStatusId }
-            }
-            return task
-          })
-
-          // Reordena os cards da coluna de destino
-          const tasksInColumn = updatedTasks.filter(
-            task => getStatusName(task.status_id) === getStatusName(newStatusId)
-          )
-
-          // Atualiza a ordem dos cards
-          tasksInColumn.forEach((task, index) => {
-            if (index >= newIndex) {
-              task.order = index + 1
-            }
-          })
-
-          return {
-            tasks: updatedTasks,
+          const tasks = [...state.tasks]
+          const taskToMove = tasks.find(t => t.id === taskId)
+          
+          if (!taskToMove) return state
+          
+          // Remove o card da lista
+          const filteredTasks = tasks.filter(t => t.id !== taskId)
+          
+          // Encontra todos os cards da coluna de destino
+          const destinationTasks = filteredTasks.filter(
+            t => getStatusName(t.status_id) === getStatusName(newStatusId)
+          ).sort((a, b) => (a.order || 0) - (b.order || 0))
+          
+          // Calcula a nova ordem
+          let newOrder: number
+          
+          if (destinationTasks.length === 0) {
+            // Se não houver cards na coluna de destino, use 1 como ordem
+            newOrder = 1
+          } else if (newIndex === 0) {
+            // Se for inserido no início, use ordem anterior - 1
+            newOrder = (destinationTasks[0].order || 1) - 1
+          } else if (newIndex >= destinationTasks.length) {
+            // Se for inserido no final, use ordem posterior + 1
+            newOrder = ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1)
+          } else {
+            // Se for inserido no meio, use a média entre as ordens anterior e posterior
+            const prevOrder = destinationTasks[newIndex - 1]?.order || 0
+            const nextOrder = destinationTasks[newIndex]?.order || 0
+            newOrder = (prevOrder + nextOrder) / 2
+          }
+          
+          // Atualiza o card movido
+          taskToMove.status_id = newStatusId
+          taskToMove.order = newOrder
+          
+          // Reinsere o card na lista
+          filteredTasks.push(taskToMove)
+          
+          return { 
+            tasks: filteredTasks.sort((a, b) => (a.order || 0) - (b.order || 0)),
             pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
           }
         })

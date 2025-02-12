@@ -188,15 +188,6 @@ export function KanbanBoard() {
       const newStatus = statusMap[destination.droppableId as Status]
       const taskId = parseInt(draggableId, 10)
       
-      // Primeiro reordenar as tasks para manter a ordem visual correta
-      useTaskStore.getState().reorderTasks(
-        source.droppableId as Status,
-        destination.droppableId as Status,
-        taskId,
-        destination.index
-      )
-      
-      // Depois atualizar o status
       updateTaskStatus(taskId, newStatus, destination.index)
     },
     [updateTaskStatus]
