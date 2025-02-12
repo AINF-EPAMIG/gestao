@@ -7,12 +7,7 @@ import { useTaskStore } from "@/lib/store"
 import { CreateTaskModal } from "@/components/create-task-modal"
 
 export default function KanbanPage() {
- // const { data: session } = useSession()
   const tasks = useTaskStore((state) => state.tasks)
-
-//  if (!session) {
-//    redirect("/api/auth/signin")
-//  }
 
   return (
     <div className="p-8">

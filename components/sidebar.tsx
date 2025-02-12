@@ -20,19 +20,16 @@ export function Sidebar() {
       href: "/",
       icon: LayoutDashboard,
       label: "Painel",
-      adminOnly: false
     },
     {
       href: "/kanban",
       icon: KanbanSquare,
       label: "Kanban",
-      adminOnly: true
     },
     {
       href: "/planilha",
       icon: FileSpreadsheet,
       label: "Planilha",
-      adminOnly: true
     },
   ]
 
@@ -41,24 +38,21 @@ export function Sidebar() {
       <div className="flex-1 pt-6">
         <h1 className="text-xl font-semibold px-4 mb-6">Painel Gestão</h1>
         <nav className="mt-2">
-          {navigation.map((item) => {
-            if (item.adminOnly && !session.data?.user?.isAdmin) return null
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-2 transition-colors",
-                  "hover:bg-emerald-700/50",
-                  pathname === item.href && "bg-emerald-700",
-                )}
-                onClick={() => setOpen(false)}
-              >
-                <item.icon size={18} className="shrink-0" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </Link>
-            )
-          })}
+          {navigation.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-4 py-2 transition-colors",
+                "hover:bg-emerald-700/50",
+                pathname === item.href && "bg-emerald-700",
+              )}
+              onClick={() => setOpen(false)}
+            >
+              <item.icon size={18} className="shrink-0" />
+              <span className="text-sm font-medium">{item.label}</span>
+            </Link>
+          ))}
         </nav>
       </div>
       <div className="px-4 py-2 flex justify-center">

@@ -1,12 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-const ADMIN_EMAILS = [
-  'arthur.souza@epamig.br',
-  'rodolfo.fernandes@epamig.br',
-  'andrezza.fernandes@epamig.br'
-];
-
 declare module "next-auth" {
   interface Session {
     user: {
@@ -14,7 +8,6 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      isAdmin?: boolean;
     };
   }
 }
@@ -31,9 +24,6 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (token.sub && session.user) {
         session.user.id = token.sub;
-        session.user.isAdmin = session.user.email ? 
-          ADMIN_EMAILS.includes(session.user.email) : 
-          false;
       }
       return session;
     },
