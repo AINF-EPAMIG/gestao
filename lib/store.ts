@@ -51,22 +51,15 @@ export const useTaskStore = create<TaskStore>()(
             return task
           })
 
-          // Encontra todos os cards da coluna de destino em ordem
-          const tasksInColumn = updatedTasks
-            .filter(task => getStatusName(task.status_id) === getStatusName(newStatusId))
-            .sort((a, b) => (a.order || 0) - (b.order || 0))
+          // Reordena os cards da coluna de destino
+          const tasksInColumn = updatedTasks.filter(
+            task => getStatusName(task.status_id) === getStatusName(newStatusId)
+          )
 
           // Atualiza a ordem dos cards
           tasksInColumn.forEach((task, index) => {
-            if (index === newIndex) {
-              // Card sendo movido
-              task.order = index * 1000
-            } else if (index > newIndex) {
-              // Cards após a posição de inserção
-              task.order = index * 1000
-            } else {
-              // Cards antes da posição de inserção
-              task.order = index * 1000
+            if (index >= newIndex) {
+              task.order = index + 1
             }
           })
 
