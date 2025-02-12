@@ -44,47 +44,34 @@ export const useTaskStore = create<TaskStore>()(
       
       updateTaskStatus: (taskId, newStatusId, newIndex) => {
         set((state) => {
-          const tasks = [...state.tasks]
-          const taskToMove = tasks.find(t => t.id === taskId)
-          
-          if (!taskToMove) return state
-          
-          // Remove o card da lista
-          const filteredTasks = tasks.filter(t => t.id !== taskId)
-          
-          // Encontra todos os cards da coluna de destino
-          const destinationTasks = filteredTasks.filter(
-            t => getStatusName(t.status_id) === getStatusName(newStatusId)
-          ).sort((a, b) => (a.order || 0) - (b.order || 0))
-          
-          // Calcula a nova ordem
-          let newOrder: number
-          
-          if (destinationTasks.length === 0) {
-            // Se não houver cards na coluna de destino, use 1000 como ordem inicial
-            newOrder = 1000
-          } else if (newIndex === 0) {
-            // Se for inserido no início, use metade da ordem do primeiro item
-            newOrder = (destinationTasks[0].order || 1000) / 2
-          } else if (newIndex >= destinationTasks.length) {
-            // Se for inserido no final, use ordem do último + 1000
-            newOrder = ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1000)
-          } else {
-            // Se for inserido no meio, use a média entre as ordens dos itens adjacentes
-            const prevOrder = destinationTasks[newIndex - 1]?.order || 0
-            const nextOrder = destinationTasks[newIndex]?.order || prevOrder + 2000
-            newOrder = (prevOrder + nextOrder) / 2
-          }
-          
-          // Atualiza o card movido
-          taskToMove.status_id = newStatusId
-          taskToMove.order = newOrder
-          
-          // Reinsere o card na lista
-          filteredTasks.push(taskToMove)
-          
-          return { 
-            tasks: filteredTasks.sort((a, b) => (a.order || 0) - (b.order || 0)),
+          const updatedTasks = state.tasks.map(task => {
+            if (task.id === taskId) {
+              return { ...task, status_id: newStatusId }
+            }
+            return task
+          })
+
+          // Encontra todos os cards da coluna de destino em ordem
+          const tasksInColumn = updatedTasks
+            .filter(task => getStatusName(task.status_id) === getStatusName(newStatusId))
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+          // Atualiza a ordem dos cards
+          tasksInColumn.forEach((task, index) => {
+            if (index === newIndex) {
+              // Card sendo movido
+              task.order = index * 1000
+            } else if (index > newIndex) {
+              // Cards após a posição de inserção
+              task.order = index * 1000
+            } else {
+              // Cards antes da posição de inserção
+              task.order = index * 1000
+            }
+          })
+
+          return {
+            tasks: updatedTasks,
             pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
           }
         })
