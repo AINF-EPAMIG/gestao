@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState, memo } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { cn, getUserIcon } from "@/lib/utils"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -21,6 +21,17 @@ const statusMap = {
   "Em testes": 3,
   "Concluída": 4,
 } as const;
+
+const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email?: string }) {
+  return (
+    <Avatar className="w-8 h-8">
+      <AvatarImage src={getUserIcon(email)} />
+      <AvatarFallback>
+        {email ? email[0].toUpperCase() : '?'}
+      </AvatarFallback>
+    </Avatar>
+  )
+})
 
 // Componente TaskCard extraído e memoizado
 const TaskCard = memo(function TaskCard({ 
@@ -74,12 +85,7 @@ const TaskCard = memo(function TaskCard({
       </p>
       <div className="flex items-center justify-between pt-2 border-t">
         <div className="flex items-center gap-2">
-          <Avatar className="w-8 h-8">
-            <AvatarImage email={task.responsavel_email} />
-            <AvatarFallback>
-              {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
-            </AvatarFallback>
-          </Avatar>
+          <MemoizedAvatar email={task.responsavel_email} />
           <div className="flex flex-col">
             <span className="text-sm font-medium">
               {getResponsavelName(task.responsavel_id, task.responsavel_email)}
