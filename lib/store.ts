@@ -135,27 +135,37 @@ export const useTaskStore = create<TaskStore>()(
       reorderTasks: (sourceStatus, destinationStatus, taskId, newIndex) => {
         set((state) => {
           const tasks = [...state.tasks]
-          const taskIndex = tasks.findIndex(t => t.id === taskId)
+          const taskToMove = tasks.find(t => t.id === taskId)
           
-          if (taskIndex === -1) return state
+          if (!taskToMove) return state
           
-          // Remove o card da posição atual
-          const [movedTask] = tasks.splice(taskIndex, 1)
+          // Remove o card da lista
+          const filteredTasks = tasks.filter(t => t.id !== taskId)
           
-          // Encontra o índice de inserção na coluna de destino
-          const destinationTasks = tasks.filter(
+          // Encontra todos os cards da coluna de destino
+          const destinationTasks = filteredTasks.filter(
             t => getStatusName(t.status_id) === destinationStatus
           )
           
-          // Insere o card na nova posição
-          const insertIndex = tasks.findIndex(
-            t => getStatusName(t.status_id) === destinationStatus
-          ) + newIndex
+          // Calcula a nova ordem
+          const maxOrder = Math.max(...tasks.map(t => t.order || 0), 0)
+          const newOrder = destinationTasks.length === 0 
+            ? maxOrder + 1 
+            : newIndex === 0 
+              ? ((destinationTasks[0]?.order || 0) - 1)
+              : newIndex >= destinationTasks.length 
+                ? ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1)
+                : ((destinationTasks[newIndex - 1]?.order || 0) + (destinationTasks[newIndex]?.order || 0)) / 2
           
-          tasks.splice(insertIndex, 0, movedTask)
+          // Atualiza o card movido
+          taskToMove.order = newOrder
           
-          // Atualiza a ordem de todos os cards
-          return { tasks: tasks.map((task, index) => ({ ...task, order: index })) }
+          // Reinsere o card na lista
+          filteredTasks.push(taskToMove)
+          
+          return { 
+            tasks: filteredTasks.sort((a, b) => (a.order || 0) - (b.order || 0))
+          }
         })
       }
     }),

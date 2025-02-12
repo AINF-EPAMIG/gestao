@@ -14,7 +14,7 @@ export function Footer() {
         />
         <div className="text-center text-xs">
           <p>Desenvolvimento: AINF</p>
-          <p>© 2025 Painel Kanban</p>
+          <p>© 2025 Painel Gestão</p>
         </div>
       </div>
     </div>
