@@ -144,10 +144,10 @@ export function CreateTaskModal() {
             <div>
               <label className="text-sm font-medium">Sistema</label>
               <Select value={sistemaId} onValueChange={setSistemaId}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="item-aligned" side="bottom" align="start">
                   {sistemas.map((sistema) => (
                     <SelectItem key={sistema.id} value={sistema.id.toString()}>
                       {sistema.nome}
@@ -163,7 +163,7 @@ export function CreateTaskModal() {
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um responsável" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="item-aligned" side="bottom" align="start">
                   {responsaveis.map((resp) => (
                     <SelectItem key={resp.email} value={resp.email}>
                       {resp.nome}
@@ -181,7 +181,7 @@ export function CreateTaskModal() {
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a prioridade" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="item-aligned" side="bottom" align="start">
                   <SelectItem value="1">Alta</SelectItem>
                   <SelectItem value="2">Média</SelectItem>
                   <SelectItem value="3">Baixa</SelectItem>
