@@ -5,7 +5,7 @@ export type Priority = "Alta" | "Média" | "Baixa"
 export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Concluída"
 
 export interface Task {
-  id: string
+  id: number
   responsavel_id: number | null
   responsavel_email?: string
   sistema_id: number
@@ -25,13 +25,13 @@ export interface Task {
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  updateTaskStatus: (taskId: string, newStatusId: number, newIndex: number) => void
+  updateTaskStatus: (taskId: number, newStatusId: number, newIndex: number) => void
   syncPendingChanges: () => Promise<void>
-  pendingChanges: { taskId: string; newStatusId: number }[]
+  pendingChanges: { taskId: number; newStatusId: number }[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
-  reorderTasks: (sourceStatus: Status, destinationStatus: Status, taskId: string, newIndex: number) => void
+  reorderTasks: (sourceStatus: Status, destinationStatus: Status, taskId: number, newIndex: number) => void
 }
 
 export const useTaskStore = create<TaskStore>()(

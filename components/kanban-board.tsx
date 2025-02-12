@@ -127,7 +127,11 @@ const Column = memo(function Column({
             className="flex flex-col gap-3 min-h-[200px]"
           >
             {tasks.map((task, index) => (
-              <Draggable key={task.id} draggableId={task.id} index={index}>
+              <Draggable 
+                key={task.id.toString()} 
+                draggableId={task.id.toString()} 
+                index={index}
+              >
                 {(provided, snapshot) => (
                   <TaskCard 
                     task={task} 
@@ -173,14 +177,14 @@ export function KanbanBoard() {
       }
 
       const newStatus = statusMap[destination.droppableId as Status]
+      const taskId = parseInt(draggableId, 10)
       
-      // Adiciona o destination.index como terceiro argumento
-      updateTaskStatus(draggableId, newStatus, destination.index)
+      updateTaskStatus(taskId, newStatus, destination.index)
       
       useTaskStore.getState().reorderTasks(
         source.droppableId as Status,
         destination.droppableId as Status,
-        draggableId,
+        taskId,
         destination.index
       )
     },
