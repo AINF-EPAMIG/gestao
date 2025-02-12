@@ -57,17 +57,30 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { titulo, descricao, data_inicio, status_id, prioridade_id } = data;
+    const { titulo, descricao, data_inicio, status_id, prioridade_id, sistema_id, responsavel_email, data_fim, estimativa_horas } = data;
 
     console.log('🔵 Criando nova atividade...');
     
     await executeQuery({
       query: `
         INSERT INTO u711845530_gestao.atividades 
-        (titulo, descricao, data_inicio, status_id, prioridade_id) 
-        VALUES (?, ?, ?, ?, ?)
+        (titulo, descricao, sistema_id, responsavel_id, data_inicio, data_fim, 
+         status_id, prioridade_id, estimativa_horas) 
+        VALUES (?, ?, ?, 
+          (SELECT id FROM u711845530_gestao.responsaveis WHERE email = ?), 
+          ?, ?, ?, ?, ?)
       `,
-      values: [titulo, descricao, data_inicio, status_id, prioridade_id],
+      values: [
+        titulo, 
+        descricao, 
+        sistema_id,
+        responsavel_email,
+        data_inicio,
+        data_fim,
+        status_id,
+        prioridade_id,
+        estimativa_horas
+      ],
     });
     
     console.log('✅ Atividade criada com sucesso');
