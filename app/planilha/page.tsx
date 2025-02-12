@@ -59,8 +59,12 @@ export default function PlanilhaPage() {
             <p className="text-muted-foreground">
               Lista completa de todas as atividades do sistema
             </p>
+          </div>
         <CreateTaskModal />
       </div>
+      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
+        <div className="flex items-center justify-between space-y-2">
+        </div>
         <div className="border rounded-md">
           <div className="relative w-full overflow-auto">
             <Table>
