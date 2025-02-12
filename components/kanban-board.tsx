@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableP
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName, formatHours } from "@/lib/store"
-import { useMemo, useCallback, useState, memo } from "react"
+import { useMemo, useCallback, useState, memo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
 
@@ -149,6 +149,16 @@ const Column = memo(function Column({
 export function KanbanBoard() {
   const tasks = useTaskStore((state) => state.tasks)
   const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
+  const syncPendingChanges = useTaskStore((state) => state.syncPendingChanges)
+
+  // Tenta sincronizar a cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncPendingChanges()
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [syncPendingChanges])
 
   const columnTasks = useMemo(() => {
     return columns.reduce((acc, column) => {

@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
 export type Priority = "Alta" | "Média" | "Baixa"
 export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Concluída"
@@ -24,70 +25,103 @@ interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
   updateTaskStatus: (taskId: string, newStatusId: number) => void
+  syncPendingChanges: () => Promise<void>
+  pendingChanges: { taskId: string; newStatusId: number }[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
 }
 
-export const useTaskStore = create<TaskStore>((set, get) => ({
-  tasks: [],
-  
-  setTasks: (tasks) => set({ tasks }),
+export const useTaskStore = create<TaskStore>()(
+  persist(
+    (set, get) => ({
+      tasks: [],
+      pendingChanges: [],
+      
+      setTasks: (tasks) => set({ tasks }),
+      
+      updateTaskStatus: (taskId, newStatusId) => {
+        // Atualiza localmente primeiro
+        set((state) => ({
+          tasks: state.tasks.map((task) =>
+            task.id === taskId ? { ...task, status_id: newStatusId } : task
+          ),
+          pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
+        }))
+        
+        // Tenta sincronizar em background
+        get().syncPendingChanges()
+      },
+      
+      syncPendingChanges: async () => {
+        const { pendingChanges, tasks } = get()
+        
+        if (pendingChanges.length === 0) return
+        
+        try {
+          for (const change of pendingChanges) {
+            await fetch('/api/atividades', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                id: change.taskId, 
+                status_id: change.newStatusId 
+              }),
+            })
+          }
+          
+          // Limpa mudanças pendentes após sucesso
+          set({ pendingChanges: [] })
+        } catch (error) {
+          console.error('Erro ao sincronizar:', error)
+          // Mantém as mudanças pendentes para tentar novamente depois
+        }
+      },
 
-  updateTaskStatus: async (taskId, newStatusId) => {
-    try {
-      const response = await fetch('/api/atividades', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: taskId, status_id: newStatusId }),
-      });
+      getTasksByStatus: (statusId: number) => {
+        return get().tasks.filter((task) => task.status_id === statusId);
+      },
 
-      if (!response.ok) throw new Error('Falha ao atualizar status');
+      getTaskDistribution: () => {
+        const tasks = get().tasks;
+        const total = tasks.length;
+        const statusCount = tasks.reduce((acc, task) => {
+          const statusName = getStatusName(task.status_id);
+          acc[statusName] = (acc[statusName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
 
-      const updatedTasks = await response.json();
-      set({ tasks: updatedTasks });
-    } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+        return Object.entries(statusCount).map(([name, count]) => ({
+          name,
+          value: Math.round((count / total) * 100),
+        }));
+      },
+
+      getAssigneeDistribution: () => {
+        const tasks = get().tasks;
+        const assigneeCounts = tasks.reduce((acc, task) => {
+          const responsavel = getResponsavelName(task.responsavel_id, task.responsavel_email);
+          if (responsavel) {
+            acc[responsavel] = (acc[responsavel] || 0) + 1;
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        return Object.entries(assigneeCounts).map(([subject, count]) => ({
+          subject,
+          A: count,
+        }));
+      },
+    }),
+    {
+      name: 'kanban-store',
+      partialize: (state) => ({ 
+        tasks: state.tasks,
+        pendingChanges: state.pendingChanges 
+      })
     }
-  },
-
-  getTasksByStatus: (statusId: number) => {
-    return get().tasks.filter((task) => task.status_id === statusId);
-  },
-
-  getTaskDistribution: () => {
-    const tasks = get().tasks;
-    const total = tasks.length;
-    const statusCount = tasks.reduce((acc, task) => {
-      const statusName = getStatusName(task.status_id);
-      acc[statusName] = (acc[statusName] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(statusCount).map(([name, count]) => ({
-      name,
-      value: Math.round((count / total) * 100),
-    }));
-  },
-
-  getAssigneeDistribution: () => {
-    const tasks = get().tasks;
-    const assigneeCounts = tasks.reduce((acc, task) => {
-      const responsavel = getResponsavelName(task.responsavel_id, task.responsavel_email);
-      if (responsavel) {
-        acc[responsavel] = (acc[responsavel] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(assigneeCounts).map(([subject, count]) => ({
-      subject,
-      A: count,
-    }));
-  },
-}));
+  )
+)
 
 export function getStatusName(statusId: number): Status {
   const statusMap: Record<number, Status> = {
