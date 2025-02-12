@@ -6,7 +6,17 @@ export async function GET() {
     console.log('🔵 Buscando responsáveis...');
     
     const responsaveis = await executeQuery({
-      query: 'SELECT email FROM u711845530_gestao.responsaveis ORDER BY email',
+      query: `
+        SELECT 
+          email,
+          CONCAT(
+            UPPER(SUBSTRING_INDEX(SUBSTRING_INDEX(email, '@', 1), '.', 1)), 
+            ' ',
+            UPPER(SUBSTRING_INDEX(SUBSTRING_INDEX(email, '@', 1), '.', -1))
+          ) as nome
+        FROM u711845530_gestao.responsaveis 
+        ORDER BY nome
+      `,
     });
     
     return NextResponse.json(responsaveis);

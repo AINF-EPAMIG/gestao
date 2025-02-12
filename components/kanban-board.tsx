@@ -193,7 +193,12 @@ export function KanbanBoard() {
       // Filtra e ordena os cards por ordem personalizada
       acc[column.id] = tasks
         .filter(task => getStatusName(task.status_id) === column.id)
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .sort((a, b) => {
+          // Se não tiver ordem definida, coloca no início (ordem menor)
+          if (!a.order) return -1;
+          if (!b.order) return 1;
+          return (a.order || 0) - (b.order || 0);
+        })
       return acc
     }, {} as Record<Status, Task[]>)
   }, [tasks])

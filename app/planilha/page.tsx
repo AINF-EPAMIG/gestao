@@ -55,16 +55,12 @@ export default function PlanilhaPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Planilha</h1>
-        <CreateTaskModal />
-      </div>
-      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
-        <div className="flex items-center justify-between space-y-2">
-          <div>
+        <div>
             <p className="text-muted-foreground">
               Lista completa de todas as atividades do sistema
             </p>
-          </div>
-        </div>
+        <CreateTaskModal />
+      </div>
         <div className="border rounded-md">
           <div className="relative w-full overflow-auto">
             <Table>

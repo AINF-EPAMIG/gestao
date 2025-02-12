@@ -14,6 +14,11 @@ interface Sistema {
   nome: string
 }
 
+interface Responsavel {
+  email: string;
+  nome: string;
+}
+
 export function CreateTaskModal() {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
@@ -26,7 +31,7 @@ export function CreateTaskModal() {
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState("")
   const [sistemas, setSistemas] = useState<Sistema[]>([])
-  const [responsaveis, setResponsaveis] = useState<{email: string}[]>([])
+  const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const setTasks = useTaskStore((state) => state.setTasks)
 
   useEffect(() => {
@@ -139,8 +144,8 @@ export function CreateTaskModal() {
             <div>
               <label className="text-sm font-medium">Sistema</label>
               <Select value={sistemaId} onValueChange={setSistemaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um sistema" />
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   {sistemas.map((sistema) => (
@@ -161,7 +166,7 @@ export function CreateTaskModal() {
                 <SelectContent>
                   {responsaveis.map((resp) => (
                     <SelectItem key={resp.email} value={resp.email}>
-                      {resp.email}
+                      {resp.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
