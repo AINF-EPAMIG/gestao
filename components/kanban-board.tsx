@@ -175,51 +175,19 @@ export function KanbanBoard() {
         return
       }
 
-      const sourceColumn = tasks.filter(
-        task => getStatusName(task.status_id) === source.droppableId
-      )
-      const destinationColumn = tasks.filter(
-        task => getStatusName(task.status_id) === destination.droppableId
-      )
-
-      // Calcula a nova posição
-      let newPosition: number
-      
-      if (destinationColumn.length === 0) {
-        // Se a coluna estiver vazia, use 1000 como posição inicial
-        newPosition = 1000
-      } else if (destination.index === 0) {
-        // Se for inserido no início
-        newPosition = (destinationColumn[0].position ?? 1000) - 500
-      } else if (destination.index >= destinationColumn.length) {
-        // Se for inserido no final
-        newPosition = ((destinationColumn[destinationColumn.length - 1]?.position ?? 0) + 500)
-      } else {
-        // Se for inserido no meio, use a média entre as posições anterior e posterior
-        const prevPosition = destinationColumn[destination.index - 1]?.position ?? 0
-        const nextPosition = destinationColumn[destination.index]?.position ?? 1000
-        newPosition = (prevPosition + nextPosition) / 2
-      }
-
       const taskId = parseInt(draggableId, 10)
       const newStatusId = statusMap[destination.droppableId as Status]
       
-      updateTaskPosition(taskId, newStatusId, newPosition)
+      updateTaskPosition(taskId, newStatusId, destination.index)
     },
-    [tasks, updateTaskPosition]
+    [updateTaskPosition]
   )
 
   const columnTasks = useMemo(() => {
     return columns.reduce((acc, column) => {
-      // Filtra e ordena os cards por ordem personalizada
       acc[column.id] = tasks
         .filter(task => getStatusName(task.status_id) === column.id)
-        .sort((a, b) => {
-          // Se não tiver ordem definida, coloca no início (ordem menor)
-          if (!a.order) return -1;
-          if (!b.order) return 1;
-          return (a.order || 0) - (b.order || 0);
-        })
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
       return acc
     }, {} as Record<Status, Task[]>)
   }, [tasks])

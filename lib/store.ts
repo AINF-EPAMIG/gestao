@@ -26,9 +26,9 @@ export interface Task {
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  updateTaskPosition: (taskId: number, newStatusId: number, newPosition: number) => void
+  updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number) => void
   syncPendingChanges: () => Promise<void>
-  pendingChanges: { taskId: number; newStatusId: number; position: number }[]
+  pendingChanges: { taskId: number; statusId: number; position: number }[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
@@ -42,40 +42,48 @@ export const useTaskStore = create<TaskStore>()(
       
       setTasks: (tasks) => set({ tasks }),
       
-      updateTaskPosition: (taskId, newStatusId, newPosition) => {
+      updateTaskPosition: (taskId, newStatusId, newIndex) => {
         set((state) => {
           const tasks = [...state.tasks]
-          const taskIndex = tasks.findIndex(t => t.id === taskId)
+          const taskToMove = tasks.find(t => t.id === taskId)
           
-          if (taskIndex === -1) return state
-          
-          const task = tasks[taskIndex]
-          const oldStatus = task.status_id
+          if (!taskToMove) return state
           
           // Remove a tarefa da lista atual
-          tasks.splice(taskIndex, 1)
+          const remainingTasks = tasks.filter(t => t.id !== taskId)
           
-          // Atualiza o status e posição da tarefa
-          task.status_id = newStatusId
-          task.position = newPosition
+          // Pega todas as tarefas do status de destino
+          const statusTasks = remainingTasks
+            .filter(t => t.status_id === newStatusId)
+            .sort((a, b) => (a.position || 0) - (b.position || 0))
           
-          // Encontra o índice correto para inserir baseado na nova posição
-          const insertIndex = tasks.findIndex(t => 
-            t.status_id === newStatusId && (t.position ?? Infinity) > newPosition
-          )
-          
-          if (insertIndex === -1) {
-            tasks.push(task)
+          // Atualiza posições
+          if (newIndex === 0) {
+            // Se for primeira posição
+            taskToMove.position = (statusTasks[0]?.position ?? 0) - 1
+          } else if (newIndex >= statusTasks.length) {
+            // Se for última posição
+            const lastPosition = statusTasks[statusTasks.length - 1]?.position ?? 0
+            taskToMove.position = lastPosition + 1
           } else {
-            tasks.splice(insertIndex, 0, task)
+            // Se for no meio, pega a posição entre as duas tarefas
+            const prevPosition = statusTasks[newIndex - 1]?.position ?? 0
+            const nextPosition = statusTasks[newIndex]?.position ?? prevPosition + 2
+            taskToMove.position = Math.floor((prevPosition + nextPosition) / 2)
           }
           
+          // Atualiza o status
+          taskToMove.status_id = newStatusId
+          
+          // Reinsere a tarefa
+          remainingTasks.push(taskToMove)
+          
           return {
-            tasks,
-            pendingChanges: [...state.pendingChanges, { 
-              taskId, 
-              newStatusId,
-              position: newPosition 
+            tasks: remainingTasks,
+            pendingChanges: [...state.pendingChanges, {
+              taskId,
+              statusId: newStatusId,
+              position: taskToMove.position
             }]
           }
         })
@@ -91,14 +99,10 @@ export const useTaskStore = create<TaskStore>()(
         
         try {
           for (const change of pendingChanges) {
-            await fetch('/api/atividades', {
+            await fetch('/api/atividades/reorder', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                id: change.taskId, 
-                status_id: change.newStatusId,
-                position: change.position
-              }),
+              body: JSON.stringify(change),
             })
           }
           
