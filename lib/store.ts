@@ -20,14 +20,15 @@ export interface Task {
   data_conclusao: string | null
   id_release: string | null
   order?: number
+  position: number | null
 }
 
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  updateTaskStatus: (taskId: number, newStatusId: number, newIndex: number) => void
+  updateTaskPosition: (taskId: number, newStatusId: number, newPosition: number) => void
   syncPendingChanges: () => Promise<void>
-  pendingChanges: { taskId: number; newStatusId: number }[]
+  pendingChanges: { taskId: number; newStatusId: number; position: number }[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
@@ -41,65 +42,41 @@ export const useTaskStore = create<TaskStore>()(
       
       setTasks: (tasks) => set({ tasks }),
       
-      updateTaskStatus: (taskId, newStatusId, newIndex) => {
+      updateTaskPosition: (taskId, newStatusId, newPosition) => {
         set((state) => {
           const tasks = [...state.tasks]
           const taskIndex = tasks.findIndex(t => t.id === taskId)
           
           if (taskIndex === -1) return state
           
-          const taskToMove = tasks[taskIndex]
-          const oldStatus = taskToMove.status_id
+          const task = tasks[taskIndex]
+          const oldStatus = task.status_id
           
-          // Remove a tarefa da lista original
+          // Remove a tarefa da lista atual
           tasks.splice(taskIndex, 1)
           
-          // Encontra todas as tarefas da coluna de destino
-          const columnTasks = tasks.filter(t => t.status_id === newStatusId)
+          // Atualiza o status e posição da tarefa
+          task.status_id = newStatusId
+          task.position = newPosition
           
-          // Ordena as tarefas da coluna por ordem
-          columnTasks.sort((a, b) => (a.order || 0) - (b.order || 0))
+          // Encontra o índice correto para inserir baseado na nova posição
+          const insertIndex = tasks.findIndex(t => 
+            t.status_id === newStatusId && (t.position ?? Infinity) > newPosition
+          )
           
-          // Calcula a nova ordem
-          let newOrder: number
-          
-          if (columnTasks.length === 0) {
-            // Se a coluna estiver vazia, usa ordem 1000
-            newOrder = 1000
-          } else if (newIndex === 0) {
-            // Se for colocado no início, usa metade da primeira ordem
-            newOrder = (columnTasks[0].order || 1000) / 2
-          } else if (newIndex >= columnTasks.length) {
-            // Se for colocado no final, adiciona 1000 à última ordem
-            newOrder = ((columnTasks[columnTasks.length - 1]?.order || 0) + 1000)
+          if (insertIndex === -1) {
+            tasks.push(task)
           } else {
-            // Se for colocado entre dois cards, usa a média das ordens
-            const prevOrder = columnTasks[newIndex - 1]?.order || 0
-            const nextOrder = columnTasks[newIndex]?.order || prevOrder + 2000
-            newOrder = prevOrder + (nextOrder - prevOrder) / 2
-          }
-          
-          // Atualiza a tarefa movida
-          taskToMove.status_id = newStatusId
-          taskToMove.order = newOrder
-          
-          // Reinsere a tarefa na lista
-          tasks.push(taskToMove)
-          
-          // Reordena todas as tarefas da coluna se necessário
-          if (newOrder < 0 || newOrder > 1000000) {
-            const tasksToReorder = tasks.filter(t => t.status_id === newStatusId)
-            tasksToReorder.sort((a, b) => (a.order || 0) - (b.order || 0))
-            
-            // Redefine as ordens usando incrementos de 1000
-            tasksToReorder.forEach((task, index) => {
-              task.order = (index + 1) * 1000
-            })
+            tasks.splice(insertIndex, 0, task)
           }
           
           return {
-            tasks: tasks.sort((a, b) => (a.order || 0) - (b.order || 0)),
-            pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
+            tasks,
+            pendingChanges: [...state.pendingChanges, { 
+              taskId, 
+              newStatusId,
+              position: newPosition 
+            }]
           }
         })
         
@@ -108,7 +85,7 @@ export const useTaskStore = create<TaskStore>()(
       },
       
       syncPendingChanges: async () => {
-        const { pendingChanges, tasks } = get()
+        const { pendingChanges } = get()
         
         if (pendingChanges.length === 0) return
         
@@ -119,16 +96,15 @@ export const useTaskStore = create<TaskStore>()(
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 id: change.taskId, 
-                status_id: change.newStatusId 
+                status_id: change.newStatusId,
+                position: change.position
               }),
             })
           }
           
-          // Limpa mudanças pendentes após sucesso
           set({ pendingChanges: [] })
         } catch (error) {
           console.error('Erro ao sincronizar:', error)
-          // Mantém as mudanças pendentes para tentar novamente depois
         }
       },
 
@@ -170,10 +146,7 @@ export const useTaskStore = create<TaskStore>()(
     {
       name: 'kanban-store',
       partialize: (state) => ({ 
-        tasks: state.tasks.map(task => ({
-          ...task,
-          order: task.order || 0
-        })),
+        tasks: state.tasks,
         pendingChanges: state.pendingChanges 
       })
     }

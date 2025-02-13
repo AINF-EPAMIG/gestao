@@ -161,17 +161,7 @@ const Column = memo(function Column({
 
 export function KanbanBoard() {
   const tasks = useTaskStore((state) => state.tasks)
-  const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus)
-  const syncPendingChanges = useTaskStore((state) => state.syncPendingChanges)
-
-  // Tenta sincronizar a cada 30 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      syncPendingChanges()
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [syncPendingChanges])
+  const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
@@ -185,12 +175,38 @@ export function KanbanBoard() {
         return
       }
 
-      const newStatus = statusMap[destination.droppableId as Status]
-      const taskId = parseInt(draggableId, 10)
+      const sourceColumn = tasks.filter(
+        task => getStatusName(task.status_id) === source.droppableId
+      )
+      const destinationColumn = tasks.filter(
+        task => getStatusName(task.status_id) === destination.droppableId
+      )
+
+      // Calcula a nova posição
+      let newPosition: number
       
-      updateTaskStatus(taskId, newStatus, destination.index)
+      if (destinationColumn.length === 0) {
+        // Se a coluna estiver vazia, use 1000 como posição inicial
+        newPosition = 1000
+      } else if (destination.index === 0) {
+        // Se for inserido no início
+        newPosition = (destinationColumn[0].position ?? 1000) - 500
+      } else if (destination.index >= destinationColumn.length) {
+        // Se for inserido no final
+        newPosition = ((destinationColumn[destinationColumn.length - 1]?.position ?? 0) + 500)
+      } else {
+        // Se for inserido no meio, use a média entre as posições anterior e posterior
+        const prevPosition = destinationColumn[destination.index - 1]?.position ?? 0
+        const nextPosition = destinationColumn[destination.index]?.position ?? 1000
+        newPosition = (prevPosition + nextPosition) / 2
+      }
+
+      const taskId = parseInt(draggableId, 10)
+      const newStatusId = statusMap[destination.droppableId as Status]
+      
+      updateTaskPosition(taskId, newStatusId, newPosition)
     },
-    [updateTaskStatus]
+    [tasks, updateTaskPosition]
   )
 
   const columnTasks = useMemo(() => {
