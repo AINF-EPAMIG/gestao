@@ -126,15 +126,27 @@ const Column = memo(function Column({
 }) {
   const [visibleTasks, setVisibleTasks] = useState(10)
   const loadMoreRef = useRef(null)
-  const isInView = useInView(loadMoreRef)
+  const isInView = useInView(loadMoreRef, {
+    margin: "100px 0px 0px 0px"
+  })
 
   useEffect(() => {
-    if (isInView && visibleTasks < tasks.length) {
-      setVisibleTasks(prev => Math.min(prev + 10, tasks.length))
-    }
-  }, [isInView, tasks.length])
+    setVisibleTasks(10)
+  }, [column.id])
 
-  const displayedTasks = tasks.slice(0, visibleTasks)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isInView && visibleTasks < tasks.length) {
+        setVisibleTasks(prev => Math.min(prev + 10, tasks.length))
+      }
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [isInView, tasks.length, visibleTasks])
+
+  const displayedTasks = useMemo(() => {
+    return tasks.slice(0, visibleTasks)
+  }, [tasks, visibleTasks])
 
   return (
     <div key={column.id} className="flex flex-col gap-4">
@@ -167,7 +179,6 @@ const Column = memo(function Column({
             ))}
             {provided.placeholder}
             
-            {/* Elemento de referência para detectar quando chegou ao final */}
             {tasks.length > visibleTasks && (
               <div 
                 ref={loadMoreRef}
