@@ -145,7 +145,7 @@ export function CreateTaskModal() {
               <label className="text-sm font-medium">Sistema</label>
               <Select value={sistemaId} onValueChange={setSistemaId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
+                  <SelectValue placeholder="Selecione um sistema" />
                 </SelectTrigger>
                 <SelectContent position="item-aligned" side="bottom" align="start">
                   {sistemas.map((sistema) => (
@@ -196,7 +196,7 @@ export function CreateTaskModal() {
                 step="0.1"
                 value={estimativaHoras}
                 onChange={(e) => setEstimativaHoras(e.target.value)}
-                placeholder="Ex: 8.5"
+                placeholder="Ex: 8"
               />
             </div>
           </div>

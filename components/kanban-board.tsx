@@ -8,6 +8,8 @@ import { useMemo, useCallback, useState, memo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
+import { useInView } from "framer-motion"
+import { useRef } from "react"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -122,6 +124,18 @@ const Column = memo(function Column({
   column: { id: Status; title: string };
   tasks: Task[];
 }) {
+  const [visibleTasks, setVisibleTasks] = useState(10)
+  const loadMoreRef = useRef(null)
+  const isInView = useInView(loadMoreRef)
+
+  useEffect(() => {
+    if (isInView && visibleTasks < tasks.length) {
+      setVisibleTasks(prev => Math.min(prev + 10, tasks.length))
+    }
+  }, [isInView, tasks.length])
+
+  const displayedTasks = tasks.slice(0, visibleTasks)
+
   return (
     <div key={column.id} className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -135,7 +149,7 @@ const Column = memo(function Column({
             {...provided.droppableProps}
             className="flex flex-col gap-3 min-h-[200px]"
           >
-            {tasks.map((task, index) => (
+            {displayedTasks.map((task, index) => (
               <Draggable 
                 key={task.id.toString()} 
                 draggableId={task.id.toString()} 
@@ -152,6 +166,16 @@ const Column = memo(function Column({
               </Draggable>
             ))}
             {provided.placeholder}
+            
+            {/* Elemento de referência para detectar quando chegou ao final */}
+            {tasks.length > visibleTasks && (
+              <div 
+                ref={loadMoreRef}
+                className="h-10 flex items-center justify-center"
+              >
+                <div className="animate-spin h-4 w-4 border-2 border-emerald-800 rounded-full border-t-transparent" />
+              </div>
+            )}
           </div>
         )}
       </Droppable>
