@@ -44,50 +44,66 @@ export const useTaskStore = create<TaskStore>()(
       updateTaskStatus: (taskId, newStatusId, newIndex) => {
         set((state) => {
           const tasks = [...state.tasks]
-          const taskToMove = tasks.find(t => t.id === taskId)
+          const taskIndex = tasks.findIndex(t => t.id === taskId)
           
-          if (!taskToMove) return state
+          if (taskIndex === -1) return state
           
-          // Remove o card da lista
-          const filteredTasks = tasks.filter(t => t.id !== taskId)
+          const taskToMove = tasks[taskIndex]
+          const oldStatus = taskToMove.status_id
           
-          // Encontra todos os cards da coluna de destino
-          const destinationTasks = filteredTasks.filter(
-            t => getStatusName(t.status_id) === getStatusName(newStatusId)
-          ).sort((a, b) => (a.order || 0) - (b.order || 0))
+          // Remove a tarefa da lista original
+          tasks.splice(taskIndex, 1)
+          
+          // Encontra todas as tarefas da coluna de destino
+          const columnTasks = tasks.filter(t => t.status_id === newStatusId)
+          
+          // Ordena as tarefas da coluna por ordem
+          columnTasks.sort((a, b) => (a.order || 0) - (b.order || 0))
           
           // Calcula a nova ordem
           let newOrder: number
           
-          if (destinationTasks.length === 0) {
-            // Se não houver cards na coluna de destino, use 1 como ordem
-            newOrder = 1
+          if (columnTasks.length === 0) {
+            // Se a coluna estiver vazia, usa ordem 1000
+            newOrder = 1000
           } else if (newIndex === 0) {
-            // Se for inserido no início, use ordem anterior - 1
-            newOrder = (destinationTasks[0].order || 1) - 1
-          } else if (newIndex >= destinationTasks.length) {
-            // Se for inserido no final, use ordem posterior + 1
-            newOrder = ((destinationTasks[destinationTasks.length - 1]?.order || 0) + 1)
+            // Se for colocado no início, usa metade da primeira ordem
+            newOrder = (columnTasks[0].order || 1000) / 2
+          } else if (newIndex >= columnTasks.length) {
+            // Se for colocado no final, adiciona 1000 à última ordem
+            newOrder = ((columnTasks[columnTasks.length - 1]?.order || 0) + 1000)
           } else {
-            // Se for inserido no meio, use a média entre as ordens anterior e posterior
-            const prevOrder = destinationTasks[newIndex - 1]?.order || 0
-            const nextOrder = destinationTasks[newIndex]?.order || 0
-            newOrder = (prevOrder + nextOrder) / 2
+            // Se for colocado entre dois cards, usa a média das ordens
+            const prevOrder = columnTasks[newIndex - 1]?.order || 0
+            const nextOrder = columnTasks[newIndex]?.order || prevOrder + 2000
+            newOrder = prevOrder + (nextOrder - prevOrder) / 2
           }
           
-          // Atualiza o card movido
+          // Atualiza a tarefa movida
           taskToMove.status_id = newStatusId
           taskToMove.order = newOrder
           
-          // Reinsere o card na lista
-          filteredTasks.push(taskToMove)
+          // Reinsere a tarefa na lista
+          tasks.push(taskToMove)
           
-          return { 
-            tasks: filteredTasks.sort((a, b) => (a.order || 0) - (b.order || 0)),
+          // Reordena todas as tarefas da coluna se necessário
+          if (newOrder < 0 || newOrder > 1000000) {
+            const tasksToReorder = tasks.filter(t => t.status_id === newStatusId)
+            tasksToReorder.sort((a, b) => (a.order || 0) - (b.order || 0))
+            
+            // Redefine as ordens usando incrementos de 1000
+            tasksToReorder.forEach((task, index) => {
+              task.order = (index + 1) * 1000
+            })
+          }
+          
+          return {
+            tasks: tasks.sort((a, b) => (a.order || 0) - (b.order || 0)),
             pendingChanges: [...state.pendingChanges, { taskId, newStatusId }]
           }
         })
         
+        // Tenta sincronizar imediatamente
         get().syncPendingChanges()
       },
       
