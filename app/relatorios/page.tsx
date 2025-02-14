@@ -9,11 +9,16 @@ import { TasksPieChart } from "@/components/charts/tasks-pie-chart"
 import { DataTable } from "@/components/data-table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { TasksAreaChart } from "@/components/charts/tasks-area-chart"
+import { Input } from "@/components/ui/input"
 
 export default function RelatoriosPage() {
   const tasks = useTaskStore((state) => state.tasks)
   const [responsavelFilter, setResponsavelFilter] = useState<string>("todos")
   const [statusFilter, setStatusFilter] = useState<string>("todos")
+  const [prioridadeFilter, setPrioridadeFilter] = useState<string>("todos")
+  const [dataInicioFilter, setDataInicioFilter] = useState<string>("")
+  const [dataFimFilter, setDataFimFilter] = useState<string>("")
 
   // Obter lista única de responsáveis
   const responsaveis = useMemo(() => {
@@ -30,9 +35,19 @@ export default function RelatoriosPage() {
     return tasks.filter(task => {
       const matchesResponsavel = responsavelFilter === "todos" || task.responsavel_email === responsavelFilter
       const matchesStatus = statusFilter === "todos" || getStatusName(task.status_id) === statusFilter
-      return matchesResponsavel && matchesStatus
+      const matchesPrioridade = prioridadeFilter === "todos" || getPriorityName(task.prioridade_id) === prioridadeFilter
+      
+      const taskDate = task.data_inicio ? new Date(task.data_inicio) : null
+      const startDate = dataInicioFilter ? new Date(dataInicioFilter) : null
+      const endDate = dataFimFilter ? new Date(dataFimFilter) : null
+      
+      const matchesDate = !taskDate ? true :
+        (!startDate || taskDate >= startDate) &&
+        (!endDate || taskDate <= endDate)
+
+      return matchesResponsavel && matchesStatus && matchesPrioridade && matchesDate
     })
-  }, [tasks, responsavelFilter, statusFilter])
+  }, [tasks, responsavelFilter, statusFilter, prioridadeFilter, dataInicioFilter, dataFimFilter])
 
   // Dados para os gráficos
   const chartData = useMemo(() => {
@@ -52,7 +67,7 @@ export default function RelatoriosPage() {
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-6">Relatórios</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div>
           <label className="text-sm font-medium">Responsável</label>
           <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
@@ -68,7 +83,9 @@ export default function RelatoriosPage() {
                       <AvatarImage src={`/avatars/${email}.jpg`} />
                       <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                     </Avatar>
-                    {email?.split('@')[0].replace('.', ' ') || 'Sem responsável'}
+                    {email?.split('@')[0].split('.').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ') || 'Sem responsável'}
                   </div>
                 </SelectItem>
               ))}
@@ -91,27 +108,49 @@ export default function RelatoriosPage() {
             </SelectContent>
           </Select>
         </div>
+
+        <div>
+          <label className="text-sm font-medium">Prioridade</label>
+          <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas</SelectItem>
+              <SelectItem value="Alta">Alta</SelectItem>
+              <SelectItem value="Média">Média</SelectItem>
+              <SelectItem value="Baixa">Baixa</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Data Início</label>
+          <Input
+            type="date"
+            value={dataInicioFilter}
+            onChange={(e) => setDataInicioFilter(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Data Fim</label>
+          <Input
+            type="date"
+            value={dataFimFilter}
+            onChange={(e) => setDataFimFilter(e.target.value)}
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição por Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TasksPieChart data={chartData} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Tarefas por Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TasksBarChart data={chartData} />
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Evolução de Tarefas por Responsável</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TasksAreaChart tasks={filteredTasks} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
