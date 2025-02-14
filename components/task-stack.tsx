@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Task } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -15,7 +15,11 @@ interface TaskStackProps {
 }
 
 export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number>(0)
+
+  useEffect(() => {
+    setExpandedIndex(0)
+  }, [tasks])
 
   const formatName = (email: string) => {
     return email.split('@')[0].split('.').map(word => 
@@ -31,7 +35,6 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
           <AvatarFallback>{responsavelEmail[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="font-medium">{formatName(responsavelEmail)}</span>
-        <Badge className="ml-2 bg-blue-500">{tasks.length} tarefas</Badge>
       </div>
 
       <div className="relative space-y-2">
@@ -50,17 +53,16 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
               style={{ 
-                position: expandedIndex === null ? 'absolute' : 'relative',
+                position: 'relative',
                 width: '100%',
-                top: 0
               }}
             >
               <Card
                 className={`p-4 cursor-pointer hover:shadow-md transition-shadow
                   ${expandedIndex === index ? 'ring-2 ring-emerald-500' : ''}
-                  ${expandedIndex !== null && expandedIndex !== index ? 'opacity-50' : ''}
+                  ${expandedIndex !== index ? 'opacity-75' : ''}
                 `}
-                onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
+                onClick={() => setExpandedIndex(index)}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

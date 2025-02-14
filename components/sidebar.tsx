@@ -27,7 +27,7 @@ export function Sidebar() {
       label: "Kanban",
     },
     {
-      href: "/relatorios",
+      href: "/relatorio",
       icon: BarChart3,
       label: "Relatório",
     },
