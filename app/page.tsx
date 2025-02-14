@@ -9,6 +9,7 @@ import { useMemo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { formatHours } from "@/lib/store"
+import { TaskStack } from "@/components/task-stack"
 
 function getStatusName(statusId: number): string {
   const statusMap: Record<number, string> = {
@@ -41,26 +42,20 @@ export default function DashboardPage() {
   const tasks = useTaskStore((state) => state.tasks)
   const setTasks = useTaskStore((state) => state.setTasks)
 
-  const responsavelTasks = useMemo(() => {
-    const emDesenvolvimento = tasks.filter(task => task.status_id === 2); // Status "Em desenvolvimento"
-    
-    // Agrupa por responsável
-    const tasksByResponsavel = emDesenvolvimento.reduce((acc, task) => {
-      if (task.responsavel_email) {
+  const tasksInDevelopment = useMemo(() => {
+    const tasksByUser = tasks
+      .filter(task => getStatusName(task.status_id) === "Em desenvolvimento")
+      .reduce((acc, task) => {
+        if (!task.responsavel_email) return acc
         if (!acc[task.responsavel_email]) {
-          acc[task.responsavel_email] = [];
+          acc[task.responsavel_email] = []
         }
-        acc[task.responsavel_email].push(task);
-      }
-      return acc;
-    }, {} as Record<string, Task[]>);
+        acc[task.responsavel_email].push(task)
+        return acc
+      }, {} as Record<string, Task[]>)
 
-    // Pega apenas a tarefa mais recente de cada responsável
-    return Object.entries(tasksByResponsavel).map(([email, tasks]) => ({
-      email,
-      task: tasks[0] // Primeira tarefa do responsável
-    }));
-  }, [tasks]);
+    return Object.entries(tasksByUser)
+  }, [tasks])
 
   useEffect(() => {
     async function fetchTasks() {
@@ -104,44 +99,12 @@ export default function DashboardPage() {
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {responsavelTasks.map(({ email, task }) => (
-            <Card key={email} className="flex items-start p-4 space-x-4">
-              <Avatar className="w-12 h-12">
-                <AvatarImage email={email} />
-                <AvatarFallback>
-                  {email[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="font-medium">
-                      {getResponsavelName(task.responsavel_id, email)}
-                    </h3>
-                    <Badge variant="outline">
-                      {task.sistema_nome || `Sistema ${task.sistema_id}`}
-                    </Badge>
-                  </div>
-                  <Badge
-                    className={
-                      getPriorityName(task.prioridade_id) === "Alta"
-                        ? "bg-red-500"
-                        : getPriorityName(task.prioridade_id) === "Média"
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }
-                  >
-                    {getPriorityName(task.prioridade_id)}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-2">
-                  {task.descricao || "Sem descrição"}
-                </p>
-                <div className="text-sm text-gray-500">
-                  {formatHours(task.estimativa_horas)}
-                </div>
-              </div>
-            </Card>
+          {tasksInDevelopment.map(([email, tasks]) => (
+            <TaskStack 
+              key={email} 
+              tasks={tasks}
+              responsavelEmail={email}
+            />
           ))}
         </div>
       </div>

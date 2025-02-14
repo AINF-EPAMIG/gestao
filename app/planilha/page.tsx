@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge"
 import { useTaskStore, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { CreateTaskModal } from "@/components/create-task-modal"
 
 const STATUS_COLORS = {
   "Desenvolvimento": "bg-blue-500",
@@ -26,22 +25,6 @@ function formatDate(dateString: string | null): string {
 
 export default function PlanilhaPage() {
   const tasks = useTaskStore((state) => state.tasks)
-  const setTasks = useTaskStore((state) => state.setTasks)
-
-  useEffect(() => {
-    async function fetchTasks() {
-      try {
-        const response = await fetch('/api/atividades')
-        if (!response.ok) throw new Error('Falha ao carregar dados')
-        const data = await response.json()
-        setTasks(data)
-      } catch (error) {
-        console.error('Erro ao carregar tarefas:', error)
-      }
-    }
-
-    fetchTasks()
-  }, [setTasks])
 
   function getResponsavelName(responsavelId: number | null, email?: string): string {
     if (!responsavelId || !email) return "Não atribuído";
@@ -54,14 +37,11 @@ export default function PlanilhaPage() {
   return (
     <div className="p-8">
       <div className="flex flex-col mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Planilha</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Lista completa de todas as atividades do sistema
-            </p>
-          </div>
-          <CreateTaskModal />
+        <div>
+          <h1 className="text-3xl font-bold">Planilha</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Lista completa de todas as atividades do sistema
+          </p>
         </div>
       </div>
 

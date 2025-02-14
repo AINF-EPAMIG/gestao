@@ -29,7 +29,7 @@ export function Sidebar() {
     {
       href: "/relatorios",
       icon: BarChart3,
-      label: "Relatórios",
+      label: "Relatório",
     },
     {
       href: "/planilha",
