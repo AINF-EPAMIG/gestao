@@ -11,10 +11,14 @@ interface TasksAreaChartProps {
 }
 
 const COLORS = {
-  "Em desenvolvimento": "#3b82f6",
-  "Não iniciada": "#f97316",
-  "Concluída": "#10b981",
-  "Em testes": "#fbbf24",
+  primary: {
+    fill: "#9DC08B",    // Verde mais escuro
+    stroke: "#609966"
+  },
+  secondary: {
+    fill: "#D0E7D2",    // Verde mais claro
+    stroke: "#9DC08B"
+  }
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -80,28 +84,34 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data}>
           <defs>
-            {Object.entries(COLORS).map(([status, color]) => (
-              <linearGradient key={status} id={status} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
-                <stop offset="95%" stopColor={color} stopOpacity={0}/>
-              </linearGradient>
-            ))}
+            <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={COLORS.primary.fill} stopOpacity={0.8}/>
+              <stop offset="95%" stopColor={COLORS.primary.fill} stopOpacity={0}/>
+            </linearGradient>
+            <linearGradient id="colorSecondary" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={COLORS.secondary.fill} stopOpacity={0.8}/>
+              <stop offset="95%" stopColor={COLORS.secondary.fill} stopOpacity={0}/>
+            </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis 
             dataKey="date" 
             tickFormatter={(date) => new Date(date).toLocaleDateString('pt-BR', { 
               month: 'short',
               year: '2-digit'
             })}
+            stroke="#6B7280"
           />
-          <YAxis allowDecimals={false} />
+          <YAxis 
+            allowDecimals={false} 
+            stroke="#6B7280"
+          />
           <Tooltip content={<CustomTooltip />} />
           <Area
             type="monotone"
             dataKey="total"
-            stroke="#3b82f6"
-            fill="url(#Em desenvolvimento)"
+            stroke={COLORS.primary.stroke}
+            fill="url(#colorPrimary)"
             strokeWidth={2}
           />
         </AreaChart>

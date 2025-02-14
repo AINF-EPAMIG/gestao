@@ -27,14 +27,14 @@ export function Sidebar() {
       label: "Kanban",
     },
     {
-      href: "/planilha",
-      icon: FileSpreadsheet,
-      label: "Planilha",
-    },
-    {
       href: "/relatorios",
       icon: BarChart3,
       label: "Relatórios",
+    },
+    {
+      href: "/planilha",
+      icon: FileSpreadsheet,
+      label: "Planilha",
     },
   ]
 

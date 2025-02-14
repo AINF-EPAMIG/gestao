@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { TasksAreaChart } from "@/components/charts/tasks-area-chart"
 import { Input } from "@/components/ui/input"
+import { getUserIcon } from "@/lib/utils"
 
 export default function RelatoriosPage() {
   const tasks = useTaskStore((state) => state.tasks)
@@ -80,7 +81,7 @@ export default function RelatoriosPage() {
                 <SelectItem key={email} value={email || ''}>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={`/avatars/${email}.jpg`} />
+                      <AvatarImage src={getUserIcon(email)} />
                       <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                     </Avatar>
                     {email?.split('@')[0].split('.').map(word => 

@@ -5,6 +5,7 @@ import { Task } from "@/lib/store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
+import { getUserIcon } from "@/lib/utils"
 
 interface DataTableProps {
   tasks: Task[]
@@ -33,12 +34,14 @@ export function DataTable({ tasks }: DataTableProps) {
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={`/avatars/${task.responsavel_email}.jpg`} />
+                    <AvatarImage src={getUserIcon(task.responsavel_email)} />
                     <AvatarFallback>
-                      {task.responsavel_email?.[0].toUpperCase()}
+                      {task.responsavel_email?.[0]?.toUpperCase() || '?'}
                     </AvatarFallback>
                   </Avatar>
-                  {task.responsavel_email?.split('@')[0].replace('.', ' ')}
+                  {task.responsavel_email?.split('@')[0].split('.').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                  ).join(' ') || 'Sem responsável'}
                 </div>
               </TableCell>
               <TableCell>
