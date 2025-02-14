@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -30,6 +30,11 @@ export function Sidebar() {
       href: "/planilha",
       icon: FileSpreadsheet,
       label: "Planilha",
+    },
+    {
+      href: "/relatorios",
+      icon: BarChart3,
+      label: "Relatórios",
     },
   ]
 
