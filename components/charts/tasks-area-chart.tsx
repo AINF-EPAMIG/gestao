@@ -69,13 +69,15 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
   
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-50" y="10" width="100" height="50">
+      <foreignObject x="-60" y="10" width="120" height="60">
         <div className="flex flex-col items-center gap-1">
           <Avatar className="w-6 h-6">
             <AvatarImage src={getUserIcon(email)} />
             <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
           </Avatar>
-          <span className="text-xs font-medium text-gray-600">{name}</span>
+          <span className="text-xs font-medium text-gray-600 whitespace-normal text-center">
+            {name}
+          </span>
         </div>
       </foreignObject>
     </g>
@@ -130,18 +132,18 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       })
     }
 
-    return `${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
+    return `Período: ${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
   }, [tasks])
 
   return (
     <div className="h-[400px] w-full">
-      <div className="text-sm text-gray-500 mb-2 text-center">
-        Período: {periodo}
+      <div className="text-xl font-semibold mb-4 text-center">
+        Criação e Conclusão de Tarefas
       </div>
-      <ResponsiveContainer width="100%" height="90%">
+      <ResponsiveContainer width="100%" height="85%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
           barGap={4}
           barSize={20}
         >
@@ -149,8 +151,18 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={80}
+            height={100}
             interval={0}
+            label={{
+              value: periodo,
+              position: 'bottom',
+              offset: 50,
+              style: { 
+                textAnchor: 'middle',
+                fill: '#6B7280',
+                fontSize: 12
+              }
+            }}
           />
           <YAxis 
             allowDecimals={false}
