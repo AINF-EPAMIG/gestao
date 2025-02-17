@@ -1,6 +1,6 @@
 "use client"
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Task } from "@/lib/store"
 import { useMemo } from "react"
 import { getUserIcon } from "@/lib/utils"
@@ -11,13 +11,13 @@ interface TasksAreaChartProps {
 }
 
 const COLORS = {
-  primary: {
-    fill: "#9DC08B",    // Verde mais escuro
-    stroke: "#609966"
+  created: {
+    fill: "#3b82f6",    // Azul
+    stroke: "#2563eb"
   },
-  secondary: {
-    fill: "#D0E7D2",    // Verde mais claro
-    stroke: "#9DC08B"
+  completed: {
+    fill: "#10b981",    // Verde
+    stroke: "#059669"
   }
 }
 
@@ -45,35 +45,73 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             year: 'numeric' 
           })}
         </p>
-        <p className="text-sm font-medium mt-1">
-          {data.total} tarefas
-        </p>
+        <div className="mt-2 space-y-1">
+          <p className="text-sm">
+            <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
+            Novas: {data.created} tarefas
+          </p>
+          <p className="text-sm">
+            <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+            Concluídas: {data.completed} tarefas
+          </p>
+        </div>
       </div>
     )
   }
   return null
 }
 
+const CustomXAxisTick = ({ x, y, payload }: any) => {
+  const email = payload.value
+  return (
+    <g transform={`translate(${x},${y + 10})`}>
+      <Avatar className="w-6 h-6">
+        <AvatarImage src={getUserIcon(email)} />
+        <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+      </Avatar>
+    </g>
+  )
+}
+
 export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
   const data = useMemo(() => {
     const tasksByMonthAndUser = tasks.reduce((acc, task) => {
-      if (!task.data_inicio || !task.responsavel_email) return acc
+      if (!task.responsavel_email) return acc
 
-      const date = new Date(task.data_inicio)
-      const monthYear = date.toISOString().slice(0, 7) // Format: YYYY-MM
+      const startDate = task.data_inicio ? new Date(task.data_inicio) : null
+      const completionDate = task.data_conclusao ? new Date(task.data_conclusao) : null
       const responsavel = task.responsavel_email
 
-      const key = `${monthYear}-${responsavel}`
-      if (!acc[key]) {
-        acc[key] = {
-          date: monthYear,
-          responsavel,
-          total: 0
+      if (startDate) {
+        const monthYear = startDate.toISOString().slice(0, 7) // Format: YYYY-MM
+        const key = `${monthYear}-${responsavel}`
+        if (!acc[key]) {
+          acc[key] = {
+            date: monthYear,
+            responsavel,
+            created: 0,
+            completed: 0
+          }
         }
+        acc[key].created++
       }
-      acc[key].total++
+
+      if (completionDate) {
+        const monthYear = completionDate.toISOString().slice(0, 7)
+        const key = `${monthYear}-${responsavel}`
+        if (!acc[key]) {
+          acc[key] = {
+            date: monthYear,
+            responsavel,
+            created: 0,
+            completed: 0
+          }
+        }
+        acc[key].completed++
+      }
+
       return acc
-    }, {} as Record<string, { date: string; responsavel: string; total: number }>)
+    }, {} as Record<string, { date: string; responsavel: string; created: number; completed: number }>)
 
     return Object.values(tasksByMonthAndUser)
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -82,39 +120,31 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={COLORS.primary.fill} stopOpacity={0.8}/>
-              <stop offset="95%" stopColor={COLORS.primary.fill} stopOpacity={0}/>
-            </linearGradient>
-            <linearGradient id="colorSecondary" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={COLORS.secondary.fill} stopOpacity={0.8}/>
-              <stop offset="95%" stopColor={COLORS.secondary.fill} stopOpacity={0}/>
-            </linearGradient>
-          </defs>
+        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis 
-            dataKey="date" 
-            tickFormatter={(date) => new Date(date).toLocaleDateString('pt-BR', { 
-              month: 'short',
-              year: '2-digit'
-            })}
-            stroke="#6B7280"
+            dataKey="responsavel"
+            tick={<CustomXAxisTick />}
+            height={50}
           />
-          <YAxis 
-            allowDecimals={false} 
-            stroke="#6B7280"
-          />
+          <YAxis allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} />
-          <Area
-            type="monotone"
-            dataKey="total"
-            stroke={COLORS.primary.stroke}
-            fill="url(#colorPrimary)"
-            strokeWidth={2}
+          <Legend />
+          <Bar
+            name="Novas Tarefas"
+            dataKey="created"
+            fill={COLORS.created.fill}
+            stroke={COLORS.created.stroke}
+            radius={[4, 4, 0, 0]}
           />
-        </AreaChart>
+          <Bar
+            name="Tarefas Concluídas"
+            dataKey="completed"
+            fill={COLORS.completed.fill}
+            stroke={COLORS.completed.stroke}
+            radius={[4, 4, 0, 0]}
+          />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   )
