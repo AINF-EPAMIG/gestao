@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { getUserIcon } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
+import { TaskDetailsModal } from "@/components/task-details-modal"
 
 interface TaskStackProps {
   tasks: Task[]
@@ -16,6 +17,8 @@ interface TaskStackProps {
 
 export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
   const [expandedIndex, setExpandedIndex] = useState<number>(0)
+  const [showDetails, setShowDetails] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   useEffect(() => {
     setExpandedIndex(0)
@@ -25,6 +28,11 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
     return email.split('@')[0].split('.').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ')
+  }
+
+  const handleCardClick = (task: Task) => {
+    setSelectedTask(task)
+    setShowDetails(true)
   }
 
   return (
@@ -58,52 +66,56 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
               }}
             >
               <Card
-                className={`p-4 cursor-pointer hover:shadow-md transition-shadow
-                  ${expandedIndex === index ? 'ring-2 ring-emerald-500' : ''}
-                  ${expandedIndex !== index ? 'opacity-75' : ''}
-                `}
-                onClick={() => setExpandedIndex(index)}
+                className={`p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4 ${
+                  expandedIndex === index ? 'ring-2 ring-emerald-500' : ''
+                } ${expandedIndex !== index ? 'opacity-75' : ''} ${
+                  getPriorityName(task.prioridade_id) === "Alta"
+                    ? "border-l-red-500"
+                    : getPriorityName(task.prioridade_id) === "Média"
+                    ? "border-l-yellow-500"
+                    : "border-l-green-500"
+                }`}
+                onClick={() => handleCardClick(task)}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{task.titulo}</span>
-                    <Badge variant="outline" className={
-                      getPriorityName(task.prioridade_id) === "Alta"
-                        ? "border-red-500 text-red-500"
-                        : getPriorityName(task.prioridade_id) === "Média"
-                        ? "border-yellow-500 text-yellow-500"
-                        : "border-green-500 text-green-500"
-                    }>
+                    <Badge
+                      className={
+                        getPriorityName(task.prioridade_id) === "Alta"
+                          ? "bg-red-500"
+                          : getPriorityName(task.prioridade_id) === "Média"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }
+                    >
                       {getPriorityName(task.prioridade_id)}
                     </Badge>
+                    <Badge variant="outline">
+                      {task.sistema_nome || `Sistema ${task.sistema_id}`}
+                    </Badge>
                   </div>
-
-                  {expandedIndex === index && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-2"
-                    >
-                      <p className="text-sm text-gray-500">{task.descricao}</p>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Sistema: {task.sistema_nome}</span>
-                        <span>Estimativa: {formatHours(task.estimativa_horas)}</span>
-                      </div>
-                      {task.data_inicio && (
-                        <div className="text-sm text-gray-500">
-                          Início: {new Date(task.data_inicio).toLocaleDateString()}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
+                  <h4 className="font-medium">{task.titulo}</h4>
+                  <div className="flex items-center gap-2">
+                    {task.data_inicio && (
+                      <span className="text-xs text-gray-500">
+                        Início: {new Date(task.data_inicio).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Card>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
+
+      {selectedTask && (
+        <TaskDetailsModal 
+          task={selectedTask}
+          open={showDetails}
+          onOpenChange={setShowDetails}
+        />
+      )}
     </div>
   )
 } 
