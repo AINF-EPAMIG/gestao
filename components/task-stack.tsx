@@ -16,13 +16,8 @@ interface TaskStackProps {
 }
 
 export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number>(0)
   const [showDetails, setShowDetails] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-
-  useEffect(() => {
-    setExpandedIndex(0)
-  }, [tasks])
 
   const formatName = (email: string) => {
     return email.split('@')[0].split('.').map(word => 
@@ -47,17 +42,12 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
 
       <div className="relative space-y-2">
         <AnimatePresence>
-          {tasks.map((task, index) => (
+          {tasks.map((task) => (
             <motion.div
               key={task.id}
               layout
               initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ 
-                scale: 1, 
-                opacity: 1,
-                y: expandedIndex === null ? -index * 4 : 0,
-                zIndex: expandedIndex === index ? 10 : tasks.length - index
-              }}
+              animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
               style={{ 
@@ -67,8 +57,6 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
             >
               <Card
                 className={`p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4 ${
-                  expandedIndex === index ? 'ring-2 ring-emerald-500' : ''
-                } ${expandedIndex !== index ? 'opacity-75' : ''} ${
                   getPriorityName(task.prioridade_id) === "Alta"
                     ? "border-l-red-500"
                     : getPriorityName(task.prioridade_id) === "Média"
