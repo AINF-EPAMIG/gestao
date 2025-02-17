@@ -27,6 +27,21 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       .join(' ')
   }
 
+  const formatDateTime = (dateTime: string | null) => {
+    if (!dateTime) return '-';
+    
+    const date = new Date(dateTime);
+    
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC'
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -131,7 +146,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             <div className="text-sm text-gray-500">Última Atualização</div>
             <div className="text-sm">
               {task.ultima_atualizacao 
-                ? new Date(task.ultima_atualizacao).toLocaleString('pt-BR')
+                ? formatDateTime(task.ultima_atualizacao)
                 : '-'}
             </div>
           </div>
