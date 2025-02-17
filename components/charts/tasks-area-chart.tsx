@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface TasksAreaChartProps {
   tasks: Task[]
+  startDate?: string  // Data inicial do filtro
+  endDate?: string    // Data final do filtro
 }
 
 const COLORS = {
@@ -61,55 +63,40 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null
 }
 
-const CustomXAxisTick = ({ x, y, payload }: any) => {
-  const email = payload.value
-  const name = email.split('@')[0].split('.').map((word: string) => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ')
-  
-  // Gerar uma data aleatória para demonstração (você deve substituir isso pelos dados reais)
-  const date = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28))
-  const formattedDate = date.toLocaleDateString('pt-BR', {
-    month: 'short',
-    day: 'numeric'
-  }).replace('.', '')
-  
-  return (
-    <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-60" y="10" width="120" height="80">
-        <div className="flex flex-col items-center gap-1">
-          <Avatar className="w-6 h-6">
-            <AvatarImage src={getUserIcon(email)} />
-            <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-          </Avatar>
-          <span className="text-xs font-medium text-gray-600 whitespace-normal text-center">
-            {name}
-          </span>
-          <span className="text-xs text-gray-500">
-            {formattedDate}
-          </span>
-        </div>
-      </foreignObject>
-    </g>
-  )
-}
-
-export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
+export function TasksAreaChart({ tasks, startDate, endDate }: TasksAreaChartProps) {
   const data = useMemo(() => {
+    // Converter datas do filtro
+    const filterStart = startDate ? new Date(startDate) : null
+    const filterEnd = endDate ? new Date(endDate) : null
+
     const tasksByUser = tasks.reduce((acc, task) => {
       if (!task.responsavel_email) return acc
       const responsavel = task.responsavel_email
       
+      // Verificar se a task está dentro do período filtrado
+      const taskDate = task.data_inicio ? new Date(task.data_inicio) : null
+      const isWithinFilter = !taskDate ? true :
+        (!filterStart || taskDate >= filterStart) &&
+        (!filterEnd || taskDate <= filterEnd)
+
+      if (!isWithinFilter) return acc
+
       if (!acc[responsavel]) {
         acc[responsavel] = {
           responsavel,
           created: 0,
-          completed: 0
+          completed: 0,
+          lastDate: null // Armazenar a data mais recente
         }
       }
 
       if (task.data_inicio) {
         acc[responsavel].created++
+        // Atualizar a data mais recente
+        const currentDate = new Date(task.data_inicio)
+        if (!acc[responsavel].lastDate || currentDate > acc[responsavel].lastDate) {
+          acc[responsavel].lastDate = currentDate
+        }
       }
 
       if (task.data_conclusao) {
@@ -117,10 +104,15 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       }
 
       return acc
-    }, {} as Record<string, { responsavel: string; created: number; completed: number }>)
+    }, {} as Record<string, { 
+      responsavel: string
+      created: number
+      completed: number
+      lastDate: Date | null 
+    }>)
 
     return Object.values(tasksByUser)
-  }, [tasks])
+  }, [tasks, startDate, endDate])
 
   // Calcular período dos dados
   const periodo = useMemo(() => {
@@ -144,6 +136,40 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
 
     return `Período: ${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
   }, [tasks])
+
+  const CustomXAxisTick = ({ x, y, payload }: any) => {
+    const email = payload.value
+    const name = email.split('@')[0].split('.').map((word: string) => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ')
+    
+    const userTask = data.find(d => d.responsavel === email)
+    const formattedDate = userTask?.lastDate 
+      ? userTask.lastDate.toLocaleDateString('pt-BR', {
+          month: 'short',
+          day: 'numeric'
+        }).replace('.', '')
+      : ''
+    
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <foreignObject x="-60" y="10" width="120" height="80">
+          <div className="flex flex-col items-center gap-1">
+            <Avatar className="w-6 h-6">
+              <AvatarImage src={getUserIcon(email)} />
+              <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+            </Avatar>
+            <span className="text-xs font-medium text-gray-600 whitespace-normal text-center">
+              {name}
+            </span>
+            <span className="text-xs text-gray-500">
+              {formattedDate}
+            </span>
+          </div>
+        </foreignObject>
+      </g>
+    )
+  }
 
   return (
     <div className="h-[500px] w-full">

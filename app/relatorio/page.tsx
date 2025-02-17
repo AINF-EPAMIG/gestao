@@ -20,6 +20,8 @@ export default function RelatoriosPage() {
   const [prioridadeFilter, setPrioridadeFilter] = useState<string>("todos")
   const [dataInicioFilter, setDataInicioFilter] = useState<string>("")
   const [dataFimFilter, setDataFimFilter] = useState<string>("")
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
 
   // Obter lista única de responsáveis
   const responsaveis = useMemo(() => {
@@ -149,7 +151,11 @@ export default function RelatoriosPage() {
           <CardTitle>Criação e Conclusão de Tarefas</CardTitle>
         </CardHeader>
         <CardContent>
-          <TasksAreaChart tasks={filteredTasks} />
+          <TasksAreaChart 
+            tasks={filteredTasks} 
+            startDate={startDate}
+            endDate={endDate}
+          />
         </CardContent>
       </Card>
 
