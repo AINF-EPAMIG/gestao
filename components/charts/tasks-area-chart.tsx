@@ -94,7 +94,8 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
         acc[responsavel] = {
           responsavel,
           created: 0,
-          completed: 0
+          completed: 0,
+          order: 0
         }
       }
 
@@ -107,9 +108,11 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       }
 
       return acc
-    }, {} as Record<string, { responsavel: string; created: number; completed: number }>)
+    }, {} as Record<string, { responsavel: string; created: number; completed: number; order: number }>)
 
     return Object.values(tasksByUser)
+      .sort((a, b) => b.created + b.completed - (a.created + a.completed))
+      .map((item, index) => ({ ...item, order: index }))
   }, [tasks])
 
   // Formatação das datas para o eixo X
