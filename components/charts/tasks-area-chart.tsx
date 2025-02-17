@@ -67,9 +67,16 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ')
   
+  // Gerar uma data aleatória para demonstração (você deve substituir isso pelos dados reais)
+  const date = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28))
+  const formattedDate = date.toLocaleDateString('pt-BR', {
+    month: 'short',
+    day: 'numeric'
+  }).replace('.', '')
+  
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-60" y="10" width="120" height="60">
+      <foreignObject x="-60" y="10" width="120" height="80">
         <div className="flex flex-col items-center gap-1">
           <Avatar className="w-6 h-6">
             <AvatarImage src={getUserIcon(email)} />
@@ -77,6 +84,9 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
           </Avatar>
           <span className="text-xs font-medium text-gray-600 whitespace-normal text-center">
             {name}
+          </span>
+          <span className="text-xs text-gray-500">
+            {formattedDate}
           </span>
         </div>
       </foreignObject>
@@ -140,7 +150,7 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
           barGap={4}
           barSize={20}
         >
@@ -148,7 +158,7 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={100}
+            height={120}
             interval={0}
           />
           <YAxis 
