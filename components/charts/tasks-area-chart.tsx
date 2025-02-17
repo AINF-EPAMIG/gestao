@@ -136,11 +136,11 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
   }, [tasks])
 
   return (
-    <div className="h-[400px] w-full">
-      <ResponsiveContainer width="100%" height="85%">
+    <div className="h-[500px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
           barGap={4}
           barSize={20}
         >
@@ -150,16 +150,6 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
             tick={<CustomXAxisTick />}
             height={100}
             interval={0}
-            label={{
-              value: periodo,
-              position: 'bottom',
-              offset: 50,
-              style: { 
-                textAnchor: 'middle',
-                fill: '#6B7280',
-                fontSize: 12
-              }
-            }}
           />
           <YAxis 
             allowDecimals={false}
