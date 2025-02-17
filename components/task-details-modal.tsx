@@ -125,6 +125,16 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             <div className="text-sm text-gray-500">ID Release</div>
             <div className="text-sm">{task.id_release || "-"}</div>
           </div>
+
+          {/* Última Atualização */}
+          <div>
+            <div className="text-sm text-gray-500">Última Atualização</div>
+            <div className="text-sm">
+              {task.ultima_atualizacao 
+                ? new Date(task.ultima_atualizacao).toLocaleString('pt-BR')
+                : '-'}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

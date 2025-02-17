@@ -21,6 +21,7 @@ export interface Task {
   id_release: string | null
   order?: number
   position: number | null
+  ultima_atualizacao: string | null
 }
 
 interface TaskStore {

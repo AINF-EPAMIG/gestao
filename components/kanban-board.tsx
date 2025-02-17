@@ -50,6 +50,18 @@ const TaskCard = memo(function TaskCard({
 }) {
   const [showDetails, setShowDetails] = useState(false)
 
+  const formatDateTime = (dateTime: string | null) => {
+    if (!dateTime) return null;
+    const date = new Date(dateTime);
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <>
       <Card
@@ -102,6 +114,11 @@ const TaskCard = memo(function TaskCard({
           {task.data_inicio && (
             <span className="text-xs text-gray-500">
               Início: {new Date(task.data_inicio).toLocaleDateString()}
+            </span>
+          )}
+          {task.ultima_atualizacao && (
+            <span className="text-xs text-gray-500">
+              Atualizado: {formatDateTime(task.ultima_atualizacao)}
             </span>
           )}
         </div>

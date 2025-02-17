@@ -24,6 +24,7 @@ export function DataTable({ tasks }: DataTableProps) {
             <TableHead>Prioridade</TableHead>
             <TableHead>Sistema</TableHead>
             <TableHead>Estimativa</TableHead>
+            <TableHead>Última Atualização</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,6 +64,11 @@ export function DataTable({ tasks }: DataTableProps) {
               </TableCell>
               <TableCell>{task.sistema_nome}</TableCell>
               <TableCell>{formatHours(task.estimativa_horas)}</TableCell>
+              <TableCell>
+                {task.ultima_atualizacao 
+                  ? new Date(task.ultima_atualizacao).toLocaleString('pt-BR')
+                  : '-'}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
