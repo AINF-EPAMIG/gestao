@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function usePolling(callback: () => Promise<void>, interval: number = 60000) {
+export function usePolling(callback: () => Promise<void>, interval: number = 1000) {
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
