@@ -63,73 +63,74 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 const CustomXAxisTick = ({ x, y, payload }: any) => {
   const email = payload.value
+  const name = email.split('@')[0].split('.').map((word: string) => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ')
+  
   return (
-    <g transform={`translate(${x},${y + 10})`}>
-      <Avatar className="w-6 h-6">
-        <AvatarImage src={getUserIcon(email)} />
-        <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-      </Avatar>
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x="-12" y="10" width="24" height="24">
+        <div className="flex justify-center">
+          <Avatar className="w-6 h-6">
+            <AvatarImage src={getUserIcon(email)} />
+            <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+          </Avatar>
+        </div>
+      </foreignObject>
     </g>
   )
 }
 
 export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
   const data = useMemo(() => {
-    const tasksByMonthAndUser = tasks.reduce((acc, task) => {
+    const tasksByUser = tasks.reduce((acc, task) => {
       if (!task.responsavel_email) return acc
 
-      const startDate = task.data_inicio ? new Date(task.data_inicio) : null
-      const completionDate = task.data_conclusao ? new Date(task.data_conclusao) : null
       const responsavel = task.responsavel_email
-
-      if (startDate) {
-        const monthYear = startDate.toISOString().slice(0, 7) // Format: YYYY-MM
-        const key = `${monthYear}-${responsavel}`
-        if (!acc[key]) {
-          acc[key] = {
-            date: monthYear,
-            responsavel,
-            created: 0,
-            completed: 0
-          }
+      
+      if (!acc[responsavel]) {
+        acc[responsavel] = {
+          responsavel,
+          created: 0,
+          completed: 0
         }
-        acc[key].created++
       }
 
-      if (completionDate) {
-        const monthYear = completionDate.toISOString().slice(0, 7)
-        const key = `${monthYear}-${responsavel}`
-        if (!acc[key]) {
-          acc[key] = {
-            date: monthYear,
-            responsavel,
-            created: 0,
-            completed: 0
-          }
-        }
-        acc[key].completed++
+      if (task.data_inicio) {
+        acc[responsavel].created++
+      }
+
+      if (task.data_conclusao) {
+        acc[responsavel].completed++
       }
 
       return acc
-    }, {} as Record<string, { date: string; responsavel: string; created: number; completed: number }>)
+    }, {} as Record<string, { responsavel: string; created: number; completed: number }>)
 
-    return Object.values(tasksByMonthAndUser)
-      .sort((a, b) => a.date.localeCompare(b.date))
+    return Object.values(tasksByUser)
   }, [tasks])
 
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+        <BarChart 
+          data={data} 
+          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          barGap={0}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={50}
+            height={60}
+            interval={0}
           />
           <YAxis allowDecimals={false} />
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
+          <Legend 
+            verticalAlign="top"
+            height={36}
+          />
           <Bar
             name="Novas Tarefas"
             dataKey="created"
