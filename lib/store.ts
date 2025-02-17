@@ -40,6 +40,8 @@ interface TaskStore {
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
+  lastUpdate: string | null
+  setLastUpdate: (date: string) => void
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -47,6 +49,7 @@ export const useTaskStore = create<TaskStore>()(
     (set, get) => ({
       tasks: [],
       pendingChanges: [],
+      lastUpdate: null,
       
       setTasks: (tasks) => set({ tasks }),
       
@@ -148,12 +151,15 @@ export const useTaskStore = create<TaskStore>()(
           A: count,
         }));
       },
+
+      setLastUpdate: (date) => set({ lastUpdate: date }),
     }),
     {
       name: 'kanban-store',
       partialize: (state) => ({ 
         tasks: state.tasks,
-        pendingChanges: state.pendingChanges 
+        pendingChanges: state.pendingChanges,
+        lastUpdate: state.lastUpdate
       })
     }
   )
