@@ -56,32 +56,39 @@ const TaskCard = memo(function TaskCard({
     const date = new Date(dateTime);
     const hoje = new Date();
     const ontem = new Date();
+    
+    // Ajusta as datas de comparação para o fuso local
+    hoje.setHours(0, 0, 0, 0);
+    ontem.setHours(0, 0, 0, 0);
     ontem.setDate(ontem.getDate() - 1);
     
-    // Formatação da hora
+    // Formatação da hora sem subtrair 3 horas
     const hora = date.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'UTC'
     });
 
-    // Verifica se é hoje
-    if (date.toDateString() === hoje.toDateString()) {
-      return `Hoje às ${hora}`;
+    // Compara apenas as datas
+    const dataAtual = new Date(date.toISOString().split('T')[0]);
+    
+    if (dataAtual.toDateString() === hoje.toDateString()) {
+      return `Atualizado Hoje às ${hora}`;
     }
     
-    // Verifica se é ontem
-    if (date.toDateString() === ontem.toDateString()) {
-      return `Ontem às ${hora}`;
+    if (dataAtual.toDateString() === ontem.toDateString()) {
+      return `Atualizado Ontem às ${hora}`;
     }
     
     // Caso contrário, retorna a data completa
-    return date.toLocaleString('pt-BR', {
+    const dataFormatada = date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      timeZone: 'UTC'
     });
+    
+    return `Atualizado Em ${dataFormatada} às ${hora}`;
   };
 
   return (
@@ -135,7 +142,7 @@ const TaskCard = memo(function TaskCard({
           </div>
           {task.ultima_atualizacao && (
             <span className="text-xs text-gray-500">
-              Atualizado: {formatDateTime(task.ultima_atualizacao)}
+              {formatDateTime(task.ultima_atualizacao)}
             </span>
           )}
         </div>
