@@ -153,12 +153,27 @@ export const useTaskStore = create<TaskStore>()(
 
       fetchTasks: async () => {
         try {
-          const response = await fetch('/api/atividades');
+          console.log('📥 Buscando tarefas...');
+          const response = await fetch('/api/atividades', {
+            cache: 'no-store', // Força sempre buscar dados novos
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
+          
           if (!response.ok) throw new Error('Falha ao carregar dados');
           const data = await response.json();
-          set({ tasks: data });
+          
+          // Compara se os dados são diferentes antes de atualizar
+          const currentTasks = get().tasks;
+          const hasChanges = JSON.stringify(currentTasks) !== JSON.stringify(data);
+          
+          if (hasChanges) {
+            console.log('🔄 Atualizando tarefas...');
+            set({ tasks: data });
+          }
         } catch (error) {
-          console.error('Erro ao buscar tarefas:', error);
+          console.error('❌ Erro ao buscar tarefas:', error);
         }
       },
     }),

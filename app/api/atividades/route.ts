@@ -15,7 +15,15 @@ export async function GET() {
       `,
     });
     
-    return NextResponse.json(atividades);
+    // Adiciona headers para prevenir cache
+    return new NextResponse(JSON.stringify(atividades), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
     console.error('❌ Erro ao consultar o banco:', error);
     return NextResponse.json(
