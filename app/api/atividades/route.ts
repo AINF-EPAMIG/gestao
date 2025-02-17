@@ -1,6 +1,5 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { initSocket, NextApiResponseServerIO } from '@/lib/socket';
 
 export async function GET() {
   try {
@@ -26,7 +25,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: NextRequest, res: NextApiResponseServerIO) {
+export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
     const { id, status_id, position } = data;
@@ -51,9 +50,6 @@ export async function PUT(request: NextRequest, res: NextApiResponseServerIO) {
       `,
     });
     
-    const io = initSocket(res)
-    io.emit('tasksUpdated', atividades)
-    
     return NextResponse.json(atividades);
   } catch (error) {
     console.error('❌ Erro ao atualizar tarefa:', error);
@@ -64,7 +60,7 @@ export async function PUT(request: NextRequest, res: NextApiResponseServerIO) {
   }
 }
 
-export async function POST(request: NextRequest, res: NextApiResponseServerIO) {
+export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     const { titulo, descricao, data_inicio, status_id, prioridade_id, sistema_id, responsavel_email, data_fim, estimativa_horas } = data;
@@ -104,9 +100,6 @@ export async function POST(request: NextRequest, res: NextApiResponseServerIO) {
         LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
       `,
     });
-    
-    const io = initSocket(res)
-    io.emit('tasksUpdated', atividades)
     
     return NextResponse.json(atividades);
   } catch (error) {
