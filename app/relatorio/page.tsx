@@ -146,7 +146,7 @@ export default function RelatoriosPage() {
 
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Evolução de Tarefas por Responsável</CardTitle>
+          <CardTitle>Criação e Conclusão de Tarefas</CardTitle>
         </CardHeader>
         <CardContent>
           <TasksAreaChart tasks={filteredTasks} />

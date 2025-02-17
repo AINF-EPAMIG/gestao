@@ -69,7 +69,7 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
   
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-60" y="10" width="120" height="60">
+      <foreignObject x="-60" y="10" width="120" height="50">
         <div className="flex flex-col items-center gap-1">
           <Avatar className="w-6 h-6">
             <AvatarImage src={getUserIcon(email)} />
@@ -112,38 +112,45 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
     return Object.values(tasksByUser)
   }, [tasks])
 
-  // Calcular período dos dados
-  const periodo = useMemo(() => {
+  // Formatação das datas para o eixo X
+  const dateFormatter = (date: Date) => {
+    const mes = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+    const dia = date.getDate()
+    return `${mes} ${dia}`
+  }
+
+  // Gerar marcas de tempo para o eixo X secundário
+  const getTimeMarks = () => {
     const datas = tasks
       .map(task => [task.data_inicio, task.data_conclusao])
       .flat()
       .filter(Boolean)
       .map(date => new Date(date as string))
-    
-    if (datas.length === 0) return "Nenhum período"
-    
+
+    if (datas.length === 0) return []
+
     const dataInicial = new Date(Math.min(...datas.map(d => d.getTime())))
     const dataFinal = new Date(Math.max(...datas.map(d => d.getTime())))
     
-    const formatarData = (data: Date) => {
-      return data.toLocaleDateString('pt-BR', {
-        month: 'long',
-        year: 'numeric'
-      })
+    // Gerar marcas a cada 5 dias
+    const marcas = []
+    let currentDate = new Date(dataInicial)
+    while (currentDate <= dataFinal) {
+      marcas.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 5)
     }
+    
+    return marcas
+  }
 
-    return `Período: ${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
-  }, [tasks])
+  const timeMarks = getTimeMarks()
 
   return (
-    <div className="h-[400px] w-full">
-      <div className="text-xl font-semibold mb-4 text-center">
-        Criação e Conclusão de Tarefas
-      </div>
-      <ResponsiveContainer width="100%" height="85%">
+    <div className="h-[500px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 120 }}
           barGap={4}
           barSize={20}
         >
@@ -151,18 +158,22 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={100}
+            height={60}
             interval={0}
-            label={{
-              value: periodo,
-              position: 'bottom',
-              offset: 50,
-              style: { 
-                textAnchor: 'middle',
-                fill: '#6B7280',
-                fontSize: 12
-              }
-            }}
+            xAxisId="responsaveis"
+          />
+          <XAxis
+            xAxisId="datas"
+            orientation="bottom"
+            tickFormatter={dateFormatter}
+            ticks={timeMarks.map(d => d.getTime())}
+            type="number"
+            domain={[timeMarks[0]?.getTime(), timeMarks[timeMarks.length - 1]?.getTime()]}
+            height={30}
+            tickSize={8}
+            tickMargin={5}
+            stroke="#9CA3AF"
+            tick={{ fontSize: 11 }}
           />
           <YAxis 
             allowDecimals={false}
