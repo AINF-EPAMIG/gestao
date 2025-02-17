@@ -12,12 +12,12 @@ interface TasksAreaChartProps {
 
 const COLORS = {
   created: {
-    fill: "#3b82f6",    // Azul
-    stroke: "#2563eb"
+    fill: "#1B4332",    // Verde escuro
+    stroke: "#1B4332"
   },
   completed: {
-    fill: "#10b981",    // Verde
-    stroke: "#059669"
+    fill: "#40916C",    // Verde mais claro
+    stroke: "#40916C"
   }
 }
 
@@ -69,12 +69,13 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
   
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-12" y="10" width="24" height="24">
-        <div className="flex justify-center">
+      <foreignObject x="-50" y="10" width="100" height="50">
+        <div className="flex flex-col items-center gap-1">
           <Avatar className="w-6 h-6">
             <AvatarImage src={getUserIcon(email)} />
             <AvatarFallback>{email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
           </Avatar>
+          <span className="text-xs font-medium text-gray-600">{name}</span>
         </div>
       </foreignObject>
     </g>
@@ -85,7 +86,6 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
   const data = useMemo(() => {
     const tasksByUser = tasks.reduce((acc, task) => {
       if (!task.responsavel_email) return acc
-
       const responsavel = task.responsavel_email
       
       if (!acc[responsavel]) {
@@ -110,22 +110,57 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
     return Object.values(tasksByUser)
   }, [tasks])
 
+  // Calcular período dos dados
+  const periodo = useMemo(() => {
+    const datas = tasks
+      .map(task => [task.data_inicio, task.data_conclusao])
+      .flat()
+      .filter(Boolean)
+      .map(date => new Date(date as string))
+    
+    if (datas.length === 0) return "Nenhum período"
+    
+    const dataInicial = new Date(Math.min(...datas.map(d => d.getTime())))
+    const dataFinal = new Date(Math.max(...datas.map(d => d.getTime())))
+    
+    const formatarData = (data: Date) => {
+      return data.toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+      })
+    }
+
+    return `${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
+  }, [tasks])
+
   return (
     <div className="h-[400px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <div className="text-sm text-gray-500 mb-2 text-center">
+        Período: {periodo}
+      </div>
+      <ResponsiveContainer width="100%" height="90%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-          barGap={0}
+          margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+          barGap={4}
+          barSize={20}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={60}
+            height={80}
             interval={0}
           />
-          <YAxis allowDecimals={false} />
+          <YAxis 
+            allowDecimals={false}
+            label={{ 
+              value: 'Quantidade de Tarefas', 
+              angle: -90, 
+              position: 'insideLeft',
+              style: { textAnchor: 'middle' }
+            }}
+          />
           <Tooltip content={<CustomTooltip />} />
           <Legend 
             verticalAlign="top"
