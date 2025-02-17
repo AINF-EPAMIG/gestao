@@ -69,7 +69,7 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
   
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-60" y="10" width="120" height="50">
+      <foreignObject x="-60" y="10" width="120" height="60">
         <div className="flex flex-col items-center gap-1">
           <Avatar className="w-6 h-6">
             <AvatarImage src={getUserIcon(email)} />
@@ -94,8 +94,7 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
         acc[responsavel] = {
           responsavel,
           created: 0,
-          completed: 0,
-          order: 0
+          completed: 0
         }
       }
 
@@ -108,52 +107,40 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
       }
 
       return acc
-    }, {} as Record<string, { responsavel: string; created: number; completed: number; order: number }>)
+    }, {} as Record<string, { responsavel: string; created: number; completed: number }>)
 
     return Object.values(tasksByUser)
-      .sort((a, b) => b.created + b.completed - (a.created + a.completed))
-      .map((item, index) => ({ ...item, order: index }))
   }, [tasks])
 
-  // Formatação das datas para o eixo X
-  const dateFormatter = (date: Date) => {
-    const mes = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
-    const dia = date.getDate()
-    return `${mes} ${dia}`
-  }
-
-  // Gerar marcas de tempo para o eixo X secundário
-  const getTimeMarks = () => {
+  // Calcular período dos dados
+  const periodo = useMemo(() => {
     const datas = tasks
       .map(task => [task.data_inicio, task.data_conclusao])
       .flat()
       .filter(Boolean)
       .map(date => new Date(date as string))
-
-    if (datas.length === 0) return []
-
+    
+    if (datas.length === 0) return "Nenhum período"
+    
     const dataInicial = new Date(Math.min(...datas.map(d => d.getTime())))
     const dataFinal = new Date(Math.max(...datas.map(d => d.getTime())))
     
-    // Gerar marcas a cada 5 dias
-    const marcas = []
-    let currentDate = new Date(dataInicial)
-    while (currentDate <= dataFinal) {
-      marcas.push(new Date(currentDate))
-      currentDate.setDate(currentDate.getDate() + 5)
+    const formatarData = (data: Date) => {
+      return data.toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+      })
     }
-    
-    return marcas
-  }
 
-  const timeMarks = getTimeMarks()
+    return `Período: ${formatarData(dataInicial)} - ${formatarData(dataFinal)}`
+  }, [tasks])
 
   return (
-    <div className="h-[500px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[400px] w-full">
+      <ResponsiveContainer width="100%" height="85%">
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 120 }}
+          margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
           barGap={4}
           barSize={20}
         >
@@ -161,22 +148,18 @@ export function TasksAreaChart({ tasks }: TasksAreaChartProps) {
           <XAxis 
             dataKey="responsavel"
             tick={<CustomXAxisTick />}
-            height={60}
+            height={100}
             interval={0}
-            xAxisId="responsaveis"
-          />
-          <XAxis
-            xAxisId="datas"
-            orientation="bottom"
-            tickFormatter={dateFormatter}
-            ticks={timeMarks.map(d => d.getTime())}
-            type="number"
-            domain={[timeMarks[0]?.getTime(), timeMarks[timeMarks.length - 1]?.getTime()]}
-            height={30}
-            tickSize={8}
-            tickMargin={5}
-            stroke="#9CA3AF"
-            tick={{ fontSize: 11 }}
+            label={{
+              value: periodo,
+              position: 'bottom',
+              offset: 50,
+              style: { 
+                textAnchor: 'middle',
+                fill: '#6B7280',
+                fontSize: 12
+              }
+            }}
           />
           <YAxis 
             allowDecimals={false}
