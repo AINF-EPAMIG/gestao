@@ -48,15 +48,7 @@ export const useTaskStore = create<TaskStore>()(
       tasks: [],
       pendingChanges: [],
       
-      setTasks: (tasks) => {
-        // Compara os arrays antes de atualizar
-        const currentTasks = get().tasks;
-        const tasksChanged = JSON.stringify(currentTasks) !== JSON.stringify(tasks);
-        
-        if (tasksChanged) {
-          set({ tasks });
-        }
-      },
+      setTasks: (tasks) => set({ tasks }),
       
       updateTaskPosition: (taskId, newStatusId, newIndex) => {
         set((state) => {

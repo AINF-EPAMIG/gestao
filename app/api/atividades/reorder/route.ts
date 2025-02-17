@@ -1,7 +1,8 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { initSocket, NextApiResponseServerIO } from '@/lib/socket';
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: NextRequest, res: NextApiResponseServerIO) {
   try {
     const { taskId, statusId, position, ultima_atualizacao } = await request.json();
 
@@ -43,6 +44,10 @@ export async function PUT(request: NextRequest) {
         ORDER BY a.status_id, a.position
       `,
     });
+    
+    // Emite evento com dados atualizados
+    const io = initSocket(res)
+    io.emit('tasksUpdated', atividades)
     
     return NextResponse.json(atividades);
   } catch (error) {

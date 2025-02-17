@@ -239,40 +239,7 @@ const Column = memo(function Column({
 
 export function KanbanBoard() {
   const tasks = useTaskStore((state) => state.tasks)
-  const setTasks = useTaskStore((state) => state.setTasks)
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
-
-  // Função para verificar atualizações
-  const checkForUpdates = useCallback(async () => {
-    try {
-      const response = await fetch('/api/atividades/check-updates');
-      if (!response.ok) throw new Error('Erro ao buscar atualizações');
-      
-      const newTasks = await response.json();
-      
-      // Verifica se há diferenças antes de atualizar
-      const currentTasksJSON = JSON.stringify(tasks);
-      const newTasksJSON = JSON.stringify(newTasks);
-      
-      if (currentTasksJSON !== newTasksJSON) {
-        setTasks(newTasks);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar atualizações:', error);
-    }
-  }, [tasks, setTasks]);
-
-  // Configura o intervalo de polling
-  useEffect(() => {
-    // Primeira verificação
-    checkForUpdates();
-    
-    // Configura o intervalo para verificar a cada 1 segundo
-    const interval = setInterval(checkForUpdates, 1000);
-    
-    // Limpa o intervalo quando o componente é desmontado
-    return () => clearInterval(interval);
-  }, [checkForUpdates]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
