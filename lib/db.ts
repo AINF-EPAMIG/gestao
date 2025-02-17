@@ -12,10 +12,8 @@ const pool = mysql.createPool({
 
 console.log('🔌 Pool de conexão MySQL configurado');
 
-// Definir interfaces específicas para seus dados
 interface DatabaseRecord {
   id: string;
-  // adicione outros campos necessários
 }
 
 export async function executeQuery<T>({ 
