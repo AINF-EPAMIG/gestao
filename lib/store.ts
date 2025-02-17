@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { usePolling } from './hooks/usePolling'
 
 export type Priority = "Alta" | "Média" | "Baixa"
 export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Concluída"
@@ -40,6 +41,7 @@ interface TaskStore {
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
+  fetchTasks: () => Promise<void>
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -148,6 +150,17 @@ export const useTaskStore = create<TaskStore>()(
           A: count,
         }));
       },
+
+      fetchTasks: async () => {
+        try {
+          const response = await fetch('/api/atividades');
+          if (!response.ok) throw new Error('Falha ao carregar dados');
+          const data = await response.json();
+          set({ tasks: data });
+        } catch (error) {
+          console.error('Erro ao buscar tarefas:', error);
+        }
+      },
     }),
     {
       name: 'kanban-store',
@@ -198,5 +211,11 @@ export function getResponsavelName(responsavelId: number | null, email?: string)
 export function formatHours(hours: string | number | null): string {
   if (!hours) return "Sem estimativa";
   return `${Number(hours)}h`;
+}
+
+// Hook personalizado para usar o polling com o store
+export function useTaskPolling() {
+  const fetchTasks = useTaskStore(state => state.fetchTasks);
+  usePolling(fetchTasks);
 }
 
