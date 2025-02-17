@@ -3,18 +3,20 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function PUT(request: NextRequest) {
   try {
-    const { taskId, statusId, position } = await request.json();
+    const { taskId, statusId, position, ultima_atualizacao } = await request.json();
 
     console.log('🔵 Reordenando tarefa...');
     
-    // Primeiro atualiza a posição da tarefa movida
+    // Atualiza a posição e última atualização da tarefa movida
     await executeQuery({
       query: `
         UPDATE u711845530_gestao.atividades 
-        SET status_id = ?, position = ?
+        SET status_id = ?, 
+            position = ?,
+            ultima_atualizacao = ?
         WHERE id = ?
       `,
-      values: [statusId, position, taskId],
+      values: [statusId, position, ultima_atualizacao, taskId],
     });
     
     // Reordena as outras tarefas do mesmo status se necessário

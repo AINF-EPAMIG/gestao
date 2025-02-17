@@ -24,12 +24,19 @@ export interface Task {
   ultima_atualizacao: string | null
 }
 
+interface PendingChange {
+  taskId: number
+  statusId: number
+  position: number | null
+  ultima_atualizacao: string
+}
+
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
   updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number) => void
   syncPendingChanges: () => Promise<void>
-  pendingChanges: { taskId: number; statusId: number; position: number }[]
+  pendingChanges: PendingChange[]
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
@@ -58,23 +65,13 @@ export const useTaskStore = create<TaskStore>()(
             .filter(t => t.status_id === newStatusId)
             .sort((a, b) => (a.position || 0) - (b.position || 0))
           
-          // Atualiza posições
-          if (newIndex === 0) {
-            // Se for primeira posição
-            taskToMove.position = (statusTasks[0]?.position ?? 0) - 1
-          } else if (newIndex >= statusTasks.length) {
-            // Se for última posição
-            const lastPosition = statusTasks[statusTasks.length - 1]?.position ?? 0
-            taskToMove.position = lastPosition + 1
-          } else {
-            // Se for no meio, pega a posição entre as duas tarefas
-            const prevPosition = statusTasks[newIndex - 1]?.position ?? 0
-            const nextPosition = statusTasks[newIndex]?.position ?? prevPosition + 2
-            taskToMove.position = Math.floor((prevPosition + nextPosition) / 2)
-          }
-          
-          // Atualiza o status
+          // Atualiza posições e última atualização
+          const now = new Date().toISOString()
+          taskToMove.position = (newIndex === 0) ? (statusTasks[0]?.position ?? 0) - 1 :
+            (newIndex >= statusTasks.length) ? (statusTasks[statusTasks.length - 1]?.position ?? 0) + 1 :
+            Math.floor(((statusTasks[newIndex - 1]?.position ?? 0) + (statusTasks[newIndex]?.position ?? 0)) / 2)
           taskToMove.status_id = newStatusId
+          taskToMove.ultima_atualizacao = now
           
           // Reinsere a tarefa
           remainingTasks.push(taskToMove)
@@ -84,7 +81,8 @@ export const useTaskStore = create<TaskStore>()(
             pendingChanges: [...state.pendingChanges, {
               taskId,
               statusId: newStatusId,
-              position: taskToMove.position
+              position: taskToMove.position,
+              ultima_atualizacao: now
             }]
           }
         })
