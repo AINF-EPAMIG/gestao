@@ -56,27 +56,29 @@ const TaskCard = memo(function TaskCard({
     const date = new Date(dateTime);
     const hoje = new Date();
     const ontem = new Date();
-    
-    // Ajusta as datas de comparação para o fuso local
-    hoje.setHours(0, 0, 0, 0);
-    ontem.setHours(0, 0, 0, 0);
     ontem.setDate(ontem.getDate() - 1);
     
-    // Formatação da hora sem subtrair 3 horas
+    // Formatação da hora
     const hora = date.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'UTC'
     });
 
-    // Compara apenas as datas
-    const dataAtual = new Date(date.toISOString().split('T')[0]);
+    // Compara as datas usando o método de comparação por dia
+    const ehHoje = date.getUTCDate() === hoje.getDate() && 
+                  date.getUTCMonth() === hoje.getMonth() && 
+                  date.getUTCFullYear() === hoje.getFullYear();
+                  
+    const ehOntem = date.getUTCDate() === ontem.getDate() && 
+                   date.getUTCMonth() === ontem.getMonth() && 
+                   date.getUTCFullYear() === ontem.getFullYear();
     
-    if (dataAtual.toDateString() === hoje.toDateString()) {
+    if (ehHoje) {
       return `Atualizado Hoje às ${hora}`;
     }
     
-    if (dataAtual.toDateString() === ontem.toDateString()) {
+    if (ehOntem) {
       return `Atualizado Ontem às ${hora}`;
     }
     
