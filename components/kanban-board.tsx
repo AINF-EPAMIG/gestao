@@ -52,7 +52,29 @@ const TaskCard = memo(function TaskCard({
 
   const formatDateTime = (dateTime: string | null) => {
     if (!dateTime) return null;
+    
     const date = new Date(dateTime);
+    const hoje = new Date();
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    
+    // Formatação da hora
+    const hora = date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // Verifica se é hoje
+    if (date.toDateString() === hoje.toDateString()) {
+      return `Hoje às ${hora}`;
+    }
+    
+    // Verifica se é ontem
+    if (date.toDateString() === ontem.toDateString()) {
+      return `Ontem às ${hora}`;
+    }
+    
+    // Caso contrário, retorna a data completa
     return date.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -111,11 +133,6 @@ const TaskCard = memo(function TaskCard({
               </span>
             </div>
           </div>
-          {task.data_inicio && (
-            <span className="text-xs text-gray-500">
-              Início: {new Date(task.data_inicio).toLocaleDateString()}
-            </span>
-          )}
           {task.ultima_atualizacao && (
             <span className="text-xs text-gray-500">
               Atualizado: {formatDateTime(task.ultima_atualizacao)}

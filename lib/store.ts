@@ -66,7 +66,10 @@ export const useTaskStore = create<TaskStore>()(
             .sort((a, b) => (a.position || 0) - (b.position || 0))
           
           // Atualiza posições e última atualização
-          const now = new Date().toISOString()
+          const date = new Date()
+          date.setHours(date.getHours() - 3) // Subtrai 3 horas
+          const now = date.toISOString()
+          
           taskToMove.position = (newIndex === 0) ? (statusTasks[0]?.position ?? 0) - 1 :
             (newIndex >= statusTasks.length) ? (statusTasks[statusTasks.length - 1]?.position ?? 0) + 1 :
             Math.floor(((statusTasks[newIndex - 1]?.position ?? 0) + (statusTasks[newIndex]?.position ?? 0)) / 2)
