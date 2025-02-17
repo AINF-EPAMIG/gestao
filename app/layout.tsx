@@ -4,7 +4,6 @@ import "./globals.css"
 import { Sidebar } from "@/components/sidebar"
 import type React from "react"
 import { Providers } from "@/components/providers"
-import { TaskPoller } from "@/components/task-poller"
 
 export const metadata: Metadata = {
   title: "Painel Gestão",
@@ -20,7 +19,6 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={GeistSans.className}>
         <Providers>
-          <TaskPoller />
           <div className="flex min-h-screen bg-white">
             <Sidebar />
             <main className="flex-1 p-4">{children}</main>
