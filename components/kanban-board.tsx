@@ -240,6 +240,12 @@ const Column = memo(function Column({
 export function KanbanBoard() {
   const tasks = useTaskStore((state) => state.tasks)
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
+  const initializeSSE = useTaskStore((state) => state.initializeSSE)
+
+  useEffect(() => {
+    const cleanup = initializeSSE();
+    return () => cleanup();
+  }, [initializeSSE]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {

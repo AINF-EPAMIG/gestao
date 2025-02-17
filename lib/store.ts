@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import io from 'socket.io-client'
 
 export type Priority = "Alta" | "Média" | "Baixa"
 export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Concluída"
@@ -40,6 +41,8 @@ interface TaskStore {
   getTasksByStatus: (statusId: number) => Task[]
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
+  initializeSSE: () => () => void
+  initializeSocket: () => () => void
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -147,6 +150,36 @@ export const useTaskStore = create<TaskStore>()(
           subject,
           A: count,
         }));
+      },
+
+      initializeSSE: () => {
+        const eventSource = new EventSource('/api/atividades/stream');
+        
+        eventSource.onmessage = (event) => {
+          const tasks = JSON.parse(event.data);
+          set({ tasks });
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('Erro na conexão SSE:', error);
+          eventSource.close();
+        };
+
+        return () => {
+          eventSource.close();
+        };
+      },
+
+      initializeSocket: () => {
+        const socket = io();
+        
+        socket.on('taskUpdated', (tasks) => {
+          set({ tasks });
+        });
+
+        return () => {
+          socket.disconnect();
+        };
       },
     }),
     {
