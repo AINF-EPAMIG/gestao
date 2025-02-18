@@ -39,12 +39,10 @@ const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email?: string 
 // Componente TaskCard extraído e memoizado
 const TaskCard = memo(function TaskCard({ 
   task, 
-  index,
   provided,
   snapshot 
 }: { 
   task: Task; 
-  index: number;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) {
@@ -123,7 +121,7 @@ const TaskCard = memo(function TaskCard({
             {getPriorityName(task.prioridade_id)}
           </Badge>
           <Badge variant="outline">
-            {task.sistema_nome || `Sistema ${task.sistema_id}`}
+            {task.projeto_nome || `Projeto ${task.projeto_id}`}
           </Badge>
         </div>
         <h4 className="font-medium">{task.titulo}</h4>
@@ -213,7 +211,6 @@ const Column = memo(function Column({
                 {(provided, snapshot) => (
                   <TaskCard 
                     task={task} 
-                    index={index} 
                     provided={provided}
                     snapshot={snapshot}
                   />

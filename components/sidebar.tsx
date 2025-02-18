@@ -13,7 +13,7 @@ import { AuthButton } from "@/components/auth-button"
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const session = useSession()
+  const { data: session } = useSession()
 
   const navigation = [
     {
@@ -56,9 +56,11 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      <div className="px-3 sm:px-4 py-2 flex justify-center">
-        <AuthButton />
-      </div>
+      {session && (
+        <div className="px-3 sm:px-4 py-2 flex justify-center">
+          <AuthButton showLogout={true} />
+        </div>
+      )}
       <Footer />
     </div>
   )

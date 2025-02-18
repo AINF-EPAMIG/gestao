@@ -15,13 +15,11 @@ export function usePolling(callback: () => Promise<void>, interval: number = 100
   }, [callback, interval]);
 
   useEffect(() => {
-    console.log('🔄 Iniciando polling...');
     // Executa imediatamente na primeira vez
     poll();
 
     // Cleanup
     return () => {
-      console.log('🛑 Parando polling...');
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }

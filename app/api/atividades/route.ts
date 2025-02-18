@@ -3,15 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    console.log('🔵 Iniciando consulta ao banco de dados...');
-    
     // Buscar atividades e responsáveis em uma única consulta
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email, s.nome as sistema_nome
+        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
-        LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
+        LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
       `,
     });
     
@@ -50,10 +48,10 @@ export async function PUT(request: NextRequest) {
     // Buscar dados atualizados
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email, s.nome as sistema_nome
+        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
-        LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
+        LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
         ORDER BY a.status_id, a.position
       `,
     });
@@ -71,14 +69,12 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { titulo, descricao, data_inicio, status_id, prioridade_id, sistema_id, responsavel_email, data_fim, estimativa_horas } = data;
+    const { titulo, descricao, data_inicio, status_id, prioridade_id, projeto_id, responsavel_email, data_fim, estimativa_horas } = data;
 
-    console.log('🔵 Criando nova atividade...');
-    
     await executeQuery({
       query: `
         INSERT INTO u711845530_gestao.atividades 
-        (titulo, descricao, sistema_id, responsavel_id, data_inicio, data_fim, 
+        (titulo, descricao, projeto_id, responsavel_id, data_inicio, data_fim, 
          status_id, prioridade_id, estimativa_horas) 
         VALUES (?, ?, ?, 
           (SELECT id FROM u711845530_gestao.responsaveis WHERE email = ?), 
@@ -87,7 +83,7 @@ export async function POST(request: NextRequest) {
       values: [
         titulo, 
         descricao, 
-        sistema_id,
+        projeto_id,
         responsavel_email,
         data_inicio,
         data_fim,
@@ -97,23 +93,63 @@ export async function POST(request: NextRequest) {
       ],
     });
     
-    console.log('✅ Atividade criada com sucesso');
-    
     // Buscar dados atualizados
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email, s.nome as sistema_nome
+        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
-        LEFT JOIN u711845530_gestao.sistemas s ON a.sistema_id = s.id
+        LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
       `,
     });
     
     return NextResponse.json(atividades);
   } catch (error) {
-    console.error('❌ Erro ao criar atividade:', error);
+    console.error('Erro ao criar atividade:', error);
     return NextResponse.json(
       { error: 'Erro ao criar atividade' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Extrair o ID da URL
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID não fornecido' },
+        { status: 400 }
+      );
+    }
+    
+    console.log('🔵 Excluindo atividade...');
+    
+    await executeQuery({
+      query: 'DELETE FROM u711845530_gestao.atividades WHERE id = ?',
+      values: [id],
+    });
+    
+    console.log('✅ Atividade excluída com sucesso');
+    
+    // Buscar dados atualizados
+    const atividades = await executeQuery({
+      query: `
+        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome
+        FROM u711845530_gestao.atividades a
+        LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+        LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
+      `,
+    });
+    
+    return NextResponse.json(atividades);
+  } catch (error) {
+    console.error('❌ Erro ao excluir atividade:', error);
+    return NextResponse.json(
+      { error: 'Erro ao excluir atividade' },
       { status: 500 }
     );
   }

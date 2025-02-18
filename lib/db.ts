@@ -12,10 +12,6 @@ const pool = mysql.createPool({
 
 console.log('🔌 Pool de conexão MySQL configurado');
 
-interface DatabaseRecord {
-  id: string;
-}
-
 export async function executeQuery<T>({ 
   query, 
   values 

@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Task } from "@/lib/store"
+import { useState } from "react"
+import { Task, getPriorityName } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { getUserIcon } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
-import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { TaskDetailsModal } from "@/components/task-details-modal"
 
 interface TaskStackProps {
@@ -79,7 +78,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
                       {getPriorityName(task.prioridade_id)}
                     </Badge>
                     <Badge variant="outline">
-                      {task.sistema_nome || `Sistema ${task.sistema_id}`}
+                      {task.projeto_nome || `Projeto ${task.projeto_id}`}
                     </Badge>
                   </div>
                   <h4 className="font-medium">{task.titulo}</h4>

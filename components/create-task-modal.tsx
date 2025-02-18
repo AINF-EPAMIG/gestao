@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTaskStore } from "@/lib/store"
 import { useSession } from "next-auth/react"
 
-interface Sistema {
+interface Projeto {
   id: number
   nome: string
 }
@@ -24,27 +24,30 @@ export function CreateTaskModal() {
   const [open, setOpen] = useState(false)
   const [titulo, setTitulo] = useState("")
   const [descricao, setDescricao] = useState("")
-  const [sistemaId, setSistemaId] = useState<string>("")
+  const [projetoId, setProjetoId] = useState<string>("")
   const [responsavelEmail, setResponsavelEmail] = useState("")
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
   const [estimativaHoras, setEstimativaHoras] = useState("")
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState("")
-  const [sistemas, setSistemas] = useState<Sistema[]>([])
+  const [projetos, setProjetos] = useState<Projeto[]>([])
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const setTasks = useTaskStore((state) => state.setTasks)
+  const [projetoInput, setProjetoInput] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   useEffect(() => {
-    // Carregar sistemas do banco
-    const fetchSistemas = async () => {
+    // Carregar projetos do banco
+    const fetchProjetos = async () => {
       try {
-        const response = await fetch('/api/sistemas')
+        const response = await fetch('/api/projetos')
         if (response.ok) {
           const data = await response.json()
-          setSistemas(data)
+          setProjetos(data)
         }
       } catch (error) {
-        console.error('Erro ao carregar sistemas:', error)
+        console.error('Erro ao carregar projetos:', error)
       }
     }
 
@@ -61,7 +64,7 @@ export function CreateTaskModal() {
       }
     }
 
-    fetchSistemas()
+    fetchProjetos()
     fetchResponsaveis()
     
     // Preencher email do usuário logado
@@ -82,7 +85,7 @@ export function CreateTaskModal() {
         body: JSON.stringify({
           titulo,
           descricao,
-          sistema_id: parseInt(sistemaId),
+          projeto_id: parseInt(projetoId),
           responsavel_email: responsavelEmail,
           data_inicio: dataInicio,
           data_fim: dataFim,
@@ -99,13 +102,41 @@ export function CreateTaskModal() {
         // Resetar campos
         setTitulo("")
         setDescricao("")
-        setSistemaId("")
+        setProjetoId("")
         setPrioridade("2")
         setEstimativaHoras("")
         setDataFim("")
       }
     } catch (error) {
       console.error('Erro ao criar tarefa:', error)
+    }
+  }
+
+  const handleProjetoSelect = (projeto: Projeto) => {
+    setProjetoId(projeto.id.toString())
+    setProjetoInput(projeto.nome)
+    setShowSuggestions(false)
+  }
+
+  const handleCreateNewProjeto = async (nome: string) => {
+    try {
+      const nomeCapitalizado = nome.charAt(0).toUpperCase() + nome.slice(1);
+      
+      const response = await fetch('/api/projetos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nomeCapitalizado })
+      })
+
+      if (response.ok) {
+        const novoProjeto = await response.json()
+        setProjetos(prev => [...prev, novoProjeto])
+        setProjetoId(novoProjeto.id.toString())
+        setProjetoInput(novoProjeto.nome)
+        setShowSuggestions(false)
+      }
+    } catch (error) {
+      console.error('Erro ao criar projeto:', error)
     }
   }
 
@@ -140,38 +171,60 @@ export function CreateTaskModal() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Sistema</label>
-              <Select value={sistemaId} onValueChange={setSistemaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um sistema" />
-                </SelectTrigger>
-                <SelectContent position="item-aligned" side="bottom" align="start">
-                  {sistemas.map((sistema) => (
-                    <SelectItem key={sistema.id} value={sistema.id.toString()}>
-                      {sistema.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div>
+            <label className="text-sm font-medium">Projeto</label>
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                value={projetoInput}
+                onChange={(e) => {
+                  setProjetoInput(e.target.value)
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Digite o nome do projeto"
+                className="w-full"
+              />
+              {showSuggestions && projetoInput && (
+                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                  {projetos
+                    .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
+                    .map(projeto => (
+                      <div
+                        key={projeto.id}
+                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleProjetoSelect(projeto)}
+                      >
+                        {projeto.nome}
+                      </div>
+                    ))}
+                  {!projetos.some(p => p.nome.toLowerCase() === projetoInput.toLowerCase()) && (
+                    <div
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-emerald-600"
+                      onClick={() => handleCreateNewProjeto(projetoInput)}
+                    >
+                      + Criar &quot;{projetoInput}&quot;
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium">Responsável</label>
-              <Select value={responsavelEmail} onValueChange={setResponsavelEmail}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um responsável" />
-                </SelectTrigger>
-                <SelectContent position="item-aligned" side="bottom" align="start">
-                  {responsaveis.map((resp) => (
-                    <SelectItem key={resp.email} value={resp.email}>
-                      {resp.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <label className="text-sm font-medium">Responsável</label>
+            <Select value={responsavelEmail} onValueChange={setResponsavelEmail}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um responsável" />
+              </SelectTrigger>
+              <SelectContent position="item-aligned" side="bottom" align="start">
+                {responsaveis.map((resp) => (
+                  <SelectItem key={resp.email} value={resp.email}>
+                    {resp.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

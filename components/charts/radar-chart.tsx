@@ -6,7 +6,16 @@ import { useMemo, useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
-const CustomAxisTick = ({ x, y, payload }: any) => {
+interface CustomAxisTickProps {
+  x: number
+  y: number
+  payload: {
+    value: string
+    angle: number
+  }
+}
+
+const CustomAxisTick = ({ x, y, payload }: CustomAxisTickProps) => {
   const email = payload.value.toLowerCase().replace(" ", ".") + "@epamig.br"
   const name = payload.value
 

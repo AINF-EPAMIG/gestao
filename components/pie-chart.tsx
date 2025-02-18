@@ -10,8 +10,18 @@ const COLORS = {
   "Em testes": "#fbbf24",
 }
 
+interface CustomLabelProps {
+  cx: number
+  cy: number
+  midAngle: number
+  innerRadius: number
+  outerRadius: number
+  name: string
+  value: number
+}
+
 const RADIAN = Math.PI / 180
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) => {
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: CustomLabelProps) => {
   const radius = innerRadius + (outerRadius - innerRadius) * 1.6
   const x = cx + radius * Math.cos(-midAngle * RADIAN)
   const y = cy + radius * Math.sin(-midAngle * RADIAN)

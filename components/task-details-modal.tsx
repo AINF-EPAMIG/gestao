@@ -6,6 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
 import type { Task } from "@/lib/store"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Trash2 } from "lucide-react"
+import { useTaskStore } from "@/lib/store"
 
 interface TaskDetailsModalProps {
   task: Task
@@ -42,6 +46,26 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     });
   };
 
+  const deleteTask = useTaskStore((state) => state.deleteTask)
+
+  const handleDelete = async () => {
+    try {
+      const response = await fetch(`/api/atividades?id=${task.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir tarefa');
+      }
+
+      await deleteTask(task.id);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Erro ao excluir tarefa:', error);
+      // Aqui você pode adicionar uma notificação de erro se desejar
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -64,7 +88,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               {getPriorityName(task.prioridade_id)}
             </Badge>
             <Badge variant="outline">
-              {task.sistema_nome || `Sistema ${task.sistema_id}`}
+              {task.projeto_nome || `Projeto ${task.projeto_id}`}
             </Badge>
           </div>
 
@@ -150,6 +174,31 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 : '-'}
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                Excluir Tarefa
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

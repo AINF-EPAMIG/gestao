@@ -6,7 +6,11 @@ import { FcGoogle } from "react-icons/fc"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 
-export function AuthButton() {
+interface AuthButtonProps {
+  showLogout?: boolean
+}
+
+export function AuthButton({ showLogout = true }: AuthButtonProps) {
   const { data: session } = useSession()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -15,11 +19,11 @@ export function AuthButton() {
     await signIn("google")
   }
 
-  if (session) {
+  if (session && showLogout) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm text-center text-emerald-100/80">
-          {session.user?.email}
+          {session.user?.name}
         </p>
         <Button
           onClick={() => signOut()}
@@ -31,18 +35,22 @@ export function AuthButton() {
     )
   }
 
-  return (
-    <Button
-      onClick={handleSignIn}
-      disabled={isLoading}
-      className="gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
-    >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <FcGoogle className="text-lg" />
-      )}
-      {isLoading ? "Carregando..." : "Entrar com Google"}
-    </Button>
-  )
+  if (!session) {
+    return (
+      <Button
+        onClick={handleSignIn}
+        disabled={isLoading}
+        className="gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <FcGoogle className="text-lg" />
+        )}
+        {isLoading ? "Carregando..." : "Login e-mail epamig.br"}
+      </Button>
+    )
+  }
+
+  return null
 } 

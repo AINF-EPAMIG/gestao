@@ -43,7 +43,9 @@ export function TaskCard({
         </Avatar>
         <div>
           <h3 className="font-semibold">{user}</h3>
-          <Badge variant="outline">{system}</Badge>
+          <Badge variant="outline">
+            {system || `Projeto ${system}`}
+          </Badge>
         </div>
         <Badge className={`ml-auto ${priorityColor[priority]}`}>{priority}</Badge>
       </CardHeader>

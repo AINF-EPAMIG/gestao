@@ -62,7 +62,7 @@ export function DataTable({ tasks }: DataTableProps) {
                   {getPriorityName(task.prioridade_id)}
                 </Badge>
               </TableCell>
-              <TableCell>{task.sistema_nome}</TableCell>
+              <TableCell>{task.projeto_nome || `Projeto ${task.projeto_id}`}</TableCell>
               <TableCell>{formatHours(task.estimativa_horas)}</TableCell>
               <TableCell>
                 {task.ultima_atualizacao 

@@ -1,21 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
-import { Task, getStatusName } from "@/lib/store"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Construction } from "lucide-react"
 
-interface TasksByResponsavelChartProps {
-  tasks: Task[]
-}
-
-function formatStatusName(statusId: number): string {
-  const status = getStatusName(statusId)
-  return status === "Em desenvolvimento" ? "Desenvolvimento" : status
-}
-
-export function TasksByResponsavelChart({ tasks }: TasksByResponsavelChartProps) {
+export function TasksByResponsavelChart() {
   return (
     <Card className="col-span-full">
       <CardHeader>

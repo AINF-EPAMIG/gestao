@@ -9,8 +9,8 @@ export interface Task {
   id: number
   responsavel_id: number | null
   responsavel_email?: string
-  sistema_id: number
-  sistema_nome?: string
+  projeto_id: number
+  projeto_nome?: string
   titulo: string
   descricao: string
   prioridade_id: number
@@ -42,6 +42,7 @@ interface TaskStore {
   getTaskDistribution: () => { name: string; value: number }[]
   getAssigneeDistribution: () => { subject: string; A: number }[]
   fetchTasks: () => Promise<void>
+  deleteTask: (taskId: number) => Promise<void>
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -153,9 +154,8 @@ export const useTaskStore = create<TaskStore>()(
 
       fetchTasks: async () => {
         try {
-          console.log('📥 Buscando tarefas...');
           const response = await fetch('/api/atividades', {
-            cache: 'no-store', // Força sempre buscar dados novos
+            cache: 'no-store',
             headers: {
               'Cache-Control': 'no-cache'
             }
@@ -169,11 +169,25 @@ export const useTaskStore = create<TaskStore>()(
           const hasChanges = JSON.stringify(currentTasks) !== JSON.stringify(data);
           
           if (hasChanges) {
-            console.log('🔄 Atualizando tarefas...');
             set({ tasks: data });
           }
         } catch (error) {
           console.error('❌ Erro ao buscar tarefas:', error);
+        }
+      },
+
+      deleteTask: async (taskId: number) => {
+        try {
+          const response = await fetch(`/api/atividades/${taskId}`, {
+            method: 'DELETE',
+          });
+          
+          if (response.ok) {
+            const updatedTasks = await response.json();
+            set({ tasks: updatedTasks });
+          }
+        } catch (error) {
+          console.error('Erro ao excluir tarefa:', error);
         }
       },
     }),
@@ -204,12 +218,6 @@ export function getPriorityName(priorityId: number): Priority {
     3: "Baixa"
   }
   return priorityMap[priorityId] || "Média"
-}
-
-interface ResponsavelInfo {
-  email: string;
-  nome: string;
-  cargo?: string;
 }
 
 export function getResponsavelName(responsavelId: number | null, email?: string): string {

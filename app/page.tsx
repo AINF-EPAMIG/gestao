@@ -6,7 +6,7 @@ import { RadarChart } from "@/components/charts/radar-chart"
 import { useTaskStore, type Task } from "@/lib/store"
 import { useMemo } from "react"
 import { TaskStack } from "@/components/task-stack"
-import { PollingWrapper } from "@/components/polling-wrapper"
+import AuthRequired from "@/components/auth-required"
 
 function getStatusName(statusId: number): string {
   const statusMap: Record<number, string> = {
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   }, [tasks])
 
   return (
-    <PollingWrapper>
+    <AuthRequired>
       <div className="min-h-screen w-full bg-background pt-8 md:pt-0">
         {" "}
         {/* Reduced from pt-14 to pt-12 */}
@@ -82,7 +82,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </PollingWrapper>
+    </AuthRequired>
   )
 }
 
