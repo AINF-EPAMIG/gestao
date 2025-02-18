@@ -3,12 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart } from "@/components/charts/pie-chart"
 import { RadarChart } from "@/components/charts/radar-chart"
-import { TaskCard } from "@/components/task-card"
-import { Task, useTaskStore } from "@/lib/store"
+import { useTaskStore, type Task } from "@/lib/store"
 import { useMemo } from "react"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { formatHours } from "@/lib/store"
 import { TaskStack } from "@/components/task-stack"
 import { PollingWrapper } from "@/components/polling-wrapper"
 
@@ -17,81 +13,72 @@ function getStatusName(statusId: number): string {
     1: "Não iniciada",
     2: "Em desenvolvimento",
     3: "Em testes",
-    4: "Concluída"
+    4: "Concluída",
   }
   return statusMap[statusId] || "Desconhecido"
 }
 
-function getPriorityName(priorityId: number): "Alta" | "Média" | "Baixa" {
-  const priorityMap: Record<number, "Alta" | "Média" | "Baixa"> = {
-    1: "Alta",
-    2: "Média",
-    3: "Baixa"
-  }
-  return priorityMap[priorityId] || "Média"
-}
-
-function getResponsavelName(responsavelId: number | null, email?: string): string {
-  if (!responsavelId || !email) return "Não atribuído";
-  return email.split('@')[0].replace('.', ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
 export default function DashboardPage() {
   const tasks = useTaskStore((state) => state.tasks)
-  
+
   const tasksInDevelopment = useMemo(() => {
     const tasksByUser = tasks
-      .filter(task => getStatusName(task.status_id) === "Em desenvolvimento")
-      .reduce((acc, task) => {
-        if (!task.responsavel_email) return acc
-        if (!acc[task.responsavel_email]) {
-          acc[task.responsavel_email] = []
-        }
-        acc[task.responsavel_email].push(task)
-        return acc
-      }, {} as Record<string, Task[]>)
+      .filter((task) => getStatusName(task.status_id) === "Em desenvolvimento")
+      .reduce(
+        (acc, task) => {
+          if (!task.responsavel_email) return acc
+          if (!acc[task.responsavel_email]) {
+            acc[task.responsavel_email] = []
+          }
+          acc[task.responsavel_email].push(task)
+          return acc
+        },
+        {} as Record<string, Task[]>,
+      )
 
     return Object.entries(tasksByUser)
   }, [tasks])
 
   return (
     <PollingWrapper>
-      <div className="p-4 md:p-8">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">Painel de Controle Kanban</h1>
+      <div className="min-h-screen w-full bg-background pt-8 md:pt-0">
+        {" "}
+        {/* Reduced from pt-14 to pt-12 */}
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-6">
+          {" "}
+          {/* Reduced py-4 to py-2 */}
+          <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Painel de Controle Kanban</h1>{" "}
+          {/* Reduced mb-6 to mb-4 on mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="text-lg md:text-xl">Distribuição por Etapa</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                  <PieChart />
+                </div>
+              </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="p-4">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle>Distribuição por Etapa</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <PieChart />
-            </CardContent>
-          </Card>
-
-          <Card className="p-4">
-            <CardHeader className="p-0 pb-4">
-              <CardTitle>Cards Atribuídos por Usuário</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <RadarChart />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tasksInDevelopment.map(([email, tasks]) => (
-              <TaskStack 
-                key={email} 
-                tasks={tasks}
-                responsavelEmail={email}
-              />
-            ))}
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="text-lg md:text-xl">Cards Atribuídos por Usuário</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                  <RadarChart />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tasksInDevelopment.map(([email, tasks]) => (
+                <TaskStack key={email} tasks={tasks} responsavelEmail={email} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

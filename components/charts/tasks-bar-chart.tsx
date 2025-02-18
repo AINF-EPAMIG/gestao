@@ -1,41 +1,31 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { Task } from "@/lib/store"
 
-interface TasksBarChartProps {
-  data: {
-    name: string
-    value: number
-  }[]
-}
+export function TasksBarChart({ tasks }: { tasks: Task[] }) {
+  const data = Object.entries(
+    tasks.reduce((acc, task) => {
+      const name = task.responsavel_email?.split("@")[0] || "Sem responsável"
+      acc[name] = (acc[name] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+  )
+    .map(([name, value]) => ({
+      name: name.split(".").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" "),
+      tarefas: value
+    }))
+    .sort((a, b) => b.tarefas - a.tarefas)
 
-const COLORS = {
-  "Em desenvolvimento": "#3b82f6",
-  "Não iniciada": "#f97316",
-  "Concluída": "#10b981",
-  "Em testes": "#fbbf24",
-}
-
-export function TasksBarChart({ data }: TasksBarChartProps) {
   return (
-    <div className="h-[300px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Bar
-            dataKey="value"
-            fill="#3b82f6"
-            radius={[4, 4, 0, 0]}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS] || "#3b82f6"} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey="tarefas" fill="#3B82F6" />
+      </BarChart>
+    </ResponsiveContainer>
   )
 } 

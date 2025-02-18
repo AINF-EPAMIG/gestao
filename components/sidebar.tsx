@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, BarChart3 } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Footer } from "./footer"
 import { useSession } from "next-auth/react"
 import { AuthButton } from "@/components/auth-button"
@@ -27,29 +27,25 @@ export function Sidebar() {
       label: "Kanban",
     },
     {
-      href: "/relatorio",
-      icon: BarChart3,
-      label: "Relatório",
-    },
-    {
-      href: "/planilha",
+      href: "/relatorios",
       icon: FileSpreadsheet,
-      label: "Planilha",
+      label: "Relatórios",
     },
   ]
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
-      <div className="flex-1 pt-6">
-        <h1 className="text-xl font-semibold px-4 mb-6">Painel Gestão</h1>
-        <nav className="mt-2">
+      <div className="flex-1 pt-4 sm:pt-6">
+        <h1 className="text-lg sm:text-xl font-semibold px-3 sm:px-4 mb-4 sm:mb-6">Painel Gestão</h1>
+        <nav className="mt-1 sm:mt-2">
           {navigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-4 py-2 transition-colors",
-                "hover:bg-emerald-700/50",
+                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-2 transition-colors",
+                "hover:bg-emerald-700/50 active:bg-emerald-700/70",
+                "touch-target-auto", // Melhor área de toque para mobile
                 pathname === item.href && "bg-emerald-700",
               )}
               onClick={() => setOpen(false)}
@@ -60,7 +56,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      <div className="px-4 py-2 flex justify-center">
+      <div className="px-3 sm:px-4 py-2 flex justify-center">
         <AuthButton />
       </div>
       <Footer />
@@ -70,14 +66,18 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Sidebar */}
-      <div className="md:hidden">
+      <div className="md:hidden fixed top-0 left-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full h-14">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button className="p-4">
+            <button className="p-3 m-1 hover:bg-accent rounded-lg transition-colors">
               <Menu size={24} />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 bg-emerald-800 text-white">
+          <SheetContent 
+            side="left" 
+            className="w-[280px] p-0 bg-emerald-800 text-white h-full flex flex-col"
+          >
+            <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
             <NavContent />
           </SheetContent>
         </Sheet>
@@ -85,11 +85,11 @@ export function Sidebar() {
 
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <div className="fixed top-4 bottom-4 left-0 w-64 bg-emerald-800 text-white rounded-2xl">
+        <div className="fixed top-4 bottom-4 left-4 w-64 bg-emerald-800 text-white rounded-2xl shadow-lg">
           <NavContent />
         </div>
         {/* Spacer div para empurrar o conteúdo principal */}
-        <div className="w-[272px] shrink-0" /> {/* 64px (sidebar) + 16px (left margin) */}
+        <div className="w-[280px] shrink-0" /> {/* 256px (sidebar) + 24px (left margin) */}
       </div>
     </>
   )
