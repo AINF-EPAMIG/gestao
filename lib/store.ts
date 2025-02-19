@@ -23,6 +23,7 @@ export interface Task {
   order?: number
   position: number | null
   ultima_atualizacao: string | null
+  setor_sigla?: string
 }
 
 interface PendingChange {
@@ -43,6 +44,8 @@ interface TaskStore {
   getAssigneeDistribution: () => { subject: string; A: number }[]
   fetchTasks: () => Promise<void>
   deleteTask: (taskId: number) => Promise<void>
+  selectedSetor: string | null
+  setSelectedSetor: (setor: string | null) => void
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -50,6 +53,7 @@ export const useTaskStore = create<TaskStore>()(
     (set, get) => ({
       tasks: [],
       pendingChanges: [],
+      selectedSetor: null,
       
       setTasks: (tasks) => set({ tasks }),
       
@@ -190,12 +194,15 @@ export const useTaskStore = create<TaskStore>()(
           console.error('Erro ao excluir tarefa:', error);
         }
       },
+
+      setSelectedSetor: (setor) => set({ selectedSetor: setor }),
     }),
     {
       name: 'kanban-store',
       partialize: (state) => ({ 
         tasks: state.tasks,
-        pendingChanges: state.pendingChanges 
+        pendingChanges: state.pendingChanges,
+        selectedSetor: state.selectedSetor 
       })
     }
   )

@@ -2,18 +2,77 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Footer } from "./footer"
 import { useSession } from "next-auth/react"
 import { AuthButton } from "@/components/auth-button"
+import { getUserInfoFromRM, isUserAdmin } from "@/lib/rm-service"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { useTaskStore } from "@/lib/store"
+
+interface Setor {
+  id: number;
+  sigla: string;
+  nome: string;
+}
 
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { data: session } = useSession()
+  const [userSetor, setUserSetor] = useState<string>("")
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [setores, setSetores] = useState<Setor[]>([])
+  const selectedSetor = useTaskStore((state) => state.selectedSetor)
+  const setSelectedSetor = useTaskStore((state) => state.setSelectedSetor)
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (session?.user?.email) {
+        // Verificar se é admin
+        const admin = isUserAdmin(session.user.email);
+        setIsAdmin(admin);
+
+        if (!admin) {
+          // Se não for admin, buscar setor do usuário
+          const userInfo = await getUserInfoFromRM(session.user.email);
+          if (userInfo) {
+            setUserSetor(userInfo.SECAO);
+            setSelectedSetor(userInfo.SECAO); // Define o setor do usuário como selecionado
+          }
+        }
+      }
+    };
+
+    fetchUserInfo();
+  }, [session?.user?.email, setSelectedSetor]);
+
+  useEffect(() => {
+    // Buscar setores do banco apenas se for admin
+    const fetchSetores = async () => {
+      if (isAdmin) {
+        try {
+          const response = await fetch('/api/setor');
+          if (response.ok) {
+            const data = await response.json();
+            setSetores(data);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar setores:', error);
+        }
+      }
+    };
+
+    fetchSetores();
+  }, [isAdmin]);
+
+  const handleSetorSelect = (setor: string | null) => {
+    setSelectedSetor(setor);
+  };
 
   const navigation = [
     {
@@ -36,7 +95,54 @@ export function Sidebar() {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
-        <h1 className="text-lg sm:text-xl font-semibold px-3 sm:px-4 mb-4 sm:mb-6">Painel Gestão</h1>
+        <div className="px-3 sm:px-4 mb-4 sm:mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold">Painel Gestão</h1>
+          {isAdmin && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-sm text-white/80">Setor:</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1 h-8 text-white hover:bg-emerald-700/50 justify-between"
+                  >
+                    {selectedSetor || "Todos os Setores"}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="start" 
+                  className="w-56 bg-white max-h-[250px] overflow-y-auto"
+                  style={{ 
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#10b981 transparent'
+                  }}
+                >
+                  <DropdownMenuItem 
+                    onClick={() => handleSetorSelect(null)}
+                    className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                  >
+                    Todos os Setores
+                  </DropdownMenuItem>
+                  {setores.map((setor) => (
+                    <DropdownMenuItem 
+                      key={setor.id}
+                      onClick={() => handleSetorSelect(setor.sigla)}
+                      className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                    >
+                      {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+          {!isAdmin && userSetor && (
+            <div className="mt-2 text-sm text-white/80">
+              Setor: {userSetor}
+            </div>
+          )}
+        </div>
         <nav className="mt-1 sm:mt-2">
           {navigation.map((item) => (
             <Link

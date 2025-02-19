@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTaskStore } from "@/lib/store"
 import { useSession } from "next-auth/react"
+import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM } from "@/lib/rm-service"
 
 interface Projeto {
   id: number
@@ -16,6 +17,13 @@ interface Projeto {
 
 interface Responsavel {
   email: string;
+  nome: string;
+  cargo?: string;
+}
+
+interface Setor {
+  id: number;
+  sigla: string;
   nome: string;
 }
 
@@ -32,10 +40,75 @@ export function CreateTaskModal() {
   const [dataFim, setDataFim] = useState("")
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
+  const [isChefe, setIsChefe] = useState<boolean>(false)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [setores, setSetores] = useState<Setor[]>([])
+  const [selectedSetor, setSelectedSetor] = useState<string>("")
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [responsavelInput, setResponsavelInput] = useState("")
+  const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
+  const [setorInput, setSetorInput] = useState("")
+  const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
+  const responsavelRef = useRef<HTMLInputElement>(null)
+  const setorRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // Verificar se o usuário é chefe ou admin
+    const checkUserRole = async () => {
+      if (session?.user?.email) {
+        try {
+          // Verificar se é admin
+          const admin = isUserAdmin(session.user.email);
+          setIsAdmin(admin);
+
+          // Verificar se é chefe e buscar setor
+          const userInfo = await getUserInfoFromRM(session.user.email);
+          if (userInfo) {
+            const isUserChefeResult = isUserChefe(userInfo);
+            setIsChefe(isUserChefeResult);
+            setSelectedSetor(userInfo.SECAO);
+            setSetorInput(userInfo.SECAO);
+
+            // Se for chefe, buscar subordinados
+            if (isUserChefeResult) {
+              const subordinadosData = await getSubordinadosFromRM(session.user.email);
+              if (subordinadosData) {
+                const formattedSubordinados = subordinadosData.map(sub => ({
+                  email: sub.EMAIL_SUBORDINADO,
+                  nome: sub.NOME_SUBORDINADO,
+                  cargo: sub.CARGO_SUBORDINADO
+                }));
+                setResponsaveis(formattedSubordinados);
+              }
+            } else {
+              // Se não for chefe, só pode atribuir para si mesmo
+              setResponsaveis([{
+                email: session.user.email,
+                nome: userInfo.NOME_COMPLETO,
+                cargo: userInfo.CARGO
+              }]);
+            }
+          }
+
+          // Se for admin, buscar lista de setores
+          if (admin) {
+            const response = await fetch('/api/setor');
+            if (response.ok) {
+              const data = await response.json();
+              setSetores(data);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao verificar papel do usuário:', error);
+        }
+      }
+    };
+
+    checkUserRole();
+  }, [session?.user?.email, setSelectedSetor]);
 
   useEffect(() => {
     // Carregar projetos do banco
@@ -51,21 +124,7 @@ export function CreateTaskModal() {
       }
     }
 
-    // Carregar responsáveis do banco
-    const fetchResponsaveis = async () => {
-      try {
-        const response = await fetch('/api/responsaveis')
-        if (response.ok) {
-          const data = await response.json()
-          setResponsaveis(data)
-        }
-      } catch (error) {
-        console.error('Erro ao carregar responsáveis:', error)
-      }
-    }
-
     fetchProjetos()
-    fetchResponsaveis()
     
     // Preencher email do usuário logado
     if (session?.user?.email) {
@@ -92,6 +151,8 @@ export function CreateTaskModal() {
           status_id: 1, // Não iniciada
           prioridade_id: parseInt(prioridade),
           estimativa_horas: estimativaHoras,
+          userEmail: session?.user?.email,
+          setorSigla: selectedSetor,
         }),
       })
 
@@ -106,9 +167,13 @@ export function CreateTaskModal() {
         setPrioridade("2")
         setEstimativaHoras("")
         setDataFim("")
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Erro ao criar tarefa')
       }
     } catch (error) {
       console.error('Erro ao criar tarefa:', error)
+      alert('Erro ao criar tarefa')
     }
   }
 
@@ -140,10 +205,26 @@ export function CreateTaskModal() {
     }
   }
 
+  const handleResponsavelSelect = (responsavel: Responsavel) => {
+    setResponsavelEmail(responsavel.email)
+    setResponsavelInput(`${responsavel.nome} (${responsavel.email})`)
+    setShowResponsavelSuggestions(false)
+  }
+
+  const handleSetorSelect = (setor: Setor) => {
+    setSelectedSetor(setor.sigla)
+    setSetorInput(setor.sigla + (setor.nome ? ` ${setor.nome}` : ''))
+    setShowSetorSuggestions(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-emerald-800 text-white hover:bg-emerald-700">
+        <Button 
+          className="bg-emerald-800 text-white hover:bg-emerald-700"
+          disabled={!isChefe && !isAdmin}
+          title={!isChefe && !isAdmin ? "Apenas chefes e administradores podem criar novas tarefas" : ""}
+        >
           Nova Tarefa
         </Button>
       </DialogTrigger>
@@ -213,18 +294,78 @@ export function CreateTaskModal() {
 
           <div>
             <label className="text-sm font-medium">Responsável</label>
-            <Select value={responsavelEmail} onValueChange={setResponsavelEmail}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um responsável" />
-              </SelectTrigger>
-              <SelectContent position="item-aligned" side="bottom" align="start">
-                {responsaveis.map((resp) => (
-                  <SelectItem key={resp.email} value={resp.email}>
-                    {resp.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Input
+                ref={responsavelRef}
+                value={responsavelInput}
+                onChange={(e) => {
+                  setResponsavelInput(e.target.value)
+                  setShowResponsavelSuggestions(true)
+                }}
+                onFocus={() => setShowResponsavelSuggestions(true)}
+                placeholder="Digite o nome do responsável"
+                className="w-full"
+              />
+              {showResponsavelSuggestions && responsavelInput && (
+                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                  {responsaveis
+                    .filter(r => r.nome.toLowerCase().includes(responsavelInput.toLowerCase()))
+                    .map(responsavel => (
+                      <div
+                        key={responsavel.email}
+                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleResponsavelSelect(responsavel)}
+                      >
+                        <div>{responsavel.nome}</div>
+                        <div className="text-sm text-gray-500">{responsavel.email}</div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Setor</label>
+            {isAdmin ? (
+              <div className="relative">
+                <Input
+                  ref={setorRef}
+                  value={setorInput}
+                  onChange={(e) => {
+                    setSetorInput(e.target.value)
+                    setShowSetorSuggestions(true)
+                  }}
+                  onFocus={() => setShowSetorSuggestions(true)}
+                  placeholder="Digite o setor"
+                  className="w-full"
+                />
+                {showSetorSuggestions && setorInput && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                    {setores
+                      .filter(s => 
+                        s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
+                        (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
+                      )
+                      .map(setor => (
+                        <div
+                          key={setor.id}
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                          onClick={() => handleSetorSelect(setor)}
+                        >
+                          {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Input
+                value={setorInput}
+                disabled
+                className="bg-gray-100"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
