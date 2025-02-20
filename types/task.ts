@@ -3,7 +3,11 @@ export type Task = {
   sistema_id: number;
   titulo: string;
   descricao: string;
-  responsavel_id: number | null;
-  responsavel_email?: string;
+  responsaveis: {
+    id: number;
+    email: string;
+    nome?: string;
+    cargo?: string;
+  }[];
   status_id: number;
 } 

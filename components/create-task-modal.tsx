@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTaskStore } from "@/lib/store"
 import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM } from "@/lib/rm-service"
+import { Plus, X } from "lucide-react"
+import { DialogFooter } from "@/components/ui/dialog"
 
 interface Projeto {
   id: number
@@ -33,7 +35,8 @@ export function CreateTaskModal() {
   const [titulo, setTitulo] = useState("")
   const [descricao, setDescricao] = useState("")
   const [projetoId, setProjetoId] = useState<string>("")
-  const [responsavelEmail, setResponsavelEmail] = useState("")
+  const [responsavelInput, setResponsavelInput] = useState("")
+  const [selectedResponsaveis, setSelectedResponsaveis] = useState<Responsavel[]>([])
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
   const [estimativaHoras, setEstimativaHoras] = useState("")
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
@@ -48,7 +51,6 @@ export function CreateTaskModal() {
   const [projetoInput, setProjetoInput] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [responsavelInput, setResponsavelInput] = useState("")
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const [setorInput, setSetorInput] = useState("")
   const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
@@ -128,7 +130,7 @@ export function CreateTaskModal() {
     
     // Preencher email do usuário logado
     if (session?.user?.email) {
-      setResponsavelEmail(session.user.email)
+      setResponsavelInput(session.user.email)
     }
   }, [session?.user?.email])
 
@@ -145,7 +147,7 @@ export function CreateTaskModal() {
           titulo,
           descricao,
           projeto_id: parseInt(projetoId),
-          responsavel_email: responsavelEmail,
+          responsaveis_emails: selectedResponsaveis.map(r => r.email),
           data_inicio: dataInicio,
           data_fim: dataFim,
           status_id: 1, // Não iniciada
@@ -168,6 +170,7 @@ export function CreateTaskModal() {
         setPrioridade("2")
         setEstimativaHoras("")
         setDataFim("")
+        setSelectedResponsaveis([])
       } else {
         const error = await response.json()
         alert(error.error || 'Erro ao criar tarefa')
@@ -207,9 +210,15 @@ export function CreateTaskModal() {
   }
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
-    setResponsavelEmail(responsavel.email)
-    setResponsavelInput(`${responsavel.nome} (${responsavel.email})`)
-    setShowResponsavelSuggestions(false)
+    if (!selectedResponsaveis.find(r => r.email === responsavel.email)) {
+      setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
+    }
+    setResponsavelInput("");
+    setShowResponsavelSuggestions(false);
+  }
+
+  const removeResponsavel = (email: string) => {
+    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.email !== email));
   }
 
   const handleSetorSelect = (setor: Setor) => {
@@ -226,6 +235,7 @@ export function CreateTaskModal() {
           disabled={!isChefe && !isAdmin}
           title={!isChefe && !isAdmin ? "Apenas chefes e administradores podem criar novas tarefas" : ""}
         >
+          <Plus className="w-4 h-4 mr-2" />
           Nova Tarefa
         </Button>
       </DialogTrigger>
@@ -294,7 +304,7 @@ export function CreateTaskModal() {
           </div>
 
           <div>
-            <label className="text-sm font-medium">Responsável</label>
+            <label className="text-sm font-medium">Responsáveis</label>
             <div className="relative">
               <Input
                 ref={responsavelRef}
@@ -310,7 +320,10 @@ export function CreateTaskModal() {
               {showResponsavelSuggestions && responsavelInput && (
                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
                   {responsaveis
-                    .filter(r => r.nome.toLowerCase().includes(responsavelInput.toLowerCase()))
+                    .filter(r => 
+                      r.nome.toLowerCase().includes(responsavelInput.toLowerCase()) &&
+                      !selectedResponsaveis.find(sr => sr.email === r.email)
+                    )
                     .map(responsavel => (
                       <div
                         key={responsavel.email}
@@ -323,6 +336,26 @@ export function CreateTaskModal() {
                     ))}
                 </div>
               )}
+            </div>
+            
+            {/* Lista de responsáveis selecionados */}
+            <div className="mt-2 space-y-2">
+              {selectedResponsaveis.map(responsavel => (
+                <div key={responsavel.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div>
+                    <div>{responsavel.nome}</div>
+                    <div className="text-sm text-gray-500">{responsavel.email}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeResponsavel(responsavel.email)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -416,9 +449,11 @@ export function CreateTaskModal() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-emerald-800 text-white hover:bg-emerald-700">
-            Criar Tarefa
-          </Button>
+          <DialogFooter>
+            <Button type="submit" className="w-full bg-emerald-800 text-white hover:bg-emerald-700">
+              Criar Tarefa
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

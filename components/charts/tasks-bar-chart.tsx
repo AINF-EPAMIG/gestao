@@ -6,13 +6,18 @@ import { Task } from "@/lib/store"
 export function TasksBarChart({ tasks }: { tasks: Task[] }) {
   const data = Object.entries(
     tasks.reduce((acc, task) => {
-      const name = task.responsavel_email?.split("@")[0] || "Sem responsável"
-      acc[name] = (acc[name] || 0) + 1
-      return acc
+      (task.responsaveis ?? []).forEach(responsavel => {
+        const name = responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ');
+        acc[name] = (acc[name] || 0) + 1;
+      });
+      if (!(task.responsaveis ?? []).length) {
+        acc["Sem responsável"] = (acc["Sem responsável"] || 0) + 1;
+      }
+      return acc;
     }, {} as Record<string, number>)
   )
     .map(([name, value]) => ({
-      name: name.split(".").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" "),
+      name: name.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" "),
       tarefas: value
     }))
     .sort((a, b) => b.tarefas - a.tarefas)

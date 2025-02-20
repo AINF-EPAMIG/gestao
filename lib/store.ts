@@ -7,8 +7,12 @@ export type Status = "Não iniciada" | "Em desenvolvimento" | "Em testes" | "Con
 
 export interface Task {
   id: number
-  responsavel_id: number | null
-  responsavel_email?: string
+  responsaveis?: {
+    id: number;
+    email: string;
+    nome?: string;
+    cargo?: string;
+  }[]
   projeto_id: number
   projeto_nome?: string
   titulo: string
@@ -144,10 +148,10 @@ export const useTaskStore = create<TaskStore>()(
       getAssigneeDistribution: () => {
         const tasks = get().tasks;
         const assigneeCounts = tasks.reduce((acc, task) => {
-          const responsavel = getResponsavelName(task.responsavel_id, task.responsavel_email);
-          if (responsavel) {
-            acc[responsavel] = (acc[responsavel] || 0) + 1;
-          }
+          (task.responsaveis ?? []).forEach(responsavel => {
+            const name = responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ');
+            acc[name] = (acc[name] || 0) + 1;
+          });
           return acc;
         }, {} as Record<string, number>);
 

@@ -34,15 +34,32 @@ export function DataTable({ tasks }: DataTableProps) {
               <TableCell>{task.titulo}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={getUserIcon(task.responsavel_email)} />
-                    <AvatarFallback>
-                      {task.responsavel_email?.[0]?.toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {task.responsavel_email?.split('@')[0].split('.').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ') || 'Sem responsável'}
+                  <div className="flex -space-x-2">
+                    {(task.responsaveis ?? []).map(resp => (
+                      <Avatar key={resp.email} className="h-6 w-6 border-2 border-white">
+                        <AvatarImage src={getUserIcon(resp.email)} />
+                        <AvatarFallback>
+                          {resp.email[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {!(task.responsaveis ?? []).length && (
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback>?</AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                  <span>
+                    {(task.responsaveis ?? []).length > 0 
+                      ? (task.responsaveis ?? []).map(r => {
+                          const displayName = r.nome 
+                            ? r.nome.split(' ')[0] 
+                            : r.email.split('@')[0].split('.')[0];
+                          return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                        }).join(', ')
+                      : 'Não atribuído'
+                    }
+                  </span>
                 </div>
               </TableCell>
               <TableCell>

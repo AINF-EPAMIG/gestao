@@ -3,7 +3,7 @@
 import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableProvided, type DraggableStateSnapshot } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName, formatHours } from "@/lib/store"
+import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState, memo } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
@@ -128,10 +128,23 @@ const TaskCard = memo(function TaskCard({
         </p>
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-2">
-            <MemoizedAvatar email={task.responsavel_email} />
+            <div className="flex -space-x-2">
+              {(task.responsaveis ?? []).map(resp => (
+                <MemoizedAvatar key={resp.email} email={resp.email} />
+              ))}
+              {!(task.responsaveis ?? []).length && <MemoizedAvatar />}
+            </div>
             <div className="flex flex-col">
               <span className="text-sm font-medium">
-                {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+                {(task.responsaveis ?? []).length > 0 
+                  ? (task.responsaveis ?? []).map(r => {
+                      const displayName = r.nome 
+                        ? r.nome.split(' ')[0] 
+                        : r.email.split('@')[0].split('.')[0];
+                      return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                    }).join(', ')
+                  : 'Não atribuído'
+                }
               </span>
               <span className="text-xs text-gray-500">
                 {formatHours(task.estimativa_horas)}

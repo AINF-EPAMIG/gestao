@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, getStatusName, getPriorityName, formatHours } from "@/lib/store"
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TasksByResponsavelChart } from "@/components/charts/tasks-by-responsavel-chart"
 import AuthRequired from "@/components/auth-required"
+import { getUserIcon } from "@/lib/utils"
 
 const STATUS_COLORS = {
   Desenvolvimento: "bg-blue-500",
@@ -31,16 +32,6 @@ function formatDate(dateString: string | null): string {
   return new Date(dateString).toLocaleDateString("pt-BR")
 }
 
-function getResponsavelName(responsavelId: number | null, email?: string): string {
-  if (!responsavelId || !email) return "Não atribuído"
-  return email
-    .split("@")[0]
-    .replace(".", " ")
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
 export default function PlanilhaPage() {
   const tasks = useTaskStore((state) => state.tasks)
   const [expandedTasks, setExpandedTasks] = useState<number[]>([])
@@ -54,28 +45,38 @@ export default function PlanilhaPage() {
   const [dataFimFilter, setDataFimFilter] = useState<string>("")
 
   // Obter listas únicas para os selects
-  const uniqueResponsaveis = Array.from(
-    new Set(
-      tasks
-        .filter(task => task.responsavel_email != null)
-        .map(task => task.responsavel_email)
-    )
-  )
+  const uniqueResponsaveis = useMemo(() => {
+    const responsaveisInfo = tasks.flatMap(task => 
+      task.responsaveis?.map(resp => ({
+        email: resp.email,
+        nome: resp.nome || resp.email.split('@')[0].replace('.', ' ')
+      })) || []
+    );
+    
+    // Remove duplicados baseado no email e ordena por nome
+    return Array.from(
+      new Map(responsaveisInfo.map(item => [item.email, item])).values()
+    ).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [tasks]);
+
   const uniqueStatus = Array.from(new Set(tasks.map(task => getStatusName(task.status_id))))
   const uniquePrioridades = Array.from(new Set(tasks.map(task => getPriorityName(task.prioridade_id))))
   const uniqueProjetos = Array.from(new Set(tasks.map(task => task.projeto_nome)))
 
   // Lógica de filtragem
-  const filteredTasks = tasks.filter(task => {
-    const matchStatus = statusFilter === "todos" || getStatusName(task.status_id) === statusFilter
-    const matchResponsavel = responsavelFilter === "todos" || task.responsavel_email === responsavelFilter
-    const matchPrioridade = prioridadeFilter === "todos" || getPriorityName(task.prioridade_id) === prioridadeFilter
-    const matchProjeto = projetoFilter === "todos" || task.projeto_nome === projetoFilter
-    const matchDataInicio = !dataInicioFilter || (task.data_inicio && task.data_inicio >= dataInicioFilter)
-    const matchDataFim = !dataFimFilter || (task.data_fim && task.data_fim <= dataFimFilter)
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const matchesStatus = statusFilter === "todos" || getStatusName(task.status_id) === statusFilter;
+      const matchesResponsavel = responsavelFilter === "todos" || 
+        (task.responsaveis && task.responsaveis.length > 0 && task.responsaveis.some(r => r.email === responsavelFilter));
+      const matchPrioridade = prioridadeFilter === "todos" || getPriorityName(task.prioridade_id) === prioridadeFilter;
+      const matchProjeto = projetoFilter === "todos" || task.projeto_nome === projetoFilter;
+      const matchDataInicio = !dataInicioFilter || (task.data_inicio && task.data_inicio >= dataInicioFilter);
+      const matchDataFim = !dataFimFilter || (task.data_fim && task.data_fim <= dataFimFilter);
 
-    return matchStatus && matchResponsavel && matchPrioridade && matchProjeto && matchDataInicio && matchDataFim
-  })
+      return matchesStatus && matchesResponsavel && matchPrioridade && matchProjeto && matchDataInicio && matchDataFim;
+    });
+  }, [tasks, statusFilter, responsavelFilter, prioridadeFilter, projetoFilter, dataInicioFilter, dataFimFilter]);
 
   // Atualizar cálculos para usar tarefas filtradas
   const totalTasks = filteredTasks.length
@@ -150,13 +151,11 @@ export default function PlanilhaPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                  {uniqueResponsaveis
-                    .filter((email): email is string => email !== undefined)
-                    .map(email => (
-                      <SelectItem key={email} value={email}>
-                        {getResponsavelName(1, email)}
-                      </SelectItem>
-                    ))}
+                  {uniqueResponsaveis.map((resp) => (
+                    <SelectItem key={resp.email} value={resp.email}>
+                      {resp.nome}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -243,13 +242,32 @@ export default function PlanilhaPage() {
                       <TableCell className="max-w-[300px] truncate">{task.titulo}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage email={task.responsavel_email} />
-                            <AvatarFallback>
-                              {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+                          <div className="flex -space-x-2">
+                            {(task.responsaveis ?? []).map(resp => (
+                              <Avatar key={resp.email} className="w-6 h-6 border-2 border-white">
+                                <AvatarImage src={getUserIcon(resp.email)} />
+                                <AvatarFallback>
+                                  {resp.email[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {!(task.responsaveis ?? []).length && (
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback>?</AvatarFallback>
+                              </Avatar>
+                            )}
+                          </div>
+                          <span className="text-sm">
+                            {(task.responsaveis ?? []).length > 0 
+                              ? (task.responsaveis ?? []).map(r => {
+                                  const displayName = r.nome 
+                                    ? r.nome.split(' ')[0] 
+                                    : r.email.split('@')[0].split('.')[0];
+                                  return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                                }).join(', ')
+                              : 'Não atribuído'
+                            }
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -306,13 +324,34 @@ export default function PlanilhaPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Responsável:</span>
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage email={task.responsavel_email} />
-                        <AvatarFallback>
-                          {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      {getResponsavelName(task.responsavel_id, task.responsavel_email)}
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-2">
+                          {(task.responsaveis ?? []).map(resp => (
+                            <Avatar key={resp.email} className="w-6 h-6 border-2 border-white">
+                              <AvatarImage src={getUserIcon(resp.email)} />
+                              <AvatarFallback>
+                                {resp.email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {!(task.responsaveis ?? []).length && (
+                            <Avatar className="w-6 h-6">
+                              <AvatarFallback>?</AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        <span>
+                          {(task.responsaveis ?? []).length > 0 
+                            ? (task.responsaveis ?? []).map(r => {
+                                const displayName = r.nome 
+                                  ? r.nome.split(' ')[0] 
+                                  : r.email.split('@')[0].split('.')[0];
+                                return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                              }).join(', ')
+                            : 'Não atribuído'
+                          }
+                        </span>
+                      </div>
                     </div>
                     <div>
                       <span className="font-medium">Status:</span>{" "}

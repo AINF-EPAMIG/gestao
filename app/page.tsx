@@ -25,20 +25,19 @@ export default function DashboardPage() {
   const tasksInDevelopment = useMemo(() => {
     const tasksByUser = tasks
       .filter((task) => getStatusName(task.status_id) === "Em desenvolvimento")
-      .reduce(
-        (acc, task) => {
-          if (!task.responsavel_email) return acc
-          if (!acc[task.responsavel_email]) {
-            acc[task.responsavel_email] = []
+      .reduce((acc, task) => {
+        // Para cada responsável da tarefa
+        (task.responsaveis ?? []).forEach(responsavel => {
+          if (!acc[responsavel.email]) {
+            acc[responsavel.email] = [];
           }
-          acc[task.responsavel_email].push(task)
-          return acc
-        },
-        {} as Record<string, Task[]>,
-      )
+          acc[responsavel.email].push(task);
+        });
+        return acc;
+      }, {} as Record<string, Task[]>);
 
-    return Object.entries(tasksByUser)
-  }, [tasks])
+    return Object.entries(tasksByUser);
+  }, [tasks]);
 
   return (
     <AuthRequired>

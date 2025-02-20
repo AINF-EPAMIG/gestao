@@ -39,7 +39,7 @@ export default function KanbanPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchesResponsavel = !responsavelFilter || task.responsavel_email === responsavelFilter
+      const matchesResponsavel = !responsavelFilter || task.responsaveis?.some(r => r.email === responsavelFilter)
       const matchesPrioridade = !prioridadeFilter || task.prioridade_id === parseInt(prioridadeFilter || "0")
       const matchesStatus = !statusFilter || task.status_id === parseInt(statusFilter || "0")
       
@@ -84,10 +84,18 @@ export default function KanbanPage() {
   }, [tasks, responsavelFilter, prioridadeFilter, periodoFilter, statusFilter])
 
   const responsaveis = useMemo(() => {
-    return Array.from(new Set(tasks.map(task => task.responsavel_email)))
-      .filter((email): email is string => Boolean(email))
-      .sort()
-  }, [tasks])
+    const allResponsaveis = tasks.flatMap(task => 
+      task.responsaveis?.map(resp => ({
+        email: resp.email,
+        nome: resp.nome || resp.email.split('@')[0].replace('.', ' ')
+      })) || []
+    );
+    
+    // Remove duplicados baseado no email
+    return Array.from(
+      new Map(allResponsaveis.map(item => [item.email, item])).values()
+    ).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [tasks]);
 
   return (
     <AuthRequired>
@@ -108,14 +116,14 @@ export default function KanbanPage() {
                   value={responsavelFilter || "todos"}
                   onValueChange={(value) => setResponsavelFilter(value === "todos" ? null : value)}
                 >
-                  <SelectTrigger className="w-full md:w-[300px]">
+                  <SelectTrigger className="w-full md:w-[400px]">
                     <SelectValue placeholder="Responsável" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
-                    {responsaveis.map((email) => (
-                      <SelectItem key={email} value={email}>
-                        {email}
+                    {responsaveis.map((resp) => (
+                      <SelectItem key={resp.email} value={resp.email}>
+                        {resp.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>

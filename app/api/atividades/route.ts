@@ -17,11 +17,31 @@ interface Atividade {
   projeto_nome: string | null;
   setor_sigla: string | null;
   position: number | null;
+  responsaveis?: {
+    id: number;
+    email: string;
+    nome?: string;
+    cargo?: string;
+  }[];
+}
+
+interface Responsavel {
+  id: number;
+  email: string;
 }
 
 interface AtividadeComResponsavel extends Atividade {
   responsavel_nome: string;
   responsavel_cargo: string;
+}
+
+interface ResponsavelParcial {
+  id?: number;
+  email?: string;
+}
+
+interface QueryResult {
+  insertId: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -65,36 +85,79 @@ export async function GET(request: NextRequest) {
     // Buscar atividades sem depender da tabela responsaveis
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome, s.sigla as setor_sigla
+        SELECT 
+          a.*,
+          p.nome as projeto_nome, 
+          s.sigla as setor_sigla,
+          COALESCE(
+            CONCAT('[', 
+              GROUP_CONCAT(
+                CASE 
+                  WHEN ar.responsavel_id IS NOT NULL 
+                  THEN JSON_OBJECT('id', ar.responsavel_id, 'email', r.email)
+                  ELSE NULL 
+                END
+              ),
+            ']'),
+            '[]'
+          ) as responsaveis
         FROM u711845530_gestao.atividades a
-        LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+        LEFT JOIN u711845530_gestao.atividades_responsaveis ar ON a.id = ar.atividade_id
+        LEFT JOIN u711845530_gestao.responsaveis r ON ar.responsavel_id = r.id
         LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
         LEFT JOIN u711845530_gestao.setor s ON a.setor_id = s.id
         ${whereClause}
+        GROUP BY a.id, a.titulo, a.descricao, a.projeto_id, a.data_inicio, a.data_fim, 
+                a.status_id, a.prioridade_id, a.estimativa_horas, a.data_criacao,
+                a.id_release, a.position, a.ultima_atualizacao, a.setor_id,
+                p.nome, s.sigla
         ORDER BY a.id DESC
       `,
       values: queryValues,
     }) as Atividade[];
+
+    // Processar os responsáveis de string JSON para array
+    const atividadesProcessadas = atividades.map(atividade => {
+      let responsaveis = [];
+      if (atividade.responsaveis && typeof atividade.responsaveis === 'string') {
+        try {
+          responsaveis = JSON.parse(atividade.responsaveis);
+          // Filtrar responsáveis inválidos
+          responsaveis = responsaveis.filter((r: ResponsavelParcial) => r && r.id && r.email);
+        } catch (e) {
+          console.error('Erro ao processar responsáveis:', e);
+        }
+      }
+      return {
+        ...atividade,
+        responsaveis
+      };
+    });
     
     // Buscar informações dos responsáveis da API do RM
     const responsaveisInfo = new Map<string, { nome: string; cargo: string }>();
-    for (const atividade of atividades) {
-      if (atividade.responsavel_email && !responsaveisInfo.has(atividade.responsavel_email)) {
-        const userInfo = await getUserInfoFromRM(atividade.responsavel_email);
-        if (userInfo) {
-          responsaveisInfo.set(atividade.responsavel_email, {
-            nome: userInfo.NOME_COMPLETO,
-            cargo: userInfo.CARGO
-          });
+    for (const atividade of atividadesProcessadas) {
+      for (const responsavel of atividade.responsaveis) {
+        if (responsavel.email && !responsaveisInfo.has(responsavel.email)) {
+          const userInfo = await getUserInfoFromRM(responsavel.email);
+          if (userInfo) {
+            responsaveisInfo.set(responsavel.email, {
+              nome: userInfo.NOME_COMPLETO,
+              cargo: userInfo.CARGO
+            });
+          }
         }
       }
     }
 
     // Adicionar informações dos responsáveis às atividades
-    const atividadesComResponsaveis: AtividadeComResponsavel[] = atividades.map(atividade => ({
+    const atividadesComResponsaveis = atividadesProcessadas.map(atividade => ({
       ...atividade,
-      responsavel_nome: responsaveisInfo.get(atividade.responsavel_email)?.nome || 'Não atribuído',
-      responsavel_cargo: responsaveisInfo.get(atividade.responsavel_email)?.cargo || ''
+      responsaveis: atividade.responsaveis.map((resp: Responsavel) => ({
+        ...resp,
+        nome: responsaveisInfo.get(resp.email)?.nome || 'Não atribuído',
+        cargo: responsaveisInfo.get(resp.email)?.cargo || ''
+      }))
     }));
     
     return new NextResponse(JSON.stringify(atividadesComResponsaveis), {
@@ -181,7 +244,7 @@ export async function POST(request: NextRequest) {
       status_id, 
       prioridade_id, 
       projeto_id, 
-      responsavel_email, 
+      responsaveis_emails, // Array de emails dos responsáveis
       data_fim, 
       estimativa_horas, 
       userEmail,
@@ -217,48 +280,13 @@ export async function POST(request: NextRequest) {
       setorSigla = data.setorSigla;
     }
 
-    // Extrair email da string (caso venha com nome)
-    const emailMatch = responsavel_email.match(/\((.*?)\)/);
-    const email = emailMatch ? emailMatch[1] : responsavel_email;
-
-    // 1. Verificar se o responsável já existe
-    const existingResponsavel = await executeQuery({
-      query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? LIMIT 1',
-      values: [email]
-    }) as { id: number }[];
-
-    let responsavelId;
-
-    if (existingResponsavel.length > 0) {
-      // Se já existe, usa o ID existente
-      responsavelId = existingResponsavel[0].id;
-    } else {
-      // Se não existe, cria um novo
-      await executeQuery({
-        query: 'INSERT INTO u711845530_gestao.responsaveis (email) VALUES (?)',
-        values: [email]
-      });
-
-      // Busca o ID do responsável recém inserido
-      const getResponsavelId = await executeQuery({
-        query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? ORDER BY id DESC LIMIT 1',
-        values: [email]
-      }) as { id: number }[];
-
-      if (!getResponsavelId || getResponsavelId.length === 0) {
-        throw new Error('Falha ao obter ID do responsável');
-      }
-
-      responsavelId = getResponsavelId[0].id;
-    }
-
-    // 3. Criar a atividade com o ID do responsável
-    await executeQuery({
+    // Criar a atividade primeiro
+    const result = await executeQuery({
       query: `
         INSERT INTO u711845530_gestao.atividades 
-        (titulo, descricao, projeto_id, responsavel_id, data_inicio, data_fim, 
+        (titulo, descricao, projeto_id, data_inicio, data_fim, 
          status_id, prioridade_id, estimativa_horas, setor_id, data_criacao) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?,
           ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'},
           ?
         )
@@ -267,7 +295,6 @@ export async function POST(request: NextRequest) {
         titulo, 
         descricao, 
         projeto_id,
-        responsavelId,
         data_inicio,
         data_fim,
         status_id,
@@ -276,43 +303,114 @@ export async function POST(request: NextRequest) {
         setorSigla || null,
         data_criacao
       ],
-    });
+    }) as QueryResult;
 
-    console.log('✅ Atividade criada com sucesso');
-    
+    const atividadeId = result.insertId;
+
+    // Processar cada responsável
+    for (const email of responsaveis_emails) {
+      // Verificar se o responsável já existe
+      const existingResponsavel = await executeQuery({
+        query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? LIMIT 1',
+        values: [email]
+      }) as { id: number }[];
+
+      let responsavelId;
+
+      if (existingResponsavel.length > 0) {
+        responsavelId = existingResponsavel[0].id;
+      } else {
+        // Se não existe, cria um novo
+        const newResponsavel = await executeQuery({
+          query: 'INSERT INTO u711845530_gestao.responsaveis (email) VALUES (?)',
+          values: [email]
+        }) as QueryResult;
+        responsavelId = newResponsavel.insertId;
+      }
+
+      // Criar o relacionamento na tabela atividades_responsaveis
+      await executeQuery({
+        query: 'INSERT INTO u711845530_gestao.atividades_responsaveis (atividade_id, responsavel_id) VALUES (?, ?)',
+        values: [atividadeId, responsavelId]
+      });
+    }
+
     // Buscar dados atualizados
     const atividades = await executeQuery({
       query: `
-        SELECT a.*, r.email as responsavel_email, p.nome as projeto_nome, s.sigla as setor_sigla
+        SELECT 
+          a.*,
+          p.nome as projeto_nome, 
+          s.sigla as setor_sigla,
+          COALESCE(
+            CONCAT('[', 
+              GROUP_CONCAT(
+                CASE 
+                  WHEN ar.responsavel_id IS NOT NULL 
+                  THEN JSON_OBJECT('id', ar.responsavel_id, 'email', r.email)
+                  ELSE NULL 
+                END
+              ),
+            ']'),
+            '[]'
+          ) as responsaveis
         FROM u711845530_gestao.atividades a
-        LEFT JOIN u711845530_gestao.responsaveis r ON a.responsavel_id = r.id
+        LEFT JOIN u711845530_gestao.atividades_responsaveis ar ON a.id = ar.atividade_id
+        LEFT JOIN u711845530_gestao.responsaveis r ON ar.responsavel_id = r.id
         LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
         LEFT JOIN u711845530_gestao.setor s ON a.setor_id = s.id
         ${!isAdmin && setorSigla ? 'WHERE s.sigla = ?' : ''}
+        GROUP BY a.id, a.titulo, a.descricao, a.projeto_id, a.data_inicio, a.data_fim, 
+                a.status_id, a.prioridade_id, a.estimativa_horas, a.data_criacao,
+                a.id_release, a.position, a.ultima_atualizacao, a.setor_id,
+                p.nome, s.sigla
         ORDER BY a.id DESC
       `,
       values: !isAdmin && setorSigla ? [setorSigla] : [],
     }) as Atividade[];
 
+    // Processar os responsáveis
+    const atividadesProcessadas = atividades.map(atividade => {
+      let responsaveis = [];
+      if (atividade.responsaveis && typeof atividade.responsaveis === 'string') {
+        try {
+          responsaveis = JSON.parse(atividade.responsaveis);
+          // Filtrar responsáveis inválidos
+          responsaveis = responsaveis.filter((r: ResponsavelParcial) => r && r.id && r.email);
+        } catch (e) {
+          console.error('Erro ao processar responsáveis:', e);
+        }
+      }
+      return {
+        ...atividade,
+        responsaveis
+      };
+    });
+
     // Buscar informações dos responsáveis da API do RM
     const responsaveisInfo = new Map<string, { nome: string; cargo: string }>();
-    for (const atividade of atividades) {
-      if (atividade.responsavel_email && !responsaveisInfo.has(atividade.responsavel_email)) {
-        const userInfo = await getUserInfoFromRM(atividade.responsavel_email);
-        if (userInfo) {
-          responsaveisInfo.set(atividade.responsavel_email, {
-            nome: userInfo.NOME_COMPLETO,
-            cargo: userInfo.CARGO
-          });
+    for (const atividade of atividadesProcessadas) {
+      for (const responsavel of atividade.responsaveis) {
+        if (responsavel.email && !responsaveisInfo.has(responsavel.email)) {
+          const userInfo = await getUserInfoFromRM(responsavel.email);
+          if (userInfo) {
+            responsaveisInfo.set(responsavel.email, {
+              nome: userInfo.NOME_COMPLETO,
+              cargo: userInfo.CARGO
+            });
+          }
         }
       }
     }
 
     // Adicionar informações dos responsáveis às atividades
-    const atividadesComResponsaveis: AtividadeComResponsavel[] = atividades.map(atividade => ({
+    const atividadesComResponsaveis = atividadesProcessadas.map(atividade => ({
       ...atividade,
-      responsavel_nome: responsaveisInfo.get(atividade.responsavel_email)?.nome || 'Não atribuído',
-      responsavel_cargo: responsaveisInfo.get(atividade.responsavel_email)?.cargo || ''
+      responsaveis: atividade.responsaveis.map((resp: Responsavel) => ({
+        ...resp,
+        nome: responsaveisInfo.get(resp.email)?.nome || 'Não atribuído',
+        cargo: responsaveisInfo.get(resp.email)?.cargo || ''
+      }))
     }));
     
     return NextResponse.json(atividadesComResponsaveis);

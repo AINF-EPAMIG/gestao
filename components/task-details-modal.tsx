@@ -23,14 +23,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
-  const getResponsavelName = (email?: string): string => {
-    if (!email) return "Não atribuído"
-    return email.split('@')[0].replace('.', ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }
-
   const formatDateTime = (dateTime: string | null) => {
     if (!dateTime) return '-';
     
@@ -127,19 +119,27 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             </Badge>
           </div>
 
-          {/* Responsável */}
+          {/* Responsáveis */}
           <div>
-            <div className="text-sm text-gray-500">Responsável</div>
-            <div className="flex items-center gap-2 mt-1">
-              <Avatar className="w-6 h-6">
-                <AvatarImage src={getUserIcon(task.responsavel_email)} />
-                <AvatarFallback>
-                  {task.responsavel_email ? task.responsavel_email[0].toUpperCase() : '?'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium">
-                {getResponsavelName(task.responsavel_email)}
-              </span>
+            <div className="text-sm text-gray-500">Responsáveis</div>
+            <div className="space-y-2 mt-1">
+              {task.responsaveis && task.responsaveis.length > 0 ? (
+                task.responsaveis.map(responsavel => (
+                  <div key={responsavel.email} className="flex items-center gap-2">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={getUserIcon(responsavel.email)} />
+                      <AvatarFallback>
+                        {responsavel.email[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">
+                      {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500">Sem responsáveis atribuídos</div>
+              )}
             </div>
           </div>
 
