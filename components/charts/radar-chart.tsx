@@ -1,7 +1,7 @@
 "use client"
 
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts"
-import { useTaskStore } from "@/lib/store"
+import { useTaskStore, getResponsavelName } from "@/lib/store"
 import { useMemo, useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -64,7 +64,7 @@ export function RadarChart() {
     const assigneeCounts = tasks.reduce(
       (acc, task) => {
         if (task.responsavel_email) {
-          const name = task.responsavel_email.split("@")[0].replace(".", " ")
+          const name = getResponsavelName(task.responsavel_id, task.responsavel_email)
           acc[name] = (acc[name] || 0) + 1
         }
         return acc
@@ -73,7 +73,7 @@ export function RadarChart() {
     )
 
     return Object.entries(assigneeCounts).map(([subject, count]) => ({
-      subject: subject.charAt(0).toUpperCase() + subject.slice(1),
+      subject,
       A: count,
     }))
   }, [tasks])

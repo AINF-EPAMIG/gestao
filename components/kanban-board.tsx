@@ -4,12 +4,10 @@ import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableP
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, getResponsavelName, formatHours } from "@/lib/store"
-import { useMemo, useCallback, useState, memo, useEffect } from "react"
+import { useMemo, useCallback, useState, memo } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
-import { useInView } from "framer-motion"
-import { useRef } from "react"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -121,7 +119,7 @@ const TaskCard = memo(function TaskCard({
             {getPriorityName(task.prioridade_id)}
           </Badge>
           <Badge variant="outline">
-            {task.projeto_nome || `Projeto ${task.projeto_id}`}
+            {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
           </Badge>
         </div>
         <h4 className="font-medium">{task.titulo}</h4>
@@ -165,30 +163,6 @@ const Column = memo(function Column({
   column: { id: Status; title: string };
   tasks: Task[];
 }) {
-  const [visibleTasks, setVisibleTasks] = useState(10)
-  const loadMoreRef = useRef(null)
-  const isInView = useInView(loadMoreRef, {
-    margin: "100px 0px 0px 0px"
-  })
-
-  useEffect(() => {
-    setVisibleTasks(10)
-  }, [column.id])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isInView && visibleTasks < tasks.length) {
-        setVisibleTasks(prev => Math.min(prev + 10, tasks.length))
-      }
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [isInView, tasks.length, visibleTasks])
-
-  const displayedTasks = useMemo(() => {
-    return tasks.slice(0, visibleTasks)
-  }, [tasks, visibleTasks])
-
   return (
     <div key={column.id} className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -202,7 +176,7 @@ const Column = memo(function Column({
             {...provided.droppableProps}
             className="flex flex-col gap-3 min-h-[200px]"
           >
-            {displayedTasks.map((task, index) => (
+            {tasks.map((task, index) => (
               <Draggable 
                 key={task.id.toString()} 
                 draggableId={task.id.toString()} 
@@ -218,15 +192,6 @@ const Column = memo(function Column({
               </Draggable>
             ))}
             {provided.placeholder}
-            
-            {tasks.length > visibleTasks && (
-              <div 
-                ref={loadMoreRef}
-                className="h-10 flex items-center justify-center"
-              >
-                <div className="animate-spin h-4 w-4 border-2 border-emerald-800 rounded-full border-t-transparent" />
-              </div>
-            )}
           </div>
         )}
       </Droppable>
@@ -234,8 +199,11 @@ const Column = memo(function Column({
   );
 });
 
-export function KanbanBoard() {
-  const tasks = useTaskStore((state) => state.tasks)
+interface KanbanBoardProps {
+  tasks: Task[];
+}
+
+export function KanbanBoard({ tasks }: KanbanBoardProps) {
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
 
   const onDragEnd = useCallback(

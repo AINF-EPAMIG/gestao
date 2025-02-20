@@ -153,6 +153,7 @@ export function CreateTaskModal() {
           estimativa_horas: estimativaHoras,
           userEmail: session?.user?.email,
           setorSigla: selectedSetor,
+          data_criacao: new Date().toISOString()
         }),
       })
 

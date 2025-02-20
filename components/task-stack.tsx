@@ -78,7 +78,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
                       {getPriorityName(task.prioridade_id)}
                     </Badge>
                     <Badge variant="outline">
-                      {task.projeto_nome || `Projeto ${task.projeto_id}`}
+                      {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
                     </Badge>
                   </div>
                   <h4 className="font-medium">{task.titulo}</h4>

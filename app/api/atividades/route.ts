@@ -10,6 +10,7 @@ interface Atividade {
   responsavel_email: string;
   data_inicio: string;
   data_fim: string | null;
+  data_criacao: string;
   status_id: number;
   prioridade_id: number;
   estimativa_horas: string | null;
@@ -173,7 +174,19 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { titulo, descricao, data_inicio, status_id, prioridade_id, projeto_id, responsavel_email, data_fim, estimativa_horas, userEmail } = data;
+    const { 
+      titulo, 
+      descricao, 
+      data_inicio, 
+      status_id, 
+      prioridade_id, 
+      projeto_id, 
+      responsavel_email, 
+      data_fim, 
+      estimativa_horas, 
+      userEmail,
+      data_criacao 
+    } = data;
 
     // Verificar se é admin ou chefe
     const isAdmin = isUserAdmin(userEmail);
@@ -208,32 +221,46 @@ export async function POST(request: NextRequest) {
     const emailMatch = responsavel_email.match(/\((.*?)\)/);
     const email = emailMatch ? emailMatch[1] : responsavel_email;
 
-    // 1. Inserir o responsável e obter o ID
-    await executeQuery({
-      query: 'INSERT INTO u711845530_gestao.responsaveis (email) VALUES (?)',
-      values: [email]
-    });
-
-    // 2. Buscar o ID do responsável recém inserido
-    const getResponsavelId = await executeQuery({
-      query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? ORDER BY id DESC LIMIT 1',
+    // 1. Verificar se o responsável já existe
+    const existingResponsavel = await executeQuery({
+      query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? LIMIT 1',
       values: [email]
     }) as { id: number }[];
 
-    if (!getResponsavelId || getResponsavelId.length === 0) {
-      throw new Error('Falha ao obter ID do responsável');
-    }
+    let responsavelId;
 
-    const responsavelId = getResponsavelId[0].id;
+    if (existingResponsavel.length > 0) {
+      // Se já existe, usa o ID existente
+      responsavelId = existingResponsavel[0].id;
+    } else {
+      // Se não existe, cria um novo
+      await executeQuery({
+        query: 'INSERT INTO u711845530_gestao.responsaveis (email) VALUES (?)',
+        values: [email]
+      });
+
+      // Busca o ID do responsável recém inserido
+      const getResponsavelId = await executeQuery({
+        query: 'SELECT id FROM u711845530_gestao.responsaveis WHERE email = ? ORDER BY id DESC LIMIT 1',
+        values: [email]
+      }) as { id: number }[];
+
+      if (!getResponsavelId || getResponsavelId.length === 0) {
+        throw new Error('Falha ao obter ID do responsável');
+      }
+
+      responsavelId = getResponsavelId[0].id;
+    }
 
     // 3. Criar a atividade com o ID do responsável
     await executeQuery({
       query: `
         INSERT INTO u711845530_gestao.atividades 
         (titulo, descricao, projeto_id, responsavel_id, data_inicio, data_fim, 
-         status_id, prioridade_id, estimativa_horas, setor_id) 
+         status_id, prioridade_id, estimativa_horas, setor_id, data_criacao) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
-          ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'}
+          ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'},
+          ?
         )
       `,
       values: [
@@ -246,7 +273,8 @@ export async function POST(request: NextRequest) {
         status_id,
         prioridade_id,
         estimativa_horas,
-        setorSigla || null
+        setorSigla || null,
+        data_criacao
       ],
     });
 

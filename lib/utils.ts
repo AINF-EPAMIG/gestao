@@ -11,6 +11,12 @@ const userIconMap: Record<string, string> = {
   'andrezza.fernandes@epamig.br': '/andrezza_icon.jpg',
   'michelle@epamig.br': '/michelle_icon.jpg',
   'victor.purri@epamig.br': '/victor_icon.jpg',
+  'alexsolano@epamig.br': '/alex_icon.jpg',
+  'anderson@epamig.br': '/anderson_icon.jpg',
+  'andrea@epamig.br': '/andrea_icon.jpg',
+  'bruno.gregorio@epamig.br': '/bruno_icon.jpg',
+  'felipe.silva@epamig.br': '/felipe_icon.jpg',
+  'igor.neves@epamig.br': '/igor_icon.jpg',
 }
 
 export function getUserIcon(email: string | undefined): string | undefined {

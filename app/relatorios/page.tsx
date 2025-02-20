@@ -271,7 +271,7 @@ export default function PlanilhaPage() {
                           {getPriorityName(task.prioridade_id)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{task.projeto_nome || `Projeto ${task.projeto_id}`}</TableCell>
+                      <TableCell>{task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}</TableCell>
                       <TableCell>{formatHours(task.estimativa_horas)}</TableCell>
                       <TableCell>{formatDate(task.data_inicio)}</TableCell>
                       <TableCell>{formatDate(task.data_fim)}</TableCell>
@@ -339,7 +339,7 @@ export default function PlanilhaPage() {
                       <>
                         <div>
                           <span className="font-medium">Projeto:</span>{" "}
-                          {task.projeto_nome || `Projeto ${task.projeto_id}`}
+                          {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
                         </div>
                         <div>
                           <span className="font-medium">Estimativa:</span> {formatHours(task.estimativa_horas)}
