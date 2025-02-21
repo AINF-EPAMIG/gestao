@@ -7,9 +7,16 @@ import AuthRequired from "@/components/auth-required"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, getResponsaveisBySetor } from "@/lib/rm-service"
+import { Loader2 } from "lucide-react"
 
 type PeriodoFilter = "todos" | "hoje" | "esta_semana" | "este_mes" | "este_ano"
+
+interface ResponsavelRM {
+  NOME: string;
+  EMAIL: string;
+  CHEFE: string;
+}
 
 export default function KanbanPage() {
   const { data: session } = useSession()
@@ -18,23 +25,37 @@ export default function KanbanPage() {
   const [prioridadeFilter, setPrioridadeFilter] = useState<string | null>(null)
   const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>("este_ano")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [responsaveisSetor, setResponsaveisSetor] = useState<ResponsavelRM[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Pré-selecionar o email do usuário logado no filtro de responsável
+  // Buscar responsáveis do setor e configurar usuário atual
   useEffect(() => {
-    const checkUserRole = async () => {
+    const fetchResponsaveisSetor = async () => {
       if (session?.user?.email) {
-        const userInfo = await getUserInfoFromRM(session.user.email);
-        const isChefe = isUserChefe(userInfo);
-        
-        if (!isChefe) {
-          setResponsavelFilter(session.user.email);
-        } else {
-          setResponsavelFilter(null); // "todos"
+        try {
+          setIsLoading(true)
+          const userInfo = await getUserInfoFromRM(session.user.email);
+          
+          // Verifica se é chefe e configura o filtro inicial
+          const isChefe = isUserChefe(userInfo);
+          if (!isChefe) {
+            setResponsavelFilter(session.user.email);
+          }
+
+          // Busca responsáveis do setor
+          if (userInfo?.SECAO) {
+            const responsaveis = await getResponsaveisBySetor(userInfo.SECAO);
+            setResponsaveisSetor(responsaveis);
+          }
+        } catch (error) {
+          console.error('Erro ao carregar dados:', error);
+        } finally {
+          setIsLoading(false)
         }
       }
     };
 
-    checkUserRole();
+    fetchResponsaveisSetor();
   }, [session?.user?.email]);
 
   const filteredTasks = useMemo(() => {
@@ -83,20 +104,6 @@ export default function KanbanPage() {
     })
   }, [tasks, responsavelFilter, prioridadeFilter, periodoFilter, statusFilter])
 
-  const responsaveis = useMemo(() => {
-    const allResponsaveis = tasks.flatMap(task => 
-      task.responsaveis?.map(resp => ({
-        email: resp.email,
-        nome: resp.nome || resp.email.split('@')[0].replace('.', ' ')
-      })) || []
-    );
-    
-    // Remove duplicados baseado no email
-    return Array.from(
-      new Map(allResponsaveis.map(item => [item.email, item])).values()
-    ).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [tasks]);
-
   return (
     <AuthRequired>
       <PollingWrapper>
@@ -115,15 +122,20 @@ export default function KanbanPage() {
                 <Select 
                   value={responsavelFilter || "todos"}
                   onValueChange={(value) => setResponsavelFilter(value === "todos" ? null : value)}
+                  disabled={isLoading}
                 >
                   <SelectTrigger className="w-full md:w-[400px]">
-                    <SelectValue placeholder="Responsável" />
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SelectValue placeholder="Responsável" />
+                    )}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
-                    {responsaveis.map((resp) => (
-                      <SelectItem key={resp.email} value={resp.email}>
-                        {resp.nome}
+                    {responsaveisSetor.map((resp) => (
+                      <SelectItem key={resp.EMAIL} value={resp.EMAIL}>
+                        {resp.NOME}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -187,7 +199,18 @@ export default function KanbanPage() {
               </div>
             </div>
           </div>
-          <KanbanBoard tasks={filteredTasks} />
+
+          {isLoading ? (
+            <div className="flex items-center justify-center min-h-[600px] w-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="flex items-center justify-center min-h-[600px] w-full">
+              <span className="text-gray-500 text-lg">Nenhuma tarefa encontrada</span>
+            </div>
+          ) : (
+            <KanbanBoard tasks={filteredTasks} />
+          )}
         </div>
       </PollingWrapper>
     </AuthRequired>

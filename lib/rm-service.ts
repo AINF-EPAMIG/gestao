@@ -18,6 +18,12 @@ interface RMSubordinado {
   EMAIL_SUBORDINADO: string;
 }
 
+interface ResponsavelSetor {
+  NOME: string;
+  EMAIL: string;
+  CHEFE: string;
+}
+
 const RM_API_CONFIG = {
   baseUrl: 'https://empresade125373.rm.cloudtotvs.com.br:8051/api/framework/v1/consultaSQLServer/RealizaConsulta',
   auth: {
@@ -107,5 +113,30 @@ export async function getSubordinadosFromRM(email: string): Promise<RMSubordinad
   } catch (error) {
     console.error('Erro ao buscar subordinados no RM:', error);
     return null;
+  }
+}
+
+export async function getResponsaveisBySetor(setor: string): Promise<ResponsavelSetor[]> {
+  try {
+    const response = await fetch(
+      `${RM_API_CONFIG.baseUrl}/AINF22012025.07/1/P/?parameters=secao=${setor}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': "Basic " + btoa(`${RM_API_CONFIG.auth.username}:${RM_API_CONFIG.auth.password}`),
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Falha ao buscar responsáveis do setor');
+    }
+
+    const data = await response.json();
+    return data.filter((resp: ResponsavelSetor) => resp.CHEFE === 'NÃO');
+  } catch (error) {
+    console.error('Erro ao buscar responsáveis do setor:', error);
+    return [];
   }
 } 
