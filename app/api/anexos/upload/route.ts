@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { writeFile } from "fs/promises"
-import { join } from "path"
-import { mkdir } from "fs/promises"
 import { ResultSetHeader } from "mysql2"
 
 export async function POST(request: NextRequest) {
   console.log("[Upload] DEBUG - Rota de upload acessada")
   
   try {
-    // Verificar URL da requisição
-    console.log("[Upload] DEBUG - URL da requisição:", request.url)
-    
     console.log("[Upload] Iniciando processo de upload")
     
     const session = await getServerSession(authOptions)
@@ -47,18 +41,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Criar diretório de uploads se não existir
-    const uploadDir = join(process.cwd(), "uploads")
-    console.log("[Upload] Diretório de upload:", uploadDir)
-    
-    try {
-      await mkdir(uploadDir, { recursive: true })
-      console.log("[Upload] Diretório de upload criado/verificado com sucesso")
-    } catch (error) {
-      console.error("[Upload] Erro ao criar diretório:", error)
-      throw error
-    }
-
     const savedFiles = []
 
     for (const file of files) {
@@ -73,16 +55,9 @@ export async function POST(request: NextRequest) {
         size: file.size
       })
 
-      // Gerar nome único para o arquivo
-      const fileName = `${Date.now()}-${file.name}`
-      const filePath = join(uploadDir, fileName)
-      console.log("[Upload] Caminho do arquivo:", filePath)
-
       try {
-        // Salvar arquivo no disco
-        const bytes = await file.arrayBuffer()
-        await writeFile(filePath, Buffer.from(bytes))
-        console.log("[Upload] Arquivo salvo no disco com sucesso")
+        // Gerar nome único para o arquivo
+        const fileName = `${Date.now()}-${file.name}`
 
         // Salvar informações no banco
         const [result] = await db.execute<ResultSetHeader>(
@@ -116,7 +91,7 @@ export async function POST(request: NextRequest) {
         })
       } catch (error) {
         console.error("[Upload] Erro ao processar arquivo:", {
-          fileName,
+          fileName: file.name,
           error: error instanceof Error ? error.message : 'Erro desconhecido'
         })
         throw error
@@ -128,7 +103,6 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(savedFiles)
   } catch (error) {
-    // Log mais detalhado do erro
     console.error("[Upload] Erro crítico no processo de upload:", {
       error: error instanceof Error ? {
         message: error.message,
