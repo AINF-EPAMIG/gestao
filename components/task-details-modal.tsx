@@ -96,6 +96,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     if (!dateTime) return '-';
     
     const date = new Date(dateTime);
+    // Ajusta para UTC-3
+    date.setHours(date.getHours() - 3);
     
     return date.toLocaleString('pt-BR', {
       day: '2-digit',
@@ -103,7 +105,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: 'UTC'
     });
   };
 

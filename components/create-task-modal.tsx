@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTaskStore } from "@/lib/store"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
 import { Plus, X } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 
@@ -18,9 +18,9 @@ interface Projeto {
 }
 
 interface Responsavel {
-  email: string;
-  nome: string;
-  cargo?: string;
+  EMAIL: string;
+  NOME: string;
+  CARGO?: string;
 }
 
 interface Setor {
@@ -54,7 +54,6 @@ export function CreateTaskModal() {
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const [setorInput, setSetorInput] = useState("")
   const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
-  const responsavelRef = useRef<HTMLInputElement>(null)
   const setorRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -79,28 +78,43 @@ export function CreateTaskModal() {
               const subordinadosData = await getSubordinadosFromRM(session.user.email);
               if (subordinadosData) {
                 const formattedSubordinados = subordinadosData.map(sub => ({
-                  email: sub.EMAIL_SUBORDINADO,
-                  nome: sub.NOME_SUBORDINADO,
-                  cargo: sub.CARGO_SUBORDINADO
+                  EMAIL: sub.EMAIL_SUBORDINADO,
+                  NOME: sub.NOME_SUBORDINADO,
+                  CARGO: sub.CARGO_SUBORDINADO
                 }));
                 setResponsaveis(formattedSubordinados);
               }
-            } else {
-              // Se não for chefe, só pode atribuir para si mesmo
+            } else if (!admin) { // Se não for chefe nem admin, só pode atribuir para si mesmo
               setResponsaveis([{
-                email: session.user.email,
-                nome: userInfo.NOME_COMPLETO,
-                cargo: userInfo.CARGO
+                EMAIL: session.user.email,
+                NOME: userInfo.NOME_COMPLETO,
+                CARGO: userInfo.CARGO
+              }]);
+              // Pré-seleciona o próprio usuário como responsável
+              setSelectedResponsaveis([{
+                EMAIL: session.user.email,
+                NOME: userInfo.NOME_COMPLETO,
+                CARGO: userInfo.CARGO
               }]);
             }
-          }
 
-          // Se for admin, buscar lista de setores
-          if (admin) {
-            const response = await fetch('/api/setor');
-            if (response.ok) {
-              const data = await response.json();
-              setSetores(data);
+            // Se for admin, buscar lista de setores e responsáveis do setor inicial
+            if (admin) {
+              try {
+                const setoresResponse = await fetch('/api/setor');
+                if (setoresResponse.ok) {
+                  const setoresData = await setoresResponse.json();
+                  setSetores(setoresData);
+                }
+
+                // Buscar responsáveis do setor inicial
+                const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+                if (responsaveisData) {
+                  setResponsaveis(responsaveisData);
+                }
+              } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+              }
             }
           }
         } catch (error) {
@@ -110,7 +124,25 @@ export function CreateTaskModal() {
     };
 
     checkUserRole();
-  }, [session?.user?.email, setSelectedSetor]);
+  }, [session?.user?.email]);
+
+  useEffect(() => {
+    // Atualizar responsáveis quando o setor selecionado mudar (apenas para admin)
+    const updateResponsaveis = async () => {
+      if (isAdmin && selectedSetor) {
+        try {
+          const responsaveisData = await getResponsaveisBySetor(selectedSetor);
+          if (responsaveisData) {
+            setResponsaveis(responsaveisData);
+          }
+        } catch (error) {
+          console.error('Erro ao carregar responsáveis:', error);
+        }
+      }
+    };
+
+    updateResponsaveis();
+  }, [isAdmin, selectedSetor]);
 
   useEffect(() => {
     // Carregar projetos do banco
@@ -127,12 +159,7 @@ export function CreateTaskModal() {
     }
 
     fetchProjetos()
-    
-    // Preencher email do usuário logado
-    if (session?.user?.email) {
-      setResponsavelInput(session.user.email)
-    }
-  }, [session?.user?.email])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,7 +174,7 @@ export function CreateTaskModal() {
           titulo,
           descricao,
           projeto_id: parseInt(projetoId),
-          responsaveis_emails: selectedResponsaveis.map(r => r.email),
+          responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
           data_inicio: dataInicio,
           data_fim: dataFim,
           status_id: 1, // Não iniciada
@@ -210,7 +237,7 @@ export function CreateTaskModal() {
   }
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
-    if (!selectedResponsaveis.find(r => r.email === responsavel.email)) {
+    if (!selectedResponsaveis.find(r => r.EMAIL === responsavel.EMAIL)) {
       setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
     }
     setResponsavelInput("");
@@ -218,13 +245,22 @@ export function CreateTaskModal() {
   }
 
   const removeResponsavel = (email: string) => {
-    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.email !== email));
+    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
 
-  const handleSetorSelect = (setor: Setor) => {
+  const handleSetorSelect = async (setor: Setor) => {
     setSelectedSetor(setor.sigla)
     setSetorInput(setor.sigla + (setor.nome ? ` ${setor.nome}` : ''))
     setShowSetorSuggestions(false)
+
+    try {
+      const responsaveisData = await getResponsaveisBySetor(setor.sigla);
+      if (responsaveisData) {
+        setResponsaveis(responsaveisData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar responsáveis:', error);
+    }
   }
 
   return (
@@ -307,31 +343,29 @@ export function CreateTaskModal() {
             <label className="text-sm font-medium">Responsáveis</label>
             <div className="relative">
               <Input
-                ref={responsavelRef}
                 value={responsavelInput}
                 onChange={(e) => {
-                  setResponsavelInput(e.target.value)
-                  setShowResponsavelSuggestions(true)
+                  setResponsavelInput(e.target.value);
+                  setShowResponsavelSuggestions(true);
                 }}
                 onFocus={() => setShowResponsavelSuggestions(true)}
                 placeholder="Digite o nome do responsável"
-                className="w-full"
               />
               {showResponsavelSuggestions && responsavelInput && (
                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
                   {responsaveis
                     .filter(r => 
-                      r.nome.toLowerCase().includes(responsavelInput.toLowerCase()) &&
-                      !selectedResponsaveis.find(sr => sr.email === r.email)
+                      (r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
+                      !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL)
                     )
                     .map(responsavel => (
                       <div
-                        key={responsavel.email}
+                        key={responsavel.EMAIL}
                         className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                         onClick={() => handleResponsavelSelect(responsavel)}
                       >
-                        <div>{responsavel.nome}</div>
-                        <div className="text-sm text-gray-500">{responsavel.email}</div>
+                        <div>{responsavel.NOME}</div>
+                        <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
                       </div>
                     ))}
                 </div>
@@ -341,16 +375,16 @@ export function CreateTaskModal() {
             {/* Lista de responsáveis selecionados */}
             <div className="mt-2 space-y-2">
               {selectedResponsaveis.map(responsavel => (
-                <div key={responsavel.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <div>
-                    <div>{responsavel.nome}</div>
-                    <div className="text-sm text-gray-500">{responsavel.email}</div>
+                    <div>{responsavel.NOME}</div>
+                    <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeResponsavel(responsavel.email)}
+                    onClick={() => removeResponsavel(responsavel.EMAIL)}
                   >
                     <X className="w-4 h-4" />
                   </Button>

@@ -34,7 +34,7 @@ const RM_API_CONFIG = {
 
 // Lista de emails de administradores com acesso total
 const ADMIN_EMAILS = [
-  'exemplo@epamig.br',
+  'arthur.souza@epamig.br',
 ];
 
 export function isUserAdmin(email: string | null | undefined): boolean {
@@ -134,7 +134,7 @@ export async function getResponsaveisBySetor(setor: string): Promise<Responsavel
     }
 
     const data = await response.json();
-    return data.filter((resp: ResponsavelSetor) => resp.CHEFE === 'NÃO');
+    return data.filter((resp: ResponsavelSetor) => resp.EMAIL !== 'andrezza.fernandes@epamig.br');
   } catch (error) {
     console.error('Erro ao buscar responsáveis do setor:', error);
     return [];
