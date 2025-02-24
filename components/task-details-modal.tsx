@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Trash2, Edit2, X, Check } from "lucide-react"
+import { Trash2, Edit2, X, Check, Send } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,16 @@ interface Responsavel {
 interface Projeto {
   id: number;
   nome: string;
+}
+
+interface Comentario {
+  id: number;
+  atividade_id: number;
+  usuario_email: string;
+  usuario_nome: string | null;
+  comentario: string;
+  data_criacao: string;
+  data_edicao: string | null;
 }
 
 interface Task {
@@ -71,6 +82,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [projetoId, setProjetoId] = useState(task.projeto_id?.toString() || "")
   const setTasks = useTaskStore((state) => state.setTasks)
+  const [comentario, setComentario] = useState("")
+  const [comentarios, setComentarios] = useState<Comentario[]>([])
+  const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
+  const [textoEditando, setTextoEditando] = useState("")
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
@@ -167,6 +182,24 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
   }, [isEditing, session?.user?.email]);
 
+  useEffect(() => {
+    const fetchComentarios = async () => {
+      try {
+        const response = await fetch(`/api/comentarios?atividade_id=${task.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setComentarios(data);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar comentários:', error);
+      }
+    };
+
+    if (open) {
+      fetchComentarios();
+    }
+  }, [task.id, open]);
+
   const handleResponsavelSelect = (responsavel: Responsavel) => {
     if (!selectedResponsaveis.find((r: Responsavel) => r.email === responsavel.email)) {
       setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
@@ -233,9 +266,71 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
   }
 
+  const handleSendComment = async () => {
+    if (!session?.user?.email || !comentario.trim()) return;
+
+    try {
+      const response = await fetch('/api/comentarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          atividade_id: task.id,
+          usuario_email: session.user.email,
+          usuario_nome: session.user.name,
+          comentario: comentario.trim()
+        }),
+      });
+
+      if (response.ok) {
+        const novoComentario = await response.json();
+        setComentarios([...comentarios, novoComentario]);
+        setComentario('');
+      } else {
+        alert('Erro ao enviar comentário');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar comentário:', error);
+      alert('Erro ao enviar comentário');
+    }
+  };
+
+  const handleEditComment = async (id: number, novoTexto: string) => {
+    if (!session?.user?.email) return;
+
+    try {
+      const response = await fetch('/api/comentarios', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id,
+          comentario: novoTexto.trim(),
+          usuario_email: session.user.email
+        }),
+      });
+
+      if (response.ok) {
+        const comentarioAtualizado = await response.json();
+        setComentarios(comentarios.map(c => 
+          c.id === id ? comentarioAtualizado : c
+        ));
+        setComentarioEditando(null);
+        setTextoEditando("");
+      } else {
+        alert('Erro ao atualizar comentário');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar comentário:', error);
+      alert('Erro ao atualizar comentário');
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] sm:h-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Detalhes da Tarefa</span>
@@ -390,9 +485,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   )}
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
-                ID Release: <span className="text-gray-900">{task.id_release || "-"}</span>
-              </div>
             </div>
           )}
 
@@ -423,7 +515,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     className="min-h-[200px]"
                   />
                 ) : (
-                  <div className="text-sm mt-1 whitespace-pre-wrap max-h-[300px] overflow-y-auto">{task.descricao || "-"}</div>
+                  <div className="text-sm mt-1 whitespace-pre-wrap max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
                 )}
               </div>
             </div>
@@ -540,11 +632,127 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           )}
         </div>
 
-        {/* Última Atualização */}
-        <div className="text-xs text-gray-400 text-center mt-6">
-          {task.ultima_atualizacao 
-            ? `Última atualização: ${formatDateTime(task.ultima_atualizacao)}`
-            : '-'}
+        <Separator className="my-6" />
+
+        {/* Seção de Comentários */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Comentários</h4>
+          </div>
+
+          {/* Lista de Comentários */}
+          <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+            {comentarios.length > 0 ? (
+              comentarios.map((comment) => (
+                <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={getUserIcon(comment.usuario_email)} />
+                        <AvatarFallback>
+                          {comment.usuario_email[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">
+                        {comment.usuario_nome || comment.usuario_email.split('@')[0]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            setComentarioEditando(comment.id);
+                            setTextoEditando(comment.comentario);
+                          }}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <span className="text-xs text-gray-500">
+                        {comment.data_edicao 
+                          ? `Editado em ${formatDateTime(comment.data_edicao)}`
+                          : formatDateTime(comment.data_criacao)
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  {comentarioEditando === comment.id ? (
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={textoEditando}
+                        onChange={(e) => setTextoEditando(e.target.value)}
+                        className="min-h-[60px]"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEditComment(comment.id, textoEditando)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setComentarioEditando(null);
+                            setTextoEditando("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {comment.comentario}
+                    </p>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500 text-center">
+                Nenhum comentário ainda
+              </div>
+            )}
+          </div>
+
+          {/* Campo de Novo Comentário */}
+          <div className="flex gap-2">
+            <Textarea
+              value={comentario}
+              onChange={(e) => setComentario(e.target.value)}
+              placeholder="Escreva um comentário..."
+              className="min-h-[80px]"
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="self-end"
+              disabled={!comentario.trim() || !session?.user?.email}
+              onClick={handleSendComment}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Última Atualização e ID Release */}
+        <div className="text-xs text-gray-400 text-center mt-6 space-y-1">
+          <div>
+            ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
+          </div>
+          <div>
+            {task.ultima_atualizacao 
+              ? `Última atualização: ${formatDateTime(task.ultima_atualizacao)}`
+              : '-'}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
