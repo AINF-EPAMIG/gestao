@@ -39,29 +39,49 @@ export function FileUpload({
     if (localFiles.length === 0 || !taskId) return
 
     setUploading(true)
+    console.log("[FileUpload] Iniciando upload de arquivos", {
+      numberOfFiles: localFiles.length,
+      taskId
+    })
+
     const formData = new FormData()
     formData.append("taskId", taskId.toString())
     
     localFiles.forEach(file => {
+      console.log("[FileUpload] Adicionando arquivo ao FormData:", {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      })
       formData.append("files", file)
     })
 
     try {
+      console.log("[FileUpload] Enviando requisição para o servidor")
       const response = await fetch("/api/anexos/upload", {
         method: "POST",
         body: formData
       })
 
       if (!response.ok) {
+        const errorData = await response.json()
+        console.error("[FileUpload] Erro na resposta do servidor:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
         throw new Error("Erro ao fazer upload dos arquivos")
       }
+
+      const data = await response.json()
+      console.log("[FileUpload] Upload concluído com sucesso:", data)
 
       setLocalFiles([])
       if (onUploadComplete) {
         onUploadComplete()
       }
     } catch (error) {
-      console.error("Erro ao fazer upload:", error)
+      console.error("[FileUpload] Erro durante o upload:", error)
       alert("Erro ao fazer upload dos arquivos")
     } finally {
       setUploading(false)
