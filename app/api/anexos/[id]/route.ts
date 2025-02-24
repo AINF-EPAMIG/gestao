@@ -2,14 +2,6 @@ import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { RowDataPacket } from "mysql2";
-
-interface AnexoRow extends RowDataPacket {
-  id: number;
-  nome_arquivo: string;
-  caminho_arquivo: string;
-  tipo_arquivo: string;
-}
 
 export async function DELETE(
   request: NextRequest
