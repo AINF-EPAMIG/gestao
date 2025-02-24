@@ -63,26 +63,34 @@ export function FileUpload({
         body: formData
       })
 
+      const responseData = await response.json()
+      
       if (!response.ok) {
-        const errorData = await response.json()
         console.error("[FileUpload] Erro na resposta do servidor:", {
           status: response.status,
           statusText: response.statusText,
-          error: errorData
+          data: responseData,
+          details: responseData.details || 'Sem detalhes adicionais'
         })
-        throw new Error("Erro ao fazer upload dos arquivos")
+        throw new Error(responseData.error || "Erro ao fazer upload dos arquivos")
       }
 
-      const data = await response.json()
-      console.log("[FileUpload] Upload concluído com sucesso:", data)
+      console.log("[FileUpload] Upload concluído com sucesso:", responseData)
 
       setLocalFiles([])
       if (onUploadComplete) {
         onUploadComplete()
       }
     } catch (error) {
-      console.error("[FileUpload] Erro durante o upload:", error)
-      alert("Erro ao fazer upload dos arquivos")
+      console.error("[FileUpload] Erro durante o upload:", {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : error,
+        type: typeof error
+      })
+      alert(error instanceof Error ? error.message : "Erro ao fazer upload dos arquivos")
     } finally {
       setUploading(false)
     }

@@ -8,10 +8,17 @@ import { mkdir } from "fs/promises"
 import { ResultSetHeader } from "mysql2"
 
 export async function POST(request: NextRequest) {
+  console.log("[Upload] DEBUG - Rota de upload acessada")
+  
   try {
+    // Verificar URL da requisição
+    console.log("[Upload] DEBUG - URL da requisição:", request.url)
+    
     console.log("[Upload] Iniciando processo de upload")
     
     const session = await getServerSession(authOptions)
+    console.log("[Upload] DEBUG - Resultado da sessão:", !!session)
+    
     if (!session) {
       console.log("[Upload] Erro: Usuário não autenticado")
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
@@ -24,7 +31,12 @@ export async function POST(request: NextRequest) {
     
     console.log("[Upload] Dados recebidos:", {
       taskId,
-      numberOfFiles: files.length
+      numberOfFiles: files.length,
+      filesInfo: files.map(f => ({
+        type: typeof f,
+        isFile: f instanceof File,
+        name: f instanceof File ? f.name : 'não é arquivo'
+      }))
     })
 
     if (!taskId || !files.length) {
@@ -116,9 +128,21 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(savedFiles)
   } catch (error) {
-    console.error("[Upload] Erro crítico no processo de upload:", error)
+    // Log mais detalhado do erro
+    console.error("[Upload] Erro crítico no processo de upload:", {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : error,
+      type: typeof error
+    })
+    
     return NextResponse.json(
-      { error: "Erro ao fazer upload dos arquivos" },
+      { 
+        error: "Erro ao fazer upload dos arquivos",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
       { status: 500 }
     )
   }
