@@ -14,73 +14,82 @@ interface AnexoRow extends RowDataPacket {
 export async function GET(
   request: NextRequest
 ) {
+  // Log inicial para garantir que a função está sendo chamada
+  console.log("=== INÍCIO DO DOWNLOAD ===")
+  console.log("Request URL:", request.url)
+  console.log("Request method:", request.method)
+
   try {
-    console.log("[Download] DEBUG - URL completa:", request.url)
-    console.log("[Download] Iniciando processo de download")
-    
+    // Verificar autenticação
     const session = await getServerSession(authOptions)
+    console.log("Sessão:", session ? "Autenticado" : "Não autenticado")
+
     if (!session) {
-      console.log("[Download] Erro: Usuário não autenticado")
+      console.log("Erro: Usuário não autenticado")
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
-    console.log("[Download] Usuário autenticado:", session.user?.email)
 
-    // Extrair o ID da URL
+    // Extrair ID
     const pathParts = request.nextUrl.pathname.split('/')
     const anexoId = pathParts[pathParts.length - 1]
-    console.log("[Download] ID do anexo:", anexoId)
+    console.log("ID do anexo solicitado:", anexoId)
 
-    // Buscar informações do anexo no banco
-    console.log("[Download] Buscando anexo no banco...")
-    const [rows] = await db.execute<AnexoRow[]>(
-      "SELECT * FROM u711845530_gestao.anexos WHERE id = ?",
-      [anexoId]
-    )
-    console.log("[Download] Resultado da busca:", {
-      encontrado: rows.length > 0,
-      dados: rows.length > 0 ? {
-        id: rows[0].id,
-        nome: rows[0].nome_arquivo,
-        caminho: rows[0].caminho_arquivo,
-        tipo: rows[0].tipo_arquivo
-      } : null
-    })
-
-    if (!rows.length) {
-      console.log("[Download] Anexo não encontrado")
-      return NextResponse.json(
-        { error: "Anexo não encontrado" },
-        { status: 404 }
+    try {
+      // Buscar no banco
+      const [rows] = await db.execute<AnexoRow[]>(
+        "SELECT * FROM u711845530_gestao.anexos WHERE id = ?",
+        [anexoId]
       )
+      console.log("Resultado da consulta:", {
+        encontrado: rows.length > 0,
+        totalRegistros: rows.length
+      })
+
+      if (!rows.length) {
+        console.log("Anexo não encontrado no banco")
+        return NextResponse.json(
+          { error: "Anexo não encontrado" },
+          { status: 404 }
+        )
+      }
+
+      const anexo = rows[0]
+      console.log("Dados do anexo:", {
+        id: anexo.id,
+        nome: anexo.nome_arquivo,
+        tipo: anexo.tipo_arquivo,
+        caminho: anexo.caminho_arquivo
+      })
+
+      // Por enquanto, vamos apenas retornar os dados do arquivo
+      return NextResponse.json({
+        message: "Arquivo encontrado",
+        dados: {
+          id: anexo.id,
+          nome: anexo.nome_arquivo,
+          tipo: anexo.tipo_arquivo,
+          caminho: anexo.caminho_arquivo
+        }
+      })
+
+    } catch (dbError) {
+      console.error("Erro na consulta ao banco:", dbError)
+      throw dbError
     }
 
-    const anexo = rows[0]
-    console.log("[Download] Anexo encontrado:", {
-      nome: anexo.nome_arquivo,
-      tipo: anexo.tipo_arquivo,
-      caminho: anexo.caminho_arquivo
-    })
-
-    // Construir URL completa para o arquivo
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || ''
-    const fileUrl = `${baseUrl}/uploads/${anexo.caminho_arquivo}`
-    console.log("[Download] URL do arquivo:", fileUrl)
-
-    // Redirecionar para a URL do arquivo
-    console.log("[Download] Redirecionando para o arquivo...")
-    return NextResponse.redirect(fileUrl)
   } catch (error) {
-    console.error("[Download] Erro ao baixar anexo:", {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : error,
-      type: typeof error
+    console.log("=== ERRO NO DOWNLOAD ===")
+    console.error("Detalhes do erro:", {
+      mensagem: error instanceof Error ? error.message : "Erro desconhecido",
+      tipo: typeof error,
+      erro: error
     })
+    
     return NextResponse.json(
       { error: "Erro ao baixar anexo" },
       { status: 500 }
     )
+  } finally {
+    console.log("=== FIM DO DOWNLOAD ===")
   }
 } 
