@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Trash2, Edit2, X, Check } from "lucide-react"
-import { useTaskStore, getPriorityName, getStatusName, formatHours } from "@/lib/store"
+import { useTaskStore, getPriorityName, getStatusName } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,10 +27,31 @@ interface Projeto {
   nome: string;
 }
 
+interface Task {
+  id: number;
+  titulo: string;
+  descricao: string;
+  projeto_id: number;
+  projeto_nome?: string;
+  status_id: number;
+  prioridade_id: number;
+  estimativa_horas: string | null;
+  data_inicio: string | null;
+  data_fim: string | null;
+  id_release: string | null;
+  ultima_atualizacao: string | null;
+  responsaveis?: {
+    id: number;
+    email: string;
+    nome?: string;
+    cargo?: string;
+  }[];
+}
+
 interface TaskDetailsModalProps {
-  task: any
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  task: Task;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalProps) {
@@ -45,18 +66,18 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [dataFim, setDataFim] = useState(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "")
   const [responsavelInput, setResponsavelInput] = useState("")
   const [selectedResponsaveis, setSelectedResponsaveis] = useState(task.responsaveis || [])
-  const [responsaveis, setResponsaveis] = useState<any[]>([])
+  const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
-  const [projetos, setProjetos] = useState<any[]>([])
+  const [projetos, setProjetos] = useState<Projeto[]>([])
   const [projetoId, setProjetoId] = useState(task.projeto_id?.toString() || "")
   const setTasks = useTaskStore((state) => state.setTasks)
 
-  const formatDate = (date: string | null) => {
+  const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
-  const formatDateTime = (dateTime: string | null) => {
+  const formatDateTime = (dateTime: string | undefined | null) => {
     if (!dateTime) return '-';
     
     const date = new Date(dateTime);
@@ -70,6 +91,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       timeZone: 'UTC'
     });
   };
+
+  const formatEstimativa = (estimativa: string | number | undefined | null) => {
+    if (!estimativa) return "-"
+    return `${estimativa}h`
+  }
 
   useEffect(() => {
     const checkPermissions = async () => {
@@ -90,7 +116,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         }
 
         // Verificar se é responsável
-        const isResponsavel = task.responsaveis?.some((r: any) => r.email === session.user.email);
+        const isResponsavel = task.responsaveis?.some((responsavel: Responsavel) => responsavel.email === session.user.email);
         if (isResponsavel) {
           setCanEdit(true);
           return;
@@ -441,7 +467,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     placeholder="Ex: 8"
                   />
                 ) : (
-                  <div className="text-sm">{formatHours(task.estimativa_horas)}</div>
+                  <div className="text-sm">{formatEstimativa(task.estimativa_horas)}</div>
                 )}
               </div>
             </div>
