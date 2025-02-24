@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin } from "@/lib/rm-service"
+import { TaskAttachments } from "./task-attachments"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface Responsavel {
   id: number;
@@ -392,369 +394,385 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
-          {/* Cabeçalho com Badges */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge 
-                className={
-                  getStatusName(task.status_id) === "Concluída"
-                    ? "bg-emerald-500"
-                    : getStatusName(task.status_id) === "Em desenvolvimento"
-                    ? "bg-blue-500"
-                    : getStatusName(task.status_id) === "Em testes"
-                    ? "bg-amber-500"
-                    : "bg-orange-500"
-                }
-              >
-                {getStatusName(task.status_id)}
-              </Badge>
+        <Tabs defaultValue="detalhes" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger value="anexos">Anexos</TabsTrigger>
+          </TabsList>
 
-              {isEditing ? (
-                <Select value={prioridade} onValueChange={setPrioridade}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a prioridade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Alta</SelectItem>
-                    <SelectItem value="2">Média</SelectItem>
-                    <SelectItem value="3">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge
-                  className={
-                    getPriorityName(task.prioridade_id) === "Alta"
-                      ? "bg-red-500"
-                      : getPriorityName(task.prioridade_id) === "Média"
-                      ? "bg-yellow-500"
-                      : "bg-green-500"
-                  }
-                >
-                  {getPriorityName(task.prioridade_id)}
-                </Badge>
-              )}
-            </div>
+          <div className="min-h-[600px] overflow-y-auto pr-2">
+            <TabsContent value="detalhes" className="space-y-6 py-4">
+              {/* Cabeçalho com Badges */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    className={
+                      getStatusName(task.status_id) === "Concluída"
+                        ? "bg-emerald-500"
+                        : getStatusName(task.status_id) === "Em desenvolvimento"
+                        ? "bg-blue-500"
+                        : getStatusName(task.status_id) === "Em testes"
+                        ? "bg-amber-500"
+                        : "bg-orange-500"
+                    }
+                  >
+                    {getStatusName(task.status_id)}
+                  </Badge>
 
-            {isEditing ? (
-              <Select value={projetoId} onValueChange={setProjetoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projetos.map(projeto => (
-                    <SelectItem key={projeto.id} value={projeto.id.toString()}>
-                      {projeto.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Badge variant="outline">
-                {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
-              </Badge>
-            )}
-          </div>
-
-          {/* Responsáveis e ID Release */}
-          {!isEditing && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-4">
-                  {task.responsaveis && task.responsaveis.length > 0 ? (
-                    task.responsaveis.map((responsavel: Responsavel) => (
-                      <Avatar key={responsavel.email} className="w-12 h-12 border-2 border-white">
-                        <AvatarImage src={getUserIcon(responsavel.email)} />
-                        <AvatarFallback>
-                          {responsavel.email[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))
-                  ) : null}
-                </div>
-                <div>
-                  {task.responsaveis && task.responsaveis.length > 0 ? (
-                    <span className="text-sm">
-                      {task.responsaveis
-                        .map((responsavel: Responsavel) => 
-                          (responsavel.nome || responsavel.email.split('@')[0]).split(' ')[0]
-                        )
-                        .join(', ')}
-                    </span>
+                  {isEditing ? (
+                    <Select value={prioridade} onValueChange={setPrioridade}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a prioridade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Alta</SelectItem>
+                        <SelectItem value="2">Média</SelectItem>
+                        <SelectItem value="3">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
                   ) : (
-                    <span className="text-sm text-gray-500">Sem responsáveis atribuídos</span>
+                    <Badge
+                      className={
+                        getPriorityName(task.prioridade_id) === "Alta"
+                          ? "bg-red-500"
+                          : getPriorityName(task.prioridade_id) === "Média"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }
+                    >
+                      {getPriorityName(task.prioridade_id)}
+                    </Badge>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Conteúdo em duas colunas */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Coluna da esquerda */}
-            <div className="space-y-6">
-              <div>
-                <div className="text-sm text-gray-500">Título</div>
                 {isEditing ? (
-                  <Input
-                    value={titulo}
-                    onChange={(e) => setTitulo(e.target.value)}
-                    placeholder="Digite o título da tarefa"
-                  />
+                  <Select value={projetoId} onValueChange={setProjetoId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o projeto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projetos.map(projeto => (
+                        <SelectItem key={projeto.id} value={projeto.id.toString()}>
+                          {projeto.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <div className="font-medium">{task.titulo}</div>
+                  <Badge variant="outline">
+                    {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+                  </Badge>
                 )}
               </div>
 
-              <div>
-                <div className="text-sm text-gray-500">Descrição</div>
-                {isEditing ? (
-                  <Textarea
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    placeholder="Digite a descrição da tarefa"
-                    className="min-h-[200px]"
-                  />
-                ) : (
-                  <div className="text-sm mt-1 whitespace-pre-wrap max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
-                )}
-              </div>
-            </div>
-
-            {/* Coluna da direita */}
-            <div className="space-y-6">
-              <div>
-                <div className="text-sm text-gray-500">Data de Início</div>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={dataInicio}
-                    onChange={(e) => setDataInicio(e.target.value)}
-                  />
-                ) : (
-                  <div className="text-sm">{formatDate(task.data_inicio)}</div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-sm text-gray-500">Data de Fim</div>
-                {isEditing ? (
-                  <Input
-                    type="date"
-                    value={dataFim}
-                    onChange={(e) => setDataFim(e.target.value)}
-                  />
-                ) : (
-                  <div className="text-sm">{formatDate(task.data_fim)}</div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-sm text-gray-500">Estimativa</div>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={estimativaHoras}
-                    onChange={(e) => setEstimativaHoras(e.target.value)}
-                    placeholder="Ex: 8"
-                  />
-                ) : (
-                  <div className="text-sm">{formatEstimativa(task.estimativa_horas)}</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Responsáveis - Modo de Edição */}
-          {isEditing && (
-            <div>
-              <div className="text-sm text-gray-500">Responsáveis</div>
-              <div className="space-y-2">
-                <div className="relative">
-                  <Input
-                    value={responsavelInput}
-                    onChange={(e) => {
-                      setResponsavelInput(e.target.value)
-                      setShowResponsavelSuggestions(true)
-                    }}
-                    onFocus={() => setShowResponsavelSuggestions(true)}
-                    placeholder="Digite o nome do responsável"
-                  />
-                  {showResponsavelSuggestions && responsavelInput && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                      {responsaveis
-                        .filter((r: Responsavel) => 
-                          (r.nome || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
-                          !selectedResponsaveis.find((sr: Responsavel) => sr.email === r.email)
-                        )
-                        .map((responsavel: Responsavel) => (
-                          <div
-                            key={responsavel.email}
-                            className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                            onClick={() => handleResponsavelSelect(responsavel)}
-                          >
-                            <div>{responsavel.nome}</div>
-                            <div className="text-sm text-gray-500">{responsavel.email}</div>
-                          </div>
-                        ))}
+              {/* Responsáveis e ID Release */}
+              {!isEditing && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-4">
+                      {task.responsaveis && task.responsaveis.length > 0 ? (
+                        task.responsaveis.map((responsavel: Responsavel) => (
+                          <Avatar key={responsavel.email} className="w-12 h-12 border-2 border-white">
+                            <AvatarImage src={getUserIcon(responsavel.email)} />
+                            <AvatarFallback>
+                              {responsavel.email[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))
+                      ) : null}
                     </div>
-                  )}
-                </div>
-                
-                {/* Lista de responsáveis selecionados */}
-                <div className="space-y-2">
-                  {selectedResponsaveis.map((responsavel: Responsavel) => (
-                    <div key={responsavel.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6">
-                          <AvatarImage src={getUserIcon(responsavel.email)} />
-                          <AvatarFallback>
-                            {responsavel.email[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium">
-                          {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
+                    <div>
+                      {task.responsaveis && task.responsaveis.length > 0 ? (
+                        <span className="text-sm">
+                          {task.responsaveis
+                            .map((responsavel: Responsavel) => 
+                              (responsavel.nome || responsavel.email.split('@')[0]).split(' ')[0]
+                            )
+                            .join(', ')}
                         </span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeResponsavel(responsavel.email)}
-                      >
-                        <X className="w-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator className="my-6" />
-
-        {/* Seção de Comentários */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Comentários</h4>
-          </div>
-
-          {/* Lista de Comentários */}
-          <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
-            {comentarios.length > 0 ? (
-              comentarios.map((comment) => (
-                <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={getUserIcon(comment.usuario_email)} />
-                        <AvatarFallback>
-                          {comment.usuario_email[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium">
-                        {comment.usuario_nome || comment.usuario_email.split('@')[0]}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => {
-                            setComentarioEditando(comment.id);
-                            setTextoEditando(comment.comentario);
-                          }}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
+                      ) : (
+                        <span className="text-sm text-gray-500">Sem responsáveis atribuídos</span>
                       )}
-                      <span className="text-xs text-gray-500">
-                        {comment.data_edicao 
-                          ? `Editado em ${formatDateTime(comment.data_edicao)}`
-                          : formatDateTime(comment.data_criacao)
-                        }
-                      </span>
                     </div>
                   </div>
-                  {comentarioEditando === comment.id ? (
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={textoEditando}
-                        onChange={(e) => setTextoEditando(e.target.value)}
-                        className="min-h-[60px]"
+                </div>
+              )}
+
+              {/* Conteúdo em duas colunas */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Coluna da esquerda */}
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-sm text-gray-500">Título</div>
+                    {isEditing ? (
+                      <Input
+                        value={titulo}
+                        onChange={(e) => setTitulo(e.target.value)}
+                        placeholder="Digite o título da tarefa"
                       />
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEditComment(comment.id, textoEditando)}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setComentarioEditando(null);
-                            setTextoEditando("");
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    ) : (
+                      <div className="font-medium">{task.titulo}</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-500">Descrição</div>
+                    {isEditing ? (
+                      <Textarea
+                        value={descricao}
+                        onChange={(e) => setDescricao(e.target.value)}
+                        placeholder="Digite a descrição da tarefa"
+                        className="min-h-[200px]"
+                      />
+                    ) : (
+                      <div className="text-sm mt-1 whitespace-pre-wrap max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Coluna da direita */}
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-sm text-gray-500">Data de Início</div>
+                    {isEditing ? (
+                      <Input
+                        type="date"
+                        value={dataInicio}
+                        onChange={(e) => setDataInicio(e.target.value)}
+                      />
+                    ) : (
+                      <div className="text-sm">{formatDate(task.data_inicio)}</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-500">Data de Fim</div>
+                    {isEditing ? (
+                      <Input
+                        type="date"
+                        value={dataFim}
+                        onChange={(e) => setDataFim(e.target.value)}
+                      />
+                    ) : (
+                      <div className="text-sm">{formatDate(task.data_fim)}</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-gray-500">Estimativa</div>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={estimativaHoras}
+                        onChange={(e) => setEstimativaHoras(e.target.value)}
+                        placeholder="Ex: 8"
+                      />
+                    ) : (
+                      <div className="text-sm">{formatEstimativa(task.estimativa_horas)}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Responsáveis - Modo de Edição */}
+              {isEditing && (
+                <div>
+                  <div className="text-sm text-gray-500">Responsáveis</div>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Input
+                        value={responsavelInput}
+                        onChange={(e) => {
+                          setResponsavelInput(e.target.value)
+                          setShowResponsavelSuggestions(true)
+                        }}
+                        onFocus={() => setShowResponsavelSuggestions(true)}
+                        placeholder="Digite o nome do responsável"
+                      />
+                      {showResponsavelSuggestions && responsavelInput && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                          {responsaveis
+                            .filter((r: Responsavel) => 
+                              (r.nome || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
+                              !selectedResponsaveis.find((sr: Responsavel) => sr.email === r.email)
+                            )
+                            .map((responsavel: Responsavel) => (
+                              <div
+                                key={responsavel.email}
+                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleResponsavelSelect(responsavel)}
+                              >
+                                <div>{responsavel.nome}</div>
+                                <div className="text-sm text-gray-500">{responsavel.email}</div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
+                    
+                    {/* Lista de responsáveis selecionados */}
+                    <div className="space-y-2">
+                      {selectedResponsaveis.map((responsavel: Responsavel) => (
+                        <div key={responsavel.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src={getUserIcon(responsavel.email)} />
+                              <AvatarFallback>
+                                {responsavel.email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">
+                              {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeResponsavel(responsavel.email)}
+                          >
+                            <X className="w-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Separator className="my-6" />
+
+              {/* Seção de Comentários */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Comentários</h4>
+                </div>
+
+                {/* Lista de Comentários */}
+                <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+                  {comentarios.length > 0 ? (
+                    comentarios.map((comment) => (
+                      <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src={getUserIcon(comment.usuario_email)} />
+                              <AvatarFallback>
+                                {comment.usuario_email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">
+                              {comment.usuario_nome || comment.usuario_email.split('@')[0]}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => {
+                                  setComentarioEditando(comment.id);
+                                  setTextoEditando(comment.comentario);
+                                }}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <span className="text-xs text-gray-500">
+                              {comment.data_edicao 
+                                ? `Editado em ${formatDateTime(comment.data_edicao)}`
+                                : formatDateTime(comment.data_criacao)
+                              }
+                            </span>
+                          </div>
+                        </div>
+                        {comentarioEditando === comment.id ? (
+                          <div className="flex gap-2">
+                            <Textarea
+                              value={textoEditando}
+                              onChange={(e) => setTextoEditando(e.target.value)}
+                              className="min-h-[60px]"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                type="button"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleEditComment(comment.id, textoEditando)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setComentarioEditando(null);
+                                  setTextoEditando("");
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {comment.comentario}
+                          </p>
+                        )}
+                      </div>
+                    ))
                   ) : (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {comment.comentario}
-                    </p>
+                    <div className="text-sm text-gray-500 text-center">
+                      Nenhum comentário ainda
+                    </div>
                   )}
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-500 text-center">
-                Nenhum comentário ainda
+
+                {/* Campo de Novo Comentário */}
+                <div className="flex gap-2">
+                  <Textarea
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    placeholder="Escreva um comentário..."
+                    className="min-h-[80px]"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="self-end"
+                    disabled={!comentario.trim() || !session?.user?.email}
+                    onClick={handleSendComment}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Campo de Novo Comentário */}
-          <div className="flex gap-2">
-            <Textarea
-              value={comentario}
-              onChange={(e) => setComentario(e.target.value)}
-              placeholder="Escreva um comentário..."
-              className="min-h-[80px]"
-            />
-            <Button
-              type="button"
-              size="icon"
-              className="self-end"
-              disabled={!comentario.trim() || !session?.user?.email}
-              onClick={handleSendComment}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+              {/* Última Atualização e ID Release */}
+              <div className="text-xs text-gray-400 text-center mt-6 space-y-1">
+                <div>
+                  ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
+                </div>
+                <div>
+                  {task.ultima_atualizacao 
+                    ? `Última atualização: ${formatDateTime(task.ultima_atualizacao)}`
+                    : '-'}
+                </div>
+              </div>
+            </TabsContent>
 
-        {/* Última Atualização e ID Release */}
-        <div className="text-xs text-gray-400 text-center mt-6 space-y-1">
-          <div>
-            ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
+            <TabsContent value="anexos" className="space-y-4 py-4">
+              <TaskAttachments 
+                taskId={task.id} 
+                canEdit={canEdit}
+              />
+            </TabsContent>
           </div>
-          <div>
-            {task.ultima_atualizacao 
-              ? `Última atualização: ${formatDateTime(task.ultima_atualizacao)}`
-              : '-'}
-          </div>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

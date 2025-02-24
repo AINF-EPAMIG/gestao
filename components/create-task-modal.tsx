@@ -11,6 +11,8 @@ import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
 import { Plus, X } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { FileUpload } from "./file-upload"
 
 interface Projeto {
   id: number
@@ -27,6 +29,11 @@ interface Setor {
   id: number;
   sigla: string;
   nome: string;
+}
+
+interface CachedFile {
+  file: File;
+  id: string; // ID temporário para gerenciamento
 }
 
 export function CreateTaskModal() {
@@ -55,6 +62,9 @@ export function CreateTaskModal() {
   const [setorInput, setSetorInput] = useState("")
   const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
   const setorRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState("detalhes")
+  const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     // Verificar se o usuário é chefe ou admin
@@ -161,8 +171,48 @@ export function CreateTaskModal() {
     fetchProjetos()
   }, [])
 
+  const handleFileSelect = (files: File[]) => {
+    const newCachedFiles = files.map(file => ({
+      file,
+      id: Math.random().toString(36).substring(7) // ID temporário único
+    }))
+    setCachedFiles(prev => [...prev, ...newCachedFiles])
+  }
+
+  const handleRemoveFile = (id: string) => {
+    setCachedFiles(prev => prev.filter(file => file.id !== id))
+  }
+
+  const uploadCachedFiles = async (taskId: number) => {
+    if (cachedFiles.length === 0) return
+
+    const formData = new FormData()
+    formData.append("taskId", taskId.toString())
+    
+    cachedFiles.forEach(({file}) => {
+      formData.append("files", file)
+    })
+
+    try {
+      const response = await fetch("/api/anexos/upload", {
+        method: "POST",
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao fazer upload dos arquivos")
+      }
+
+      setCachedFiles([])
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error)
+      alert("Alguns anexos podem não ter sido enviados. Por favor, verifique na tela de detalhes da tarefa.")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     
     try {
       const response = await fetch('/api/atividades', {
@@ -177,7 +227,7 @@ export function CreateTaskModal() {
           responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
           data_inicio: dataInicio,
           data_fim: dataFim,
-          status_id: 1, // Não iniciada
+          status_id: 1,
           prioridade_id: parseInt(prioridade),
           estimativa_horas: estimativaHoras,
           userEmail: session?.user?.email,
@@ -187,17 +237,19 @@ export function CreateTaskModal() {
       })
 
       if (response.ok) {
-        const updatedTasks = await response.json()
-        setTasks(updatedTasks)
-        setOpen(false)
-        // Resetar campos
-        setTitulo("")
-        setDescricao("")
-        setProjetoId("")
-        setPrioridade("2")
-        setEstimativaHoras("")
-        setDataFim("")
-        setSelectedResponsaveis([])
+        const data = await response.json()
+        setTasks(data)
+        
+        const createdTask = data.find((task: { titulo: string; descricao: string }) => 
+          task.titulo === titulo && 
+          task.descricao === descricao
+        )
+        
+        if (createdTask) {
+          // Upload dos arquivos em cache
+          await uploadCachedFiles(createdTask.id)
+          handleFinish()
+        }
       } else {
         const error = await response.json()
         alert(error.error || 'Erro ao criar tarefa')
@@ -205,7 +257,23 @@ export function CreateTaskModal() {
     } catch (error) {
       console.error('Erro ao criar tarefa:', error)
       alert('Erro ao criar tarefa')
+    } finally {
+      setIsSubmitting(false)
     }
+  }
+
+  const handleFinish = () => {
+    setOpen(false)
+    // Resetar campos
+    setTitulo("")
+    setDescricao("")
+    setProjetoId("")
+    setPrioridade("2")
+    setEstimativaHoras("")
+    setDataFim("")
+    setSelectedResponsaveis([])
+    setActiveTab("detalhes")
+    setCachedFiles([])
   }
 
   const handleProjetoSelect = (projeto: Projeto) => {
@@ -275,220 +343,249 @@ export function CreateTaskModal() {
           Nova Tarefa
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px] sm:h-auto">
         <DialogHeader>
           <DialogTitle>Criar Nova Tarefa</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Título *</label>
-            <Input
-              required
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Digite o título da tarefa"
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Descrição</label>
-            <Textarea
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Digite a descrição da tarefa"
-            />
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Projeto</label>
-            <div className="relative">
-              <Input
-                ref={inputRef}
-                value={projetoInput}
-                onChange={(e) => {
-                  setProjetoInput(e.target.value)
-                  setShowSuggestions(true)
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Digite o nome do projeto"
-                className="w-full"
-              />
-              {showSuggestions && projetoInput && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                  {projetos
-                    .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
-                    .map(projeto => (
-                      <div
-                        key={projeto.id}
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleProjetoSelect(projeto)}
-                      >
-                        {projeto.nome}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger value="anexos">
+              Anexos {cachedFiles.length > 0 ? ` (${cachedFiles.length})` : ""}
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="min-h-[600px] overflow-y-auto pr-2">
+            <TabsContent value="detalhes" className="space-y-4 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Título *</label>
+                  <Input
+                    required
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    placeholder="Digite o título da tarefa"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Descrição</label>
+                  <Textarea
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    placeholder="Digite a descrição da tarefa"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Projeto</label>
+                  <div className="relative">
+                    <Input
+                      ref={inputRef}
+                      value={projetoInput}
+                      onChange={(e) => {
+                        setProjetoInput(e.target.value)
+                        setShowSuggestions(true)
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      placeholder="Digite o nome do projeto"
+                      className="w-full"
+                    />
+                    {showSuggestions && projetoInput && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                        {projetos
+                          .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
+                          .map(projeto => (
+                            <div
+                              key={projeto.id}
+                              className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleProjetoSelect(projeto)}
+                            >
+                              {projeto.nome}
+                            </div>
+                          ))}
+                        {!projetos.some(p => p.nome.toLowerCase() === projetoInput.toLowerCase()) && (
+                          <div
+                            className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-emerald-600"
+                            onClick={() => handleCreateNewProjeto(projetoInput)}
+                          >
+                            + Criar &quot;{projetoInput}&quot;
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Responsáveis</label>
+                  <div className="relative">
+                    <Input
+                      value={responsavelInput}
+                      onChange={(e) => {
+                        setResponsavelInput(e.target.value);
+                        setShowResponsavelSuggestions(true);
+                      }}
+                      onFocus={() => setShowResponsavelSuggestions(true)}
+                      placeholder="Digite o nome do responsável"
+                    />
+                    {showResponsavelSuggestions && responsavelInput && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                        {responsaveis
+                          .filter(r => 
+                            (r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
+                            !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL)
+                          )
+                          .map(responsavel => (
+                            <div
+                              key={responsavel.EMAIL}
+                              className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleResponsavelSelect(responsavel)}
+                            >
+                              <div>{responsavel.NOME}</div>
+                              <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Lista de responsáveis selecionados */}
+                  <div className="mt-2 space-y-2">
+                    {selectedResponsaveis.map(responsavel => (
+                      <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div>
+                          <div>{responsavel.NOME}</div>
+                          <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeResponsavel(responsavel.EMAIL)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
-                  {!projetos.some(p => p.nome.toLowerCase() === projetoInput.toLowerCase()) && (
-                    <div
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-emerald-600"
-                      onClick={() => handleCreateNewProjeto(projetoInput)}
-                    >
-                      + Criar &quot;{projetoInput}&quot;
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Setor</label>
+                  {isAdmin ? (
+                    <div className="relative">
+                      <Input
+                        ref={setorRef}
+                        value={setorInput}
+                        onChange={(e) => {
+                          setSetorInput(e.target.value)
+                          setShowSetorSuggestions(true)
+                        }}
+                        onFocus={() => setShowSetorSuggestions(true)}
+                        placeholder="Digite o setor"
+                        className="w-full"
+                      />
+                      {showSetorSuggestions && setorInput && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                          {setores
+                            .filter(s => 
+                              s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
+                              (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
+                            )
+                            .map(setor => (
+                              <div
+                                key={setor.id}
+                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleSetorSelect(setor)}
+                              >
+                                {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <Input
+                      value={setorInput}
+                      disabled
+                      className="bg-gray-100"
+                    />
                   )}
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Responsáveis</label>
-            <div className="relative">
-              <Input
-                value={responsavelInput}
-                onChange={(e) => {
-                  setResponsavelInput(e.target.value);
-                  setShowResponsavelSuggestions(true);
-                }}
-                onFocus={() => setShowResponsavelSuggestions(true)}
-                placeholder="Digite o nome do responsável"
-              />
-              {showResponsavelSuggestions && responsavelInput && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                  {responsaveis
-                    .filter(r => 
-                      (r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
-                      !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL)
-                    )
-                    .map(responsavel => (
-                      <div
-                        key={responsavel.EMAIL}
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleResponsavelSelect(responsavel)}
-                      >
-                        <div>{responsavel.NOME}</div>
-                        <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Lista de responsáveis selecionados */}
-            <div className="mt-2 space-y-2">
-              {selectedResponsaveis.map(responsavel => (
-                <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div>{responsavel.NOME}</div>
-                    <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                    <label className="text-sm font-medium">Prioridade</label>
+                    <Select value={prioridade} onValueChange={setPrioridade}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a prioridade" />
+                      </SelectTrigger>
+                      <SelectContent position="item-aligned" side="bottom" align="start">
+                        <SelectItem value="1">Alta</SelectItem>
+                        <SelectItem value="2">Média</SelectItem>
+                        <SelectItem value="3">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeResponsavel(responsavel.EMAIL)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+
+                  <div>
+                    <label className="text-sm font-medium">Estimativa (horas)</label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={estimativaHoras}
+                      onChange={(e) => setEstimativaHoras(e.target.value)}
+                      placeholder="Ex: 8"
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Setor</label>
-            {isAdmin ? (
-              <div className="relative">
-                <Input
-                  ref={setorRef}
-                  value={setorInput}
-                  onChange={(e) => {
-                    setSetorInput(e.target.value)
-                    setShowSetorSuggestions(true)
-                  }}
-                  onFocus={() => setShowSetorSuggestions(true)}
-                  placeholder="Digite o setor"
-                  className="w-full"
-                />
-                {showSetorSuggestions && setorInput && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                    {setores
-                      .filter(s => 
-                        s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
-                        (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
-                      )
-                      .map(setor => (
-                        <div
-                          key={setor.id}
-                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSetorSelect(setor)}
-                        >
-                          {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
-                        </div>
-                      ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Data de Início</label>
+                    <Input
+                      type="date"
+                      value={dataInicio}
+                      onChange={(e) => setDataInicio(e.target.value)}
+                    />
                   </div>
-                )}
+
+                  <div>
+                    <label className="text-sm font-medium">Data de Fim Prevista</label>
+                    <Input
+                      type="date"
+                      value={dataFim}
+                      onChange={(e) => setDataFim(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Criando..." : "Criar Tarefa"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="anexos" className="space-y-4 py-4">
+              <div className="space-y-4">
+                <FileUpload 
+                  onFileSelect={handleFileSelect}
+                  onRemoveFile={handleRemoveFile}
+                  files={cachedFiles}
+                  showUploadButton={false}
+                />
               </div>
-            ) : (
-              <Input
-                value={setorInput}
-                disabled
-                className="bg-gray-100"
-              />
-            )}
+            </TabsContent>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Prioridade</label>
-              <Select value={prioridade} onValueChange={setPrioridade}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a prioridade" />
-                </SelectTrigger>
-                <SelectContent position="item-aligned" side="bottom" align="start">
-                  <SelectItem value="1">Alta</SelectItem>
-                  <SelectItem value="2">Média</SelectItem>
-                  <SelectItem value="3">Baixa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Estimativa (horas)</label>
-              <Input
-                type="number"
-                step="0.1"
-                value={estimativaHoras}
-                onChange={(e) => setEstimativaHoras(e.target.value)}
-                placeholder="Ex: 8"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Data de Início</label>
-              <Input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Data de Fim Prevista</label>
-              <Input
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="submit" className="w-full bg-emerald-800 text-white hover:bg-emerald-700">
-              Criar Tarefa
-            </Button>
-          </DialogFooter>
-        </form>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )
