@@ -75,6 +75,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [isDeleting, setIsDeleting] = useState(false)
   const [isFading, setIsFading] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [titulo, setTitulo] = useState(task.titulo)
   const [descricao, setDescricao] = useState(task.descricao || "")
   const [prioridade, setPrioridade] = useState(task.prioridade_id.toString())
@@ -249,24 +250,43 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const handleSave = async () => {
     try {
+      setIsSaving(true);
+      setIsFading(true);
+
+      // Identificar novos responsáveis
+      const responsaveisAtuais = task.responsaveis?.map(r => r.email) || [];
+      const novosResponsaveis = selectedResponsaveis
+        .filter((r: Responsavel) => !responsaveisAtuais.includes(r.email))
+        .map((r: Responsavel) => r.email);
+
+      const requestBody = {
+        id: task.id,
+        titulo,
+        descricao,
+        projeto_id: parseInt(projetoId),
+        responsaveis_emails: selectedResponsaveis.map((r: Responsavel) => r.email),
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        prioridade_id: parseInt(prioridade),
+        estimativa_horas: estimativaHoras,
+        userEmail: session?.user?.email,
+        novosResponsaveis,
+        editorName: session?.user?.name || session?.user?.email
+      };
+
+      // Após 1 segundo mostra o loading
+      setTimeout(() => setShowLoading(true), 1000);
+
       const response = await fetch('/api/atividades', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          id: task.id,
-          titulo,
-          descricao,
-          projeto_id: parseInt(projetoId),
-          responsaveis_emails: selectedResponsaveis.map((r: Responsavel) => r.email),
-          data_inicio: dataInicio,
-          data_fim: dataFim,
-          prioridade_id: parseInt(prioridade),
-          estimativa_horas: estimativaHoras,
-          userEmail: session?.user?.email
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      // Aguarda 2 segundos para efeito visual
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (response.ok) {
         const updatedTasks = await response.json();
@@ -278,7 +298,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       }
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
-      alert('Erro ao atualizar tarefa');
+    } finally {
+      setIsSaving(false);
+      setIsFading(false);
+      setShowLoading(false);
     }
   };
 
@@ -292,8 +315,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       // Primeiro faz a requisição ao banco
       const deletePromise = fetch(`/api/atividades?id=${task.id}`, {
         method: 'DELETE',
-      }).catch(error => {
-        console.log('Sincronização com o banco:', error);
+      }).catch(() => {
+        // Silenciosamente captura o erro
       });
 
       // Após 1 segundo mostra o loading
@@ -384,12 +407,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
         "sm:max-w-[600px] sm:h-auto",
-        isFading && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
+        (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
       )}>
         {showLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-50">
-            <div className="bg-white/80 p-3 rounded-full">
-              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+            <div className="p-3 rounded-full">
+              <Loader2 className="h-8 w-8 animate-spin text-[#2E7D32]" />
             </div>
           </div>
         )}

@@ -309,6 +309,7 @@ export async function PUT(request: NextRequest) {
 
         // Enviar e-mail para novos responsáveis
         if (novosResponsaveis && novosResponsaveis.length > 0) {
+          console.log('🔵 Enviando e-mails para novos responsáveis:', novosResponsaveis);
           // Buscar nome do projeto
           const projetoResult = await executeQuery({
             query: 'SELECT nome FROM u711845530_gestao.projetos WHERE id = ?',
@@ -327,14 +328,21 @@ export async function PUT(request: NextRequest) {
             editorName
           );
 
+          console.log('🔵 Informações do e-mail:', emailInfo);
+
           // Enviar e-mail para cada novo responsável
           await Promise.all(
             novosResponsaveis.map(async (email: string) => {
-              await sendEmail({
-                to: email,
-                subject: emailInfo.subject,
-                html: emailInfo.html
-              });
+              try {
+                await sendEmail({
+                  to: email,
+                  subject: emailInfo.subject,
+                  html: emailInfo.html
+                });
+                console.log('✅ E-mail enviado para:', email);
+              } catch (error) {
+                console.error('❌ Erro ao enviar e-mail para:', email, error);
+              }
             })
           );
         }
