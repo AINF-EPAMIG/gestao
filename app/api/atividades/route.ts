@@ -1,6 +1,7 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserInfoFromRM, isUserChefe, isUserAdmin } from '@/lib/rm-service';
+import { sendEmail, createTaskAssignmentEmail } from '@/lib/email-service';
 
 interface Atividade {
   id: number;
@@ -468,6 +469,42 @@ export async function POST(request: NextRequest) {
     }) as QueryResult;
 
     const atividadeId = result.insertId;
+
+    // Enviar e-mail para cada responsável
+    if (responsaveis_emails && responsaveis_emails.length > 0) {
+      // Buscar nome do projeto
+      const projetoResult = await executeQuery({
+        query: 'SELECT nome FROM u711845530_gestao.projetos WHERE id = ?',
+        values: [projeto_id]
+      }) as { nome: string }[];
+
+      const projetoNome = projetoResult[0]?.nome || 'Projeto não definido';
+      const prioridadeNome = prioridade_id === 1 ? 'Alta' : prioridade_id === 2 ? 'Média' : 'Baixa';
+
+      // Buscar informações do usuário que criou a tarefa
+      const userInfoRM = await getUserInfoFromRM(userEmail);
+      const creatorName = userInfoRM?.NOME_COMPLETO || userEmail;
+
+      const emailInfo = createTaskAssignmentEmail(
+        titulo,
+        descricao,
+        projetoNome,
+        prioridadeNome,
+        data_inicio,
+        creatorName
+      );
+
+      // Enviar e-mail para cada responsável
+      await Promise.all(
+        responsaveis_emails.map(async (email: string) => {
+          await sendEmail({
+            to: email,
+            subject: emailInfo.subject,
+            html: emailInfo.html
+          });
+        })
+      );
+    }
 
     // Processar cada responsável
     for (const email of responsaveis_emails) {
