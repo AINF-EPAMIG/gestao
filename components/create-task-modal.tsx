@@ -13,6 +13,8 @@ import { Plus, X } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUpload } from "./file-upload"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { getUserIcon } from "@/lib/utils"
 
 interface Projeto {
   id: number
@@ -45,7 +47,6 @@ export function CreateTaskModal() {
   const [responsavelInput, setResponsavelInput] = useState("")
   const [selectedResponsaveis, setSelectedResponsaveis] = useState<Responsavel[]>([])
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
-  const [estimativaHoras, setEstimativaHoras] = useState("")
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState("")
   const [projetos, setProjetos] = useState<Projeto[]>([])
@@ -230,7 +231,6 @@ export function CreateTaskModal() {
           data_fim: dataFim,
           status_id: 1,
           prioridade_id: parseInt(prioridade),
-          estimativa_horas: estimativaHoras,
           userEmail: session?.user?.email,
           setorSigla: selectedSetor,
           data_criacao: new Date().toISOString(),
@@ -271,7 +271,6 @@ export function CreateTaskModal() {
     setDescricao("")
     setProjetoId("")
     setPrioridade("2")
-    setEstimativaHoras("")
     setDataFim("")
     setSelectedResponsaveis([])
     setActiveTab("detalhes")
@@ -380,42 +379,112 @@ export function CreateTaskModal() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium">Projeto</label>
-                  <div className="relative">
-                    <Input
-                      ref={inputRef}
-                      value={projetoInput}
-                      onChange={(e) => {
-                        setProjetoInput(e.target.value)
-                        setShowSuggestions(true)
-                      }}
-                      onFocus={() => setShowSuggestions(true)}
-                      placeholder="Digite o nome do projeto"
-                      className="w-full"
-                    />
-                    {showSuggestions && projetoInput && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                        {projetos
-                          .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
-                          .map(projeto => (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Projeto</label>
+                    <div className="relative">
+                      <Input
+                        ref={inputRef}
+                        value={projetoInput}
+                        onChange={(e) => {
+                          setProjetoInput(e.target.value)
+                          setShowSuggestions(true)
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        placeholder="Digite o nome do projeto"
+                        className="w-full"
+                      />
+                      {showSuggestions && projetoInput && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                          {projetos
+                            .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
+                            .map(projeto => (
+                              <div
+                                key={projeto.id}
+                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                onClick={() => handleProjetoSelect(projeto)}
+                              >
+                                {projeto.nome}
+                              </div>
+                            ))}
+                          {!projetos.some(p => p.nome.toLowerCase() === projetoInput.toLowerCase()) && (
                             <div
-                              key={projeto.id}
-                              className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                              onClick={() => handleProjetoSelect(projeto)}
+                              className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-emerald-600"
+                              onClick={() => handleCreateNewProjeto(projetoInput)}
                             >
-                              {projeto.nome}
+                              + Criar &quot;{projetoInput}&quot;
                             </div>
-                          ))}
-                        {!projetos.some(p => p.nome.toLowerCase() === projetoInput.toLowerCase()) && (
-                          <div
-                            className="px-4 py-2 cursor-pointer hover:bg-gray-100 text-emerald-600"
-                            onClick={() => handleCreateNewProjeto(projetoInput)}
-                          >
-                            + Criar &quot;{projetoInput}&quot;
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">ID Release</label>
+                    <Input
+                      value={idRelease}
+                      onChange={(e) => setIdRelease(e.target.value)}
+                      placeholder="Digite o ID da release"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Prioridade</label>
+                    <Select value={prioridade} onValueChange={setPrioridade}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a prioridade" />
+                      </SelectTrigger>
+                      <SelectContent position="item-aligned" side="bottom" align="start">
+                        <SelectItem value="1">Alta</SelectItem>
+                        <SelectItem value="2">Média</SelectItem>
+                        <SelectItem value="3">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Setor</label>
+                    {isAdmin ? (
+                      <div className="relative">
+                        <Input
+                          ref={setorRef}
+                          value={setorInput}
+                          onChange={(e) => {
+                            setSetorInput(e.target.value)
+                            setShowSetorSuggestions(true)
+                          }}
+                          onFocus={() => setShowSetorSuggestions(true)}
+                          placeholder="Digite o setor"
+                          className="w-full"
+                        />
+                        {showSetorSuggestions && setorInput && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                            {setores
+                              .filter(s => 
+                                s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
+                                (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
+                              )
+                              .map(setor => (
+                                <div
+                                  key={setor.id}
+                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                  onClick={() => handleSetorSelect(setor)}
+                                >
+                                  {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                                </div>
+                              ))}
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <Input
+                        value={setorInput}
+                        disabled
+                        className="bg-gray-100"
+                      />
                     )}
                   </div>
                 </div>
@@ -455,11 +524,18 @@ export function CreateTaskModal() {
                   
                   {/* Lista de responsáveis selecionados */}
                   <div className="mt-2 space-y-2">
-                    {selectedResponsaveis.map(responsavel => (
+                    {selectedResponsaveis.map((responsavel) => (
                       <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div>
-                          <div>{responsavel.NOME}</div>
-                          <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-6 h-6">
+                            <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                            <AvatarFallback>
+                              {responsavel.EMAIL[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium">
+                            {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                          </span>
                         </div>
                         <Button
                           type="button"
@@ -467,80 +543,10 @@ export function CreateTaskModal() {
                           size="sm"
                           onClick={() => removeResponsavel(responsavel.EMAIL)}
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-4 w-4" />
                         </Button>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Setor</label>
-                  {isAdmin ? (
-                    <div className="relative">
-                      <Input
-                        ref={setorRef}
-                        value={setorInput}
-                        onChange={(e) => {
-                          setSetorInput(e.target.value)
-                          setShowSetorSuggestions(true)
-                        }}
-                        onFocus={() => setShowSetorSuggestions(true)}
-                        placeholder="Digite o setor"
-                        className="w-full"
-                      />
-                      {showSetorSuggestions && setorInput && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                          {setores
-                            .filter(s => 
-                              s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
-                              (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
-                            )
-                            .map(setor => (
-                              <div
-                                key={setor.id}
-                                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                onClick={() => handleSetorSelect(setor)}
-                              >
-                                {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <Input
-                      value={setorInput}
-                      disabled
-                      className="bg-gray-100"
-                    />
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Prioridade</label>
-                    <Select value={prioridade} onValueChange={setPrioridade}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a prioridade" />
-                      </SelectTrigger>
-                      <SelectContent position="item-aligned" side="bottom" align="start">
-                        <SelectItem value="1">Alta</SelectItem>
-                        <SelectItem value="2">Média</SelectItem>
-                        <SelectItem value="3">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Estimativa (horas)</label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={estimativaHoras}
-                      onChange={(e) => setEstimativaHoras(e.target.value)}
-                      placeholder="Ex: 8"
-                    />
                   </div>
                 </div>
 
@@ -562,15 +568,6 @@ export function CreateTaskModal() {
                       onChange={(e) => setDataFim(e.target.value)}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">ID Release</label>
-                  <Input
-                    value={idRelease}
-                    onChange={(e) => setIdRelease(e.target.value)}
-                    placeholder="Digite o ID da release relacionada"
-                  />
                 </div>
 
                 <DialogFooter>

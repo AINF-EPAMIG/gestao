@@ -146,9 +146,11 @@ const TaskCard = memo(function TaskCard({
                   : 'Não atribuído'
                 }
               </span>
-              <span className="text-xs text-gray-500">
-                {formatHours(task.estimativa_horas)}
-              </span>
+              {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
+                <span className="text-xs text-gray-500">
+                  {formatHours(task.estimativa_horas)}
+                </span>
+              )}
             </div>
           </div>
           {task.ultima_atualizacao && (

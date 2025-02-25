@@ -1,7 +1,7 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserInfoFromRM, isUserChefe, isUserAdmin } from '@/lib/rm-service';
-import { sendEmail, createTaskAssignmentEmail } from '@/lib/email-service';
+import { sendEmail, createTaskAssignmentEmail, createTaskNewResponsibleEmail } from '@/lib/email-service';
 
 interface Atividade {
   id: number;
@@ -193,7 +193,9 @@ export async function PUT(request: NextRequest) {
       data_fim,
       prioridade_id,
       estimativa_horas,
-      userEmail
+      userEmail,
+      novosResponsaveis,
+      editorName
     } = data;
 
     // Se for apenas atualização de status e posição
@@ -304,6 +306,38 @@ export async function PUT(request: NextRequest) {
             values: [id, responsavelId]
           });
         }
+
+        // Enviar e-mail para novos responsáveis
+        if (novosResponsaveis && novosResponsaveis.length > 0) {
+          // Buscar nome do projeto
+          const projetoResult = await executeQuery({
+            query: 'SELECT nome FROM u711845530_gestao.projetos WHERE id = ?',
+            values: [projeto_id]
+          }) as { nome: string }[];
+
+          const projetoNome = projetoResult[0]?.nome || 'Projeto não definido';
+          const prioridadeNome = prioridade_id === 1 ? 'Alta' : prioridade_id === 2 ? 'Média' : 'Baixa';
+
+          const emailInfo = createTaskNewResponsibleEmail(
+            titulo,
+            descricao,
+            projetoNome,
+            prioridadeNome,
+            data_inicio,
+            editorName
+          );
+
+          // Enviar e-mail para cada novo responsável
+          await Promise.all(
+            novosResponsaveis.map(async (email: string) => {
+              await sendEmail({
+                to: email,
+                subject: emailInfo.subject,
+                html: emailInfo.html
+              });
+            })
+          );
+        }
       }
 
       console.log('✅ Tarefa atualizada com sucesso');
@@ -406,7 +440,6 @@ export async function POST(request: NextRequest) {
       projeto_id, 
       responsaveis_emails, // Array de emails dos responsáveis
       data_fim, 
-      estimativa_horas, 
       userEmail,
       data_criacao,
       id_release 
@@ -461,7 +494,7 @@ export async function POST(request: NextRequest) {
         data_fim,
         status_id,
         prioridade_id,
-        estimativa_horas,
+        0, // estimativa_horas default
         setorSigla || null,
         data_criacao,
         id_release

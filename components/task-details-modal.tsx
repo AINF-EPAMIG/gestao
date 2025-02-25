@@ -108,8 +108,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Sao_Paulo'
+      minute: '2-digit'
     });
   };
 
@@ -205,6 +204,23 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       fetchComentarios();
     }
   }, [task.id, open]);
+
+  useEffect(() => {
+    if (open) {
+      // Carregar anexos antecipadamente
+      fetchAnexos();
+    }
+  }, [open]);
+
+  const fetchAnexos = async () => {
+    try {
+      // Simulação de carregamento de dados de anexos
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Aqui você pode adicionar a lógica real para buscar os anexos
+    } catch (error) {
+      console.error('Erro ao carregar anexos:', error);
+    }
+  };
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
     if (!selectedResponsaveis.find((r: Responsavel) => r.email === responsavel.email)) {
@@ -434,8 +450,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
           </TabsList>
 
-          <div className="min-h-[600px] overflow-y-auto pr-2">
-            <TabsContent value="detalhes" className="space-y-6 py-4">
+          <div className="overflow-y-auto pr-2">
+            <TabsContent value="detalhes" className="space-y-4 py-4">
               {/* Cabeçalho com Badges */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -455,7 +471,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
                   {isEditing ? (
                     <Select value={prioridade} onValueChange={setPrioridade}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8">
                         <SelectValue placeholder="Selecione a prioridade" />
                       </SelectTrigger>
                       <SelectContent>
@@ -481,7 +497,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
                 {isEditing ? (
                   <Select value={projetoId} onValueChange={setProjetoId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue placeholder="Selecione o projeto" />
                     </SelectTrigger>
                     <SelectContent>
@@ -503,10 +519,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               {!isEditing && (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex -space-x-4">
+                    <div className="flex -space-x-2">
                       {task.responsaveis && task.responsaveis.length > 0 ? (
                         task.responsaveis.map((responsavel: Responsavel) => (
-                          <Avatar key={responsavel.email} className="w-12 h-12 border-2 border-white">
+                          <Avatar key={responsavel.email} className="w-8 h-8 border-2 border-white">
                             <AvatarImage src={getUserIcon(responsavel.email)} />
                             <AvatarFallback>
                               {responsavel.email[0].toUpperCase()}
@@ -533,9 +549,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               )}
 
               {/* Conteúdo em duas colunas */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4">
                 {/* Coluna da esquerda */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
                     <div className="text-sm text-gray-500">Título</div>
                     {isEditing ? (
@@ -543,6 +559,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         value={titulo}
                         onChange={(e) => setTitulo(e.target.value)}
                         placeholder="Digite o título da tarefa"
+                        className="h-8"
                       />
                     ) : (
                       <div className="font-medium">{task.titulo}</div>
@@ -556,16 +573,16 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         value={descricao}
                         onChange={(e) => setDescricao(e.target.value)}
                         placeholder="Digite a descrição da tarefa"
-                        className="min-h-[200px]"
+                        className="h-20 resize-none"
                       />
                     ) : (
-                      <div className="text-sm mt-1 whitespace-pre-wrap max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
+                      <div className="text-sm mt-1 whitespace-pre-wrap h-20 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
                     )}
                   </div>
                 </div>
 
                 {/* Coluna da direita */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
                     <div className="text-sm text-gray-500">Data de Início</div>
                     {isEditing ? (
@@ -573,6 +590,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         type="date"
                         value={dataInicio}
                         onChange={(e) => setDataInicio(e.target.value)}
+                        className="h-8"
                       />
                     ) : (
                       <div className="text-sm">{formatDate(task.data_inicio)}</div>
@@ -586,6 +604,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         type="date"
                         value={dataFim}
                         onChange={(e) => setDataFim(e.target.value)}
+                        className="h-8"
                       />
                     ) : (
                       <div className="text-sm">{formatDate(task.data_fim)}</div>
@@ -601,6 +620,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         value={estimativaHoras}
                         onChange={(e) => setEstimativaHoras(e.target.value)}
                         placeholder="Ex: 8"
+                        className="h-8"
                       />
                     ) : (
                       <div className="text-sm">{formatEstimativa(task.estimativa_horas)}</div>
@@ -623,9 +643,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         }}
                         onFocus={() => setShowResponsavelSuggestions(true)}
                         placeholder="Digite o nome do responsável"
+                        className="h-8"
                       />
                       {showResponsavelSuggestions && responsavelInput && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[100px] overflow-y-auto">
                           {responsaveis
                             .filter((r: Responsavel) => 
                               (r.nome || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
@@ -646,27 +667,26 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     </div>
                     
                     {/* Lista de responsáveis selecionados */}
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {selectedResponsaveis.map((responsavel: Responsavel) => (
-                        <div key={responsavel.email} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarImage src={getUserIcon(responsavel.email)} />
-                              <AvatarFallback>
-                                {responsavel.email[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">
-                              {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
-                            </span>
-                          </div>
+                        <div key={responsavel.email} className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1">
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={getUserIcon(responsavel.email)} />
+                            <AvatarFallback>
+                              {responsavel.email[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium">
+                            {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
+                          </span>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
+                            className="h-5 w-5 p-0 hover:bg-gray-200"
                             onClick={() => removeResponsavel(responsavel.email)}
                           >
-                            <X className="w-4 w-4" />
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       ))}
@@ -675,7 +695,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 </div>
               )}
 
-              <Separator className="my-6" />
+              <Separator className="my-4" />
 
               {/* Seção de Comentários */}
               <div className="space-y-4">
@@ -684,7 +704,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 </div>
 
                 {/* Lista de Comentários */}
-                <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+                <div className="space-y-4 min-h-[40px] max-h-[180px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
                   {comentarios.length > 0 ? (
                     comentarios.map((comment) => (
                       <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2">
@@ -727,7 +747,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             <Textarea
                               value={textoEditando}
                               onChange={(e) => setTextoEditando(e.target.value)}
-                              className="min-h-[60px]"
+                              className="h-16 resize-none"
                             />
                             <div className="flex flex-col gap-2">
                               <Button
@@ -760,8 +780,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       </div>
                     ))
                   ) : (
-                    <div className="text-sm text-gray-500 text-center">
-                      Nenhum comentário ainda
+                    <div className="flex items-center justify-center text-sm text-gray-500">
+                      -
                     </div>
                   )}
                 </div>
@@ -772,7 +792,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     value={comentario}
                     onChange={(e) => setComentario(e.target.value)}
                     placeholder="Escreva um comentário..."
-                    className="min-h-[80px]"
+                    className="h-16 resize-none"
                   />
                   <Button
                     type="button"
@@ -787,7 +807,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               </div>
 
               {/* Última Atualização e ID Release */}
-              <div className="text-xs text-gray-400 text-center mt-6 space-y-1">
+              <div className="text-xs text-gray-400 text-center mt-4 space-y-1">
                 <div>
                   ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
                 </div>

@@ -23,7 +23,6 @@ interface TaskAttachmentsProps {
 
 export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProps) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
-  const [loading, setLoading] = useState(true)
 
   const loadAnexos = useCallback(async () => {
     try {
@@ -35,8 +34,6 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
       setAnexos(data)
     } catch (error) {
       console.error("Erro ao carregar anexos:", error)
-    } finally {
-      setLoading(false)
     }
   }, [taskId])
 
@@ -100,10 +97,6 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
     if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊'
     if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📊'
     return '📁'
-  }
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-full">Carregando anexos...</div>
   }
 
   return (
