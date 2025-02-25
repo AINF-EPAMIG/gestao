@@ -330,9 +330,12 @@ export async function PUT(request: NextRequest) {
 
           console.log('🔵 Informações do e-mail:', emailInfo);
 
-          // Enviar e-mail para cada novo responsável
+          // Filtrar o próprio usuário da lista de destinatários
+          const otherResponsaveis = novosResponsaveis.filter((email: string) => email !== userEmail);
+
+          // Enviar e-mail apenas para os outros responsáveis
           await Promise.all(
-            novosResponsaveis.map(async (email: string) => {
+            otherResponsaveis.map(async (email: string) => {
               try {
                 await sendEmail({
                   to: email,
@@ -453,31 +456,19 @@ export async function POST(request: NextRequest) {
       id_release 
     } = data;
 
-    // Verificar se é admin ou chefe
-    const isAdmin = isUserAdmin(userEmail);
-    let userInfo = null;
-    let setorSigla = null;
-
-    // Se não for admin, verificar se é chefe e obter o setor
-    if (!isAdmin) {
-      userInfo = await getUserInfoFromRM(userEmail);
-      
-      if (!isUserChefe(userInfo)) {
-        return NextResponse.json(
-          { error: 'Apenas chefes e administradores podem criar novas tarefas' },
-          { status: 403 }
-        );
-      }
-
-      if (!userInfo?.SECAO) {
-        return NextResponse.json(
-          { error: 'Setor do usuário não encontrado' },
-          { status: 404 }
-        );
-      }
-      setorSigla = userInfo.SECAO;
+    // Obter informações do usuário
+    const userInfo = await getUserInfoFromRM(userEmail);
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado' },
+        { status: 404 }
+      );
     }
 
+    let setorSigla = userInfo.SECAO;
+
+    // Se for admin e especificou um setor diferente, usar o setor especificado
+    const isAdmin = isUserAdmin(userEmail);
     if (isAdmin && data.setorSigla) {
       setorSigla = data.setorSigla;
     }
@@ -535,9 +526,12 @@ export async function POST(request: NextRequest) {
         creatorName
       );
 
-      // Enviar e-mail para cada responsável
+      // Filtrar o próprio usuário da lista de destinatários
+      const otherResponsaveis = responsaveis_emails.filter((email: string) => email !== userEmail);
+
+      // Enviar e-mail apenas para os outros responsáveis
       await Promise.all(
-        responsaveis_emails.map(async (email: string) => {
+        otherResponsaveis.map(async (email: string) => {
           await sendEmail({
             to: email,
             subject: emailInfo.subject,

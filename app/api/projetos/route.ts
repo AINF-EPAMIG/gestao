@@ -1,11 +1,24 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const projetos = await executeQuery({
-      query: 'SELECT * FROM u711845530_gestao.projetos ORDER BY nome',
-    });
+    const url = new URL(request.url);
+    const includeTaskCount = url.searchParams.get('includeTaskCount') === 'true';
+
+    const query = includeTaskCount
+      ? `
+        SELECT 
+          p.*,
+          COUNT(a.id) as taskCount
+        FROM u711845530_gestao.projetos p
+        LEFT JOIN u711845530_gestao.atividades a ON p.id = a.projeto_id
+        GROUP BY p.id, p.nome
+        ORDER BY p.nome
+      `
+      : 'SELECT * FROM u711845530_gestao.projetos ORDER BY nome';
+
+    const projetos = await executeQuery({ query });
     
     return NextResponse.json(projetos);
   } catch (error) {
