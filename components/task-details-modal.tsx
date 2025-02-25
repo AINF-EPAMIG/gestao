@@ -117,6 +117,19 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     return `${estimativa}h`
   }
 
+  const formatDateTimeWithTime = (dateTime: string | undefined | null) => {
+    if (!dateTime) return '-';
+    const date = new Date(dateTime);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC'
+    });
+  };
+
   useEffect(() => {
     const checkPermissions = async () => {
       if (session?.user?.email) {
@@ -813,7 +826,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 </div>
                 <div>
                   {task.ultima_atualizacao 
-                    ? `Última atualização: ${formatDateTime(task.ultima_atualizacao)}`
+                    ? `Última atualização: ${formatDateTimeWithTime(task.ultima_atualizacao)}`
                     : '-'}
                 </div>
               </div>
