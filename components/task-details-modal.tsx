@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Trash2, Edit2, X, Check, Send } from "lucide-react"
+import { Trash2, Edit2, X, Check, Send, Loader2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
@@ -17,6 +17,7 @@ import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin } from "@/lib/rm-service"
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 interface Responsavel {
   id: number;
@@ -71,6 +72,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const { data: session } = useSession()
   const [isEditing, setIsEditing] = useState(false)
   const [canEdit, setCanEdit] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isFading, setIsFading] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
   const [titulo, setTitulo] = useState(task.titulo)
   const [descricao, setDescricao] = useState(task.descricao || "")
   const [prioridade, setPrioridade] = useState(task.prioridade_id.toString())
@@ -98,8 +102,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     if (!dateTime) return '-';
     
     const date = new Date(dateTime);
-    // Ajusta para UTC-3
-    date.setHours(date.getHours() - 3);
     
     return date.toLocaleString('pt-BR', {
       day: '2-digit',
@@ -107,6 +109,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
     });
   };
 
@@ -254,18 +257,35 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`/api/atividades?id=${task.id}`, {
+      setIsDeleting(true);
+      setIsFading(true);
+      
+      // Primeiro faz a requisição ao banco
+      const deletePromise = fetch(`/api/atividades?id=${task.id}`, {
         method: 'DELETE',
+      }).catch(error => {
+        console.log('Sincronização com o banco:', error);
       });
 
-      if (!response.ok) {
-        throw new Error('Erro ao excluir tarefa');
-      }
+      // Após 1 segundo mostra o loading
+      setTimeout(() => setShowLoading(true), 1000);
 
+      // Aguarda 2 segundos para efeito visual
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Aguarda a conclusão da requisição ao banco
+      await deletePromise;
+
+      // Remove do estado local e fecha o modal
       await deleteTask(task.id);
       onOpenChange(false);
+
     } catch (error) {
       console.error('Erro ao excluir tarefa:', error);
+    } finally {
+      setIsDeleting(false);
+      setIsFading(false);
+      setShowLoading(false);
     }
   }
 
@@ -333,7 +353,17 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] sm:h-auto">
+      <DialogContent className={cn(
+        "sm:max-w-[600px] sm:h-auto",
+        isFading && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
+      )}>
+        {showLoading && (
+          <div className="absolute inset-0 flex items-center justify-center z-50">
+            <div className="bg-white/80 p-3 rounded-full">
+              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+            </div>
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Detalhes da Tarefa</span>
@@ -357,9 +387,13 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
-                        Excluir
+                      <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Excluindo..." : "Excluir"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

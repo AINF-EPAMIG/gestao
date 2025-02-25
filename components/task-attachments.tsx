@@ -163,7 +163,6 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                             className="h-8 gap-2 text-red-500 hover:text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
-                            Excluir
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

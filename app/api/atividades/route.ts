@@ -407,7 +407,8 @@ export async function POST(request: NextRequest) {
       data_fim, 
       estimativa_horas, 
       userEmail,
-      data_criacao 
+      data_criacao,
+      id_release 
     } = data;
 
     // Verificar se é admin ou chefe
@@ -444,9 +445,10 @@ export async function POST(request: NextRequest) {
       query: `
         INSERT INTO u711845530_gestao.atividades 
         (titulo, descricao, projeto_id, data_inicio, data_fim, 
-         status_id, prioridade_id, estimativa_horas, setor_id, data_criacao) 
+         status_id, prioridade_id, estimativa_horas, setor_id, data_criacao, id_release) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?,
           ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'},
+          ?,
           ?
         )
       `,
@@ -460,7 +462,8 @@ export async function POST(request: NextRequest) {
         prioridade_id,
         estimativa_horas,
         setorSigla || null,
-        data_criacao
+        data_criacao,
+        id_release
       ],
     }) as QueryResult;
 

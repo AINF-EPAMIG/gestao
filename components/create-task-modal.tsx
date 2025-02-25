@@ -56,6 +56,7 @@ export function CreateTaskModal() {
   const [selectedSetor, setSelectedSetor] = useState<string>("")
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
+  const [idRelease, setIdRelease] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
@@ -232,7 +233,8 @@ export function CreateTaskModal() {
           estimativa_horas: estimativaHoras,
           userEmail: session?.user?.email,
           setorSigla: selectedSetor,
-          data_criacao: new Date().toISOString()
+          data_criacao: new Date().toISOString(),
+          id_release: idRelease || null
         }),
       })
 
@@ -560,6 +562,15 @@ export function CreateTaskModal() {
                       onChange={(e) => setDataFim(e.target.value)}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">ID Release</label>
+                  <Input
+                    value={idRelease}
+                    onChange={(e) => setIdRelease(e.target.value)}
+                    placeholder="Digite o ID da release relacionada"
+                  />
                 </div>
 
                 <DialogFooter>

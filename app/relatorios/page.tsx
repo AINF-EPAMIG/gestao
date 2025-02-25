@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { TasksByResponsavelChart } from "@/components/charts/tasks-by-responsavel-chart"
+import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
 import AuthRequired from "@/components/auth-required"
 import { getUserIcon } from "@/lib/utils"
 
@@ -121,7 +121,7 @@ export default function PlanilhaPage() {
 
           {/* Novo gráfico de barras */}
           <div className="mb-6">
-            <TasksByResponsavelChart />
+            <TasksByStatusChart />
           </div>
 
           {/* Nova seção de filtros */}
