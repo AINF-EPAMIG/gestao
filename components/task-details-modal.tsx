@@ -93,6 +93,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
   const [textoEditando, setTextoEditando] = useState("")
+  // Definindo o limite máximo de caracteres para comentários
+  const MAX_COMMENT_LENGTH = 250
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
@@ -343,6 +345,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const handleSendComment = async () => {
     if (!session?.user?.email || !comentario.trim()) return;
+    
+    // Verificar se o comentário excede o limite de caracteres
+    if (comentario.length > MAX_COMMENT_LENGTH) {
+      alert(`O comentário excede o limite de ${MAX_COMMENT_LENGTH} caracteres.`);
+      return;
+    }
 
     try {
       const response = await fetch('/api/comentarios', {
@@ -373,6 +381,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const handleEditComment = async (id: number, novoTexto: string) => {
     if (!session?.user?.email) return;
+    
+    // Verificar se o comentário editado excede o limite de caracteres
+    if (novoTexto.length > MAX_COMMENT_LENGTH) {
+      alert(`O comentário excede o limite de ${MAX_COMMENT_LENGTH} caracteres.`);
+      return;
+    }
 
     try {
       const response = await fetch('/api/comentarios', {
@@ -743,7 +757,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 <div className="space-y-4 min-h-[40px] max-h-[180px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
                   {comentarios.length > 0 ? (
                     comentarios.map((comment) => (
-                      <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                      <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2 w-full overflow-hidden">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Avatar className="w-6 h-6">
@@ -780,17 +794,26 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         </div>
                         {comentarioEditando === comment.id ? (
                           <div className="flex gap-2">
-                            <Textarea
-                              value={textoEditando}
-                              onChange={(e) => setTextoEditando(e.target.value)}
-                              className="h-16 resize-none"
-                            />
+                            <div className="flex flex-col w-full">
+                              <Textarea
+                                value={textoEditando}
+                                onChange={(e) => setTextoEditando(e.target.value)}
+                                className="h-16 resize-none"
+                                maxLength={MAX_COMMENT_LENGTH}
+                              />
+                              <div className="flex justify-end mt-1">
+                                <span className={`text-xs ${textoEditando.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                  {textoEditando.length}/{MAX_COMMENT_LENGTH}
+                                </span>
+                              </div>
+                            </div>
                             <div className="flex flex-col gap-2">
                               <Button
                                 type="button"
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => handleEditComment(comment.id, textoEditando)}
+                                disabled={textoEditando.length > MAX_COMMENT_LENGTH}
                               >
                                 <Check className="h-4 w-4" />
                               </Button>
@@ -809,9 +832,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                            {comment.comentario}
-                          </p>
+                          <div className="max-w-full overflow-hidden">
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap break-all break-words hyphens-auto overflow-hidden text-ellipsis">
+                              {comment.comentario}
+                            </p>
+                          </div>
                         )}
                       </div>
                     ))
@@ -824,17 +849,25 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
                 {/* Campo de Novo Comentário */}
                 <div className="flex gap-2">
-                  <Textarea
-                    value={comentario}
-                    onChange={(e) => setComentario(e.target.value)}
-                    placeholder="Escreva um comentário..."
-                    className="h-16 resize-none"
-                  />
+                  <div className="flex flex-col w-full">
+                    <Textarea
+                      value={comentario}
+                      onChange={(e) => setComentario(e.target.value)}
+                      placeholder="Escreva um comentário..."
+                      className="h-16 resize-none"
+                      maxLength={MAX_COMMENT_LENGTH}
+                    />
+                    <div className="flex justify-end mt-1">
+                      <span className={`text-xs ${comentario.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {comentario.length}/{MAX_COMMENT_LENGTH}
+                      </span>
+                    </div>
+                  </div>
                   <Button
                     type="button"
                     size="icon"
                     className="self-end"
-                    disabled={!comentario.trim() || !session?.user?.email}
+                    disabled={!comentario.trim() || !session?.user?.email || comentario.length > MAX_COMMENT_LENGTH}
                     onClick={handleSendComment}
                   >
                     <Send className="h-4 w-4" />
