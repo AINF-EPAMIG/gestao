@@ -36,6 +36,7 @@ interface PendingChange {
   statusId: number
   position: number | null
   ultima_atualizacao: string
+  sequence: number
 }
 
 interface TaskStore {
@@ -51,6 +52,11 @@ interface TaskStore {
   deleteTask: (taskId: number) => Promise<void>
   selectedSetor: string | null
   setSelectedSetor: (setor: string | null) => void
+  optimisticUpdates: Map<number, { statusId: number; position: number; timestamp: number; sequence: number }>
+  lastFetchTimestamp: number
+  isInitialLoad: boolean
+  lastSequence: number
+  syncTimeout?: NodeJS.Timeout
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -59,70 +65,168 @@ export const useTaskStore = create<TaskStore>()(
       tasks: [],
       pendingChanges: [],
       selectedSetor: null,
+      optimisticUpdates: new Map(),
+      lastFetchTimestamp: 0,
+      isInitialLoad: true,
+      lastSequence: 0,
       
-      setTasks: (tasks) => set({ tasks }),
+      setTasks: (tasks) => {
+        const { optimisticUpdates, isInitialLoad } = get();
+        const now = Date.now();
+        
+        // Se for o carregamento inicial, não aplica atualizações otimistas
+        const tasksWithOptimistic = isInitialLoad ? tasks : tasks.map(task => {
+          const optimisticUpdate = optimisticUpdates.get(task.id);
+          if (optimisticUpdate && now - optimisticUpdate.timestamp < 5000) {
+            return {
+              ...task,
+              status_id: optimisticUpdate.statusId,
+              position: optimisticUpdate.position
+            };
+          }
+          return task;
+        });
+
+        // Garante que todas as tasks tenham posições válidas
+        const tasksWithPositions = tasksWithOptimistic.map((task, index) => ({
+          ...task,
+          position: task.position ?? index
+        }));
+
+        // Agrupa por status e ordena por posição
+        const tasksByStatus = tasksWithPositions.reduce((acc, task) => {
+          if (!acc[task.status_id]) {
+            acc[task.status_id] = [];
+          }
+          acc[task.status_id].push(task);
+          return acc;
+        }, {} as Record<number, Task[]>);
+
+        // Reordena as posições dentro de cada status
+        Object.values(tasksByStatus).forEach(statusTasks => {
+          statusTasks.sort((a, b) => (a.position || 0) - (b.position || 0));
+          statusTasks.forEach((task, index) => {
+            task.position = index;
+          });
+        });
+
+        // Flatten e set
+        const normalizedTasks = Object.values(tasksByStatus).flat();
+        set({ 
+          tasks: normalizedTasks,
+          lastFetchTimestamp: now,
+          isInitialLoad: false,
+          // Limpa otimistic updates no carregamento inicial
+          optimisticUpdates: isInitialLoad ? new Map() : optimisticUpdates
+        });
+      },
       
       updateTaskPosition: (taskId, newStatusId, newIndex) => {
         set((state) => {
-          const tasks = [...state.tasks]
-          const taskToMove = tasks.find(t => t.id === taskId)
+          const nextSequence = state.lastSequence + 1;
+          const tasks = [...state.tasks];
+          const taskToMove = tasks.find(t => t.id === taskId);
           
-          if (!taskToMove) return state
+          if (!taskToMove) return state;
           
           // Remove a tarefa da lista atual
-          const remainingTasks = tasks.filter(t => t.id !== taskId)
-          
-          // Pega todas as tarefas do status de destino
-          const statusTasks = remainingTasks
-            .filter(t => t.status_id === newStatusId)
-            .sort((a, b) => (a.position || 0) - (b.position || 0))
+          const remainingTasks = tasks.filter(t => t.id !== taskId);
           
           // Atualiza posições e última atualização
-          const date = new Date()
-          date.setHours(date.getHours() - 3) // Subtrai 3 horas
-          const now = date.toISOString()
+          const date = new Date();
+          date.setHours(date.getHours() - 3);
+          const now = date.toISOString();
+          const timestamp = Date.now();
           
-          taskToMove.position = (newIndex === 0) ? (statusTasks[0]?.position ?? 0) - 1 :
-            (newIndex >= statusTasks.length) ? (statusTasks[statusTasks.length - 1]?.position ?? 0) + 1 :
-            Math.floor(((statusTasks[newIndex - 1]?.position ?? 0) + (statusTasks[newIndex]?.position ?? 0)) / 2)
-          taskToMove.status_id = newStatusId
-          taskToMove.ultima_atualizacao = now
+          // Atualiza a tarefa movida
+          const updatedTask = {
+            ...taskToMove,
+            position: newIndex,
+            status_id: newStatusId,
+            ultima_atualizacao: now
+          };
           
-          // Reinsere a tarefa
-          remainingTasks.push(taskToMove)
+          // Reordena todas as tarefas do mesmo status
+          const tasksInSameStatus = [
+            ...remainingTasks.filter(t => t.status_id === newStatusId),
+            updatedTask
+          ].sort((a, b) => {
+            if (a.id === taskId) return newIndex - (b.position || 0);
+            if (b.id === taskId) return (a.position || 0) - newIndex;
+            return (a.position || 0) - (b.position || 0);
+          });
+          
+          // Atualiza as posições
+          tasksInSameStatus.forEach((task, index) => {
+            task.position = index;
+          });
+
+          // Atualiza o estado final
+          const finalTasks = [
+            ...remainingTasks.filter(t => t.status_id !== newStatusId),
+            ...tasksInSameStatus
+          ];
+
+          // Adiciona à lista de atualizações otimistas com sequence
+          const newOptimisticUpdates = new Map(state.optimisticUpdates);
+          newOptimisticUpdates.set(taskId, {
+            statusId: newStatusId,
+            position: newIndex,
+            timestamp,
+            sequence: nextSequence
+          });
+          
+          // Agenda sincronização após 5 segundos de inatividade
+          if (state.syncTimeout) {
+            clearTimeout(state.syncTimeout);
+          }
+          
+          const syncTimeout = setTimeout(() => {
+            get().syncPendingChanges();
+          }, 5000);
           
           return {
-            tasks: remainingTasks,
+            tasks: finalTasks,
             pendingChanges: [...state.pendingChanges, {
               taskId,
               statusId: newStatusId,
-              position: taskToMove.position,
-              ultima_atualizacao: now
-            }]
-          }
-        })
-        
-        // Tenta sincronizar imediatamente
-        get().syncPendingChanges()
+              position: newIndex,
+              ultima_atualizacao: now,
+              sequence: nextSequence
+            }],
+            optimisticUpdates: newOptimisticUpdates,
+            lastSequence: nextSequence,
+            syncTimeout
+          };
+        });
       },
       
       syncPendingChanges: async () => {
-        const { pendingChanges } = get()
+        const { pendingChanges, optimisticUpdates } = get();
         
-        if (pendingChanges.length === 0) return
+        if (pendingChanges.length === 0) return;
         
         try {
-          for (const change of pendingChanges) {
+          // Ordena as mudanças pela sequência para manter a ordem correta
+          const sortedChanges = [...pendingChanges].sort((a, b) => a.sequence - b.sequence);
+          
+          for (const change of sortedChanges) {
             await fetch('/api/atividades/reorder', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(change),
-            })
+            });
+            
+            // Remove a atualização otimista após sincronização bem-sucedida
+            optimisticUpdates.delete(change.taskId);
           }
           
-          set({ pendingChanges: [] })
+          set({ 
+            pendingChanges: [],
+            optimisticUpdates: new Map(optimisticUpdates)
+          });
         } catch (error) {
-          console.error('Erro ao sincronizar:', error)
+          console.error('Erro ao sincronizar:', error);
         }
       },
 
@@ -163,6 +267,20 @@ export const useTaskStore = create<TaskStore>()(
 
       fetchTasks: async () => {
         try {
+          const { lastFetchTimestamp, optimisticUpdates, isInitialLoad, pendingChanges } = get();
+          const now = Date.now();
+          
+          // Se houver mudanças pendentes ou atualizações otimistas recentes, não atualiza
+          if (pendingChanges.length > 0 || 
+              Array.from(optimisticUpdates.values()).some(update => now - update.timestamp < 5000)) {
+            return;
+          }
+
+          // No carregamento inicial, não aplica o delay
+          if (!isInitialLoad && now - lastFetchTimestamp < 5000) {
+            return;
+          }
+
           const response = await fetch('/api/atividades', {
             cache: 'no-store',
             headers: {
@@ -173,12 +291,56 @@ export const useTaskStore = create<TaskStore>()(
           if (!response.ok) throw new Error('Falha ao carregar dados');
           const data = await response.json();
           
+          // Limpa atualizações otimistas antigas (mais de 5 segundos)
+          const cleanedOptimisticUpdates = new Map();
+          if (!isInitialLoad) {
+            optimisticUpdates.forEach((update, taskId) => {
+              if (now - update.timestamp < 5000) {
+                cleanedOptimisticUpdates.set(taskId, update);
+              }
+            });
+          }
+          
+          // No carregamento inicial, sempre atualiza os dados
+          if (isInitialLoad) {
+            set({ 
+              tasks: data,
+              optimisticUpdates: new Map(),
+              lastFetchTimestamp: now,
+              isInitialLoad: false
+            });
+            return;
+          }
+
           // Compara se os dados são diferentes antes de atualizar
           const currentTasks = get().tasks;
-          const hasChanges = JSON.stringify(currentTasks) !== JSON.stringify(data);
+          
+          // Normaliza os dados para comparação excluindo campos que podem mudar
+          const normalizeForComparison = (tasks: Task[]) => {
+            return tasks.map(task => {
+              const optimisticUpdate = cleanedOptimisticUpdates.get(task.id);
+              if (optimisticUpdate) {
+                return {
+                  ...task,
+                  status_id: optimisticUpdate.statusId,
+                  position: optimisticUpdate.position
+                };
+              }
+              return task;
+            });
+          };
+          
+          const normalizedCurrent = normalizeForComparison(currentTasks);
+          const normalizedNew = normalizeForComparison(data);
+          
+          const hasChanges = JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedNew);
           
           if (hasChanges) {
-            set({ tasks: data });
+            set({ 
+              tasks: data,
+              optimisticUpdates: cleanedOptimisticUpdates,
+              lastFetchTimestamp: now
+            });
           }
         } catch (error) {
           console.error('❌ Erro ao buscar tarefas:', error);
