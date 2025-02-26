@@ -22,7 +22,15 @@ export function PollingWrapper({ children }: { children: React.ReactNode }) {
           params.append('setorSigla', selectedSetor);
         }
 
-        const response = await fetch(`/api/atividades?${params.toString()}`);
+        const response = await fetch(`/api/atividades?${params.toString()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         if (response.ok) {
           const data = await response.json();
           setTasks(data);
@@ -35,8 +43,8 @@ export function PollingWrapper({ children }: { children: React.ReactNode }) {
     // Buscar tarefas inicialmente
     fetchTasks();
 
-    // Configurar polling a cada 5 segundos
-    const interval = setInterval(fetchTasks, 5000);
+    // Configurar polling a cada 2 segundos para manter os dados sempre atualizados
+    const interval = setInterval(fetchTasks, 2000);
 
     return () => clearInterval(interval);
   }, [setTasks, session?.user?.email, selectedSetor]);

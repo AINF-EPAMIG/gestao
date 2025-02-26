@@ -1,9 +1,28 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
+interface Atividade {
+  id: number;
+  status_id: number;
+  position: number;
+  projeto_id?: number;
+  projeto_nome?: string;
+  titulo?: string;
+  descricao?: string;
+  ultima_atualizacao?: string;
+  data_conclusao?: string;
+  [key: string]: unknown;
+}
+
+interface Responsavel {
+  atividade_id: number;
+  responsavel_id: number;
+  responsavel_email: string;
+}
+
 export async function PUT(request: NextRequest) {
   try {
-    const { taskId, statusId, position, ultima_atualizacao } = await request.json();
+    const { taskId, statusId, position, ultima_atualizacao, isStatusChange, oldStatusId } = await request.json();
 
     console.log('🔵 Reordenando tarefa...');
     
@@ -44,36 +63,70 @@ export async function PUT(request: NextRequest) {
       values: [taskId, statusId, statusId],
     });
     
+    // Se houve mudança de status, também reordena as tarefas do status antigo
+    if (isStatusChange && oldStatusId) {
+      await executeQuery({
+        query: `
+          WITH RankedActivities AS (
+            SELECT id, 
+                   ROW_NUMBER() OVER (
+                     PARTITION BY status_id 
+                     ORDER BY position, id
+                   ) - 1 as new_position
+            FROM u711845530_gestao.atividades
+            WHERE status_id = ?
+          )
+          UPDATE u711845530_gestao.atividades a
+          INNER JOIN RankedActivities r ON a.id = r.id
+          SET a.position = r.new_position
+          WHERE a.status_id = ?
+        `,
+        values: [oldStatusId, oldStatusId],
+      });
+    }
+    
     console.log('✅ Reordenação concluída');
     
-    // Busca dados atualizados com join otimizado
+    // Busca dados atualizados - simplificando a consulta para evitar erros
     const atividades = await executeQuery({
       query: `
-        WITH ResponsaveisAgrupados AS (
-          SELECT 
-            ar.atividade_id,
-            JSON_ARRAYAGG(
-              JSON_OBJECT(
-                'email', r.email,
-                'nome', r.nome
-              )
-            ) as responsaveis
-          FROM u711845530_gestao.atividades_responsaveis ar
-          JOIN u711845530_gestao.responsaveis r ON ar.responsavel_id = r.id
-          GROUP BY ar.atividade_id
-        )
         SELECT 
           a.*,
-          p.nome as projeto_nome,
-          ra.responsaveis
+          p.nome as projeto_nome
         FROM u711845530_gestao.atividades a
         LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
-        LEFT JOIN ResponsaveisAgrupados ra ON a.id = ra.atividade_id
         ORDER BY a.status_id, a.position, a.id
       `,
+    }) as Atividade[];
+    
+    // Agora vamos buscar os responsáveis em uma consulta separada
+    const responsaveis = await executeQuery({
+      query: `
+        SELECT 
+          ar.atividade_id,
+          r.id as responsavel_id,
+          r.email as responsavel_email
+        FROM u711845530_gestao.atividades_responsaveis ar
+        JOIN u711845530_gestao.responsaveis r ON ar.responsavel_id = r.id
+      `,
+    }) as Responsavel[];
+    
+    // Mapeamos os responsáveis para cada atividade
+    const atividadesComResponsaveis = atividades.map((atividade: Atividade) => {
+      const responsaveisDaAtividade = responsaveis.filter(
+        (r: Responsavel) => r.atividade_id === atividade.id
+      ).map((r: Responsavel) => ({
+        id: r.responsavel_id,
+        email: r.responsavel_email
+      }));
+      
+      return {
+        ...atividade,
+        responsaveis: responsaveisDaAtividade
+      };
     });
     
-    return NextResponse.json(atividades);
+    return NextResponse.json(atividadesComResponsaveis);
   } catch (error) {
     console.error('❌ Erro ao reordenar tarefa:', error);
     return NextResponse.json(

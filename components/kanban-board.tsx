@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableP
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
-import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
+import { useMemo, useCallback, useState, memo, useEffect } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
@@ -220,166 +220,110 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks }: KanbanBoardProps) {
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [isStable, setIsStable] = useState(false)
-  const dragTimeoutRef = useRef<NodeJS.Timeout>()
-  const stabilityTimeoutRef = useRef<NodeJS.Timeout>()
-  const lastDragRef = useRef<{ taskId: number; newStatusId: number; newIndex: number } | null>(null)
-  const dragCountRef = useRef(0)  // Contador para múltiplos drags
+  const [localTasks, setLocalTasks] = useState<Task[]>([])
 
-  // Inicializa as posições das cards no primeiro carregamento
+  // Atualiza o estado local quando as tarefas mudam
   useEffect(() => {
-    if (isDragging) return; // Não inicializa durante drag and drop
-    
-    const initializePositions = () => {
-      const tasksByStatus = tasks.reduce((acc, task) => {
-        const statusId = task.status_id;
-        if (!acc[statusId]) {
-          acc[statusId] = [];
-        }
-        acc[statusId].push(task);
-        return acc;
-      }, {} as Record<number, Task[]>);
+    setLocalTasks(tasks);
+  }, [tasks]);
 
-      let hasUpdates = false;
-      // Para cada status, atualiza as posições se necessário
-      Object.entries(tasksByStatus).forEach(([statusId, statusTasks]) => {
-        const needsPositionUpdate = statusTasks.some(task => task.position === null || task.position === undefined);
+  const onDragEnd = useCallback((result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    
+    // Se não houver destino ou se o item foi solto no mesmo lugar, não faz nada
+    if (!destination) {
+      return;
+    }
+    
+    const taskId = parseInt(draggableId);
+    const newStatusId = statusMap[destination.droppableId as Status];
+    const sourceStatusId = statusMap[source.droppableId as Status];
+    
+    // Cria uma cópia das tarefas para manipulação local
+    const updatedTasks = [...localTasks];
+    
+    // Encontra a tarefa que está sendo movida
+    const taskToMove = updatedTasks.find(t => t.id === taskId);
+    if (!taskToMove) return;
+    
+    // Se estiver movendo dentro do mesmo status, apenas reordena
+    if (source.droppableId === destination.droppableId) {
+      // Obtém todas as tarefas do mesmo status
+      const tasksInSameStatus = updatedTasks
+        .filter(t => getStatusName(t.status_id) === destination.droppableId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      
+      // Remove a tarefa da posição atual
+      const reorderedTasks = tasksInSameStatus.filter(t => t.id !== taskId);
+      
+      // Insere a tarefa na nova posição
+      reorderedTasks.splice(destination.index, 0, taskToMove);
+      
+      // Atualiza as posições de todas as tarefas
+      reorderedTasks.forEach((task, index) => {
+        task.position = index;
         
-        if (needsPositionUpdate) {
-          hasUpdates = true;
-          statusTasks.forEach((task, index) => {
-            if (task.position === null || task.position === undefined) {
-              updateTaskPosition(task.id, parseInt(statusId), index);
-            }
-          });
+        // Se a posição mudou, atualiza no banco de dados
+        if (task.id === taskId || index !== tasksInSameStatus.findIndex(t => t.id === task.id)) {
+          updateTaskPosition(task.id, task.status_id, index);
         }
       });
-
-      // Marca como inicializado após o primeiro processamento
-      setIsInitialized(true);
-
-      // Se houve atualizações, agenda a estabilização
-      if (hasUpdates) {
-        if (stabilityTimeoutRef.current) {
-          clearTimeout(stabilityTimeoutRef.current);
-        }
-        stabilityTimeoutRef.current = setTimeout(() => {
-          setIsStable(true);
-        }, 2000); // Aguarda 2 segundos após a última atualização
-      } else {
-        setIsStable(true);
-      }
-    };
-
-    initializePositions();
-
-    // Cleanup
-    return () => {
-      if (stabilityTimeoutRef.current) {
-        clearTimeout(stabilityTimeoutRef.current);
-      }
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current);
-      }
-    };
-  }, [tasks, updateTaskPosition, isDragging]);
-
-  const onDragStart = useCallback(() => {
-    if (!isStable) return false; // Previne drag se não estiver estável
-    setIsDragging(true);
-    dragCountRef.current += 1;  // Incrementa o contador de drags
-    
-    // Limpa qualquer timeout pendente
-    if (dragTimeoutRef.current) {
-      clearTimeout(dragTimeoutRef.current);
-    }
-  }, [isStable]);
-
-  const onDragEnd = useCallback(
-    (result: DropResult) => {
-      if (!isStable) return; // Previne updates se não estiver estável
       
-      const { destination, source, draggableId } = result;
-
-      if (!destination) {
-        // Se não houver destino, decrementa o contador e verifica se deve finalizar o drag
-        dragCountRef.current = Math.max(0, dragCountRef.current - 1);
-        if (dragCountRef.current === 0) {
-          dragTimeoutRef.current = setTimeout(() => {
-            setIsDragging(false);
-            lastDragRef.current = null;
-          }, 1000);
-        }
-        return;
-      }
-
-      if (
-        destination.droppableId === source.droppableId &&
-        destination.index === source.index
-      ) {
-        // Se a posição não mudou, decrementa o contador e verifica se deve finalizar o drag
-        dragCountRef.current = Math.max(0, dragCountRef.current - 1);
-        if (dragCountRef.current === 0) {
-          dragTimeoutRef.current = setTimeout(() => {
-            setIsDragging(false);
-            lastDragRef.current = null;
-          }, 1000);
-        }
-        return;
-      }
-
-      const taskId = parseInt(draggableId, 10);
-      const newStatusId = statusMap[destination.droppableId as Status];
-      
-      // Armazena a última operação de drag
-      lastDragRef.current = {
-        taskId,
-        newStatusId,
-        newIndex: destination.index
-      };
-
-      // Atualiza a posição
+      // Atualiza o estado local para refletir a mudança imediatamente
+      setLocalTasks(updatedTasks);
+    } else {
+      // Se estiver mudando de status, atualiza o status e a posição
       updateTaskPosition(taskId, newStatusId, destination.index);
-
-      // Decrementa o contador de drags e verifica se deve finalizar
-      dragCountRef.current = Math.max(0, dragCountRef.current - 1);
-      if (dragCountRef.current === 0) {
-        dragTimeoutRef.current = setTimeout(() => {
-          setIsDragging(false);
-          lastDragRef.current = null;
-        }, 1000);
-      }
-    },
-    [updateTaskPosition, isStable]
-  );
+      
+      // Atualiza o estado local para refletir a mudança imediatamente
+      taskToMove.status_id = newStatusId;
+      taskToMove.position = destination.index;
+      
+      // Reordena as tarefas do status de origem
+      const tasksInSourceStatus = updatedTasks
+        .filter(t => t.id !== taskId && getStatusName(t.status_id) === source.droppableId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      
+      // Atualiza as posições das tarefas no status de origem
+      tasksInSourceStatus.forEach((task, index) => {
+        if (task.position !== index) {
+          task.position = index;
+          updateTaskPosition(task.id, sourceStatusId, index);
+        }
+      });
+      
+      // Reordena as tarefas do status de destino
+      const tasksInDestStatus = updatedTasks
+        .filter(t => t.id !== taskId && getStatusName(t.status_id) === destination.droppableId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      
+      // Insere a tarefa na nova posição
+      tasksInDestStatus.splice(destination.index, 0, taskToMove);
+      
+      // Atualiza as posições das tarefas no status de destino
+      tasksInDestStatus.forEach((task, index) => {
+        if (task.position !== index) {
+          task.position = index;
+          updateTaskPosition(task.id, newStatusId, index);
+        }
+      });
+      
+      setLocalTasks(updatedTasks);
+    }
+  }, [updateTaskPosition, localTasks]);
 
   const columnTasks = useMemo(() => {
-    // Se houver uma operação de drag em andamento, aplica a mudança localmente
-    const processedTasks = isDragging && lastDragRef.current
-      ? tasks.map(task => {
-          if (task.id === lastDragRef.current?.taskId) {
-            return {
-              ...task,
-              status_id: lastDragRef.current.newStatusId,
-              position: lastDragRef.current.newIndex
-            };
-          }
-          return task;
-        })
-      : tasks;
-
     return columns.reduce((acc, column) => {
-      acc[column.id] = processedTasks
+      // Usa as tarefas locais para renderização imediata
+      acc[column.id] = localTasks
         .filter(task => getStatusName(task.status_id) === column.id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       return acc;
     }, {} as Record<Status, Task[]>);
-  }, [tasks, isDragging]);
+  }, [localTasks]);
 
-  // Se não estiver inicializado ou estável, mostra um estado de loading
-  if (!isInitialized || !isStable) {
+  // Se estiver carregando, mostra um estado de loading
+  if (tasks.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-50">
         {columns.map((column) => (
@@ -396,7 +340,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
   }
 
   return (
-    <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {columns.map((column) => (
           <Column 
