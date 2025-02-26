@@ -439,7 +439,7 @@ export function CreateTaskModal() {
               Nova Tarefa
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] sm:h-auto">
+          <DialogContent className="sm:max-w-[600px] sm:h-auto p-6">
             <DialogHeader>
               <DialogTitle>Criar Nova Tarefa</DialogTitle>
             </DialogHeader>
@@ -452,236 +452,240 @@ export function CreateTaskModal() {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <TabsContent value="detalhes" className="space-y-4 py-4">
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Título *</label>
-                      <Input
-                        required
-                        value={titulo}
-                        onChange={(e) => setTitulo(e.target.value)}
-                        placeholder="Digite o título da tarefa"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Descrição</label>
-                      <Textarea
-                        value={descricao}
-                        onChange={(e) => setDescricao(e.target.value)}
-                        placeholder="Digite a descrição da tarefa"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+              <div className="max-h-[70vh] overflow-y-auto">
+                <div className="p-1">
+                  <TabsContent value="detalhes" className="space-y-2 py-2">
+                    <form onSubmit={handleSubmit} className="space-y-3">
                       <div>
-                        <label className="text-sm font-medium">Projeto</label>
-                        <div className="relative">
-                          <Input
-                            ref={inputRef}
-                            value={projetoInput}
-                            onChange={(e) => {
-                              setProjetoInput(e.target.value)
-                              setShowSuggestions(true)
-                            }}
-                            onFocus={() => setShowSuggestions(true)}
-                            placeholder="Digite o nome do projeto"
-                            className="w-full"
-                          />
-                          {showSuggestions && projetoInput && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                              {projetos
-                                .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
-                                .map(projeto => (
-                                  <div
-                                    key={projeto.id}
-                                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                    onClick={() => handleProjetoSelect(projeto)}
-                                  >
-                                    {projeto.nome}
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium">ID Release</label>
+                        <label className="text-sm font-medium">Título *</label>
                         <Input
-                          value={idRelease}
-                          onChange={(e) => setIdRelease(e.target.value)}
-                          placeholder="Digite o ID da release"
+                          required
+                          value={titulo}
+                          onChange={(e) => setTitulo(e.target.value)}
+                          placeholder="Digite o título da tarefa"
+                          className="h-8"
                         />
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                      
                       <div>
-                        <label className="text-sm font-medium">Prioridade</label>
-                        <Select value={prioridade} onValueChange={setPrioridade}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a prioridade" />
-                          </SelectTrigger>
-                          <SelectContent position="item-aligned" side="bottom" align="start">
-                            <SelectItem value="1">Alta</SelectItem>
-                            <SelectItem value="2">Média</SelectItem>
-                            <SelectItem value="3">Baixa</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <label className="text-sm font-medium">Descrição</label>
+                        <Textarea
+                          value={descricao}
+                          onChange={(e) => setDescricao(e.target.value)}
+                          placeholder="Digite a descrição da tarefa"
+                          className="h-20"
+                        />
                       </div>
 
-                      <div>
-                        <label className="text-sm font-medium">Setor</label>
-                        {isAdmin ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Projeto</label>
                           <div className="relative">
                             <Input
-                              ref={setorRef}
-                              value={setorInput}
+                              ref={inputRef}
+                              value={projetoInput}
                               onChange={(e) => {
-                                setSetorInput(e.target.value)
-                                setShowSetorSuggestions(true)
+                                setProjetoInput(e.target.value)
+                                setShowSuggestions(true)
                               }}
-                              onFocus={() => setShowSetorSuggestions(true)}
-                              placeholder="Digite o setor"
+                              onFocus={() => setShowSuggestions(true)}
+                              placeholder="Digite o nome do projeto"
                               className="w-full"
                             />
-                            {showSetorSuggestions && setorInput && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                                {setores
-                                  .filter(s => 
-                                    s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
-                                    (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
-                                  )
-                                  .map(setor => (
+                            {showSuggestions && projetoInput && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                                {projetos
+                                  .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
+                                  .map(projeto => (
                                     <div
-                                      key={setor.id}
+                                      key={projeto.id}
                                       className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                      onClick={() => handleSetorSelect(setor)}
+                                      onClick={() => handleProjetoSelect(projeto)}
                                     >
-                                      {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                                      {projeto.nome}
                                     </div>
                                   ))}
                               </div>
                             )}
                           </div>
-                        ) : (
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">ID Release</label>
                           <Input
-                            value={setorInput}
-                            disabled
-                            className="bg-gray-100"
+                            value={idRelease}
+                            onChange={(e) => setIdRelease(e.target.value)}
+                            placeholder="Digite o ID da release"
                           />
-                        )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="text-sm font-medium">Responsáveis</label>
-                      <div className="relative" ref={responsavelRef}>
-                        <Input
-                          value={responsavelInput}
-                          onChange={(e) => {
-                            setResponsavelInput(e.target.value);
-                            setShowResponsavelSuggestions(true);
-                          }}
-                          onFocus={() => setShowResponsavelSuggestions(true)}
-                          placeholder="Digite o nome do responsável"
-                        />
-                        {showResponsavelSuggestions && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                            {responsaveis
-                              .filter(r => {
-                                const nameMatches = !responsavelInput || 
-                                  ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                return nameMatches && notAlreadySelected;
-                              })
-                              .map(responsavel => (
-                                <div
-                                  key={responsavel.EMAIL}
-                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                  onClick={() => handleResponsavelSelect(responsavel)}
-                                >
-                                  <div>{responsavel.NOME}</div>
-                                  <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Prioridade</label>
+                          <Select value={prioridade} onValueChange={setPrioridade}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a prioridade" />
+                            </SelectTrigger>
+                            <SelectContent position="item-aligned" side="bottom" align="start">
+                              <SelectItem value="1">Alta</SelectItem>
+                              <SelectItem value="2">Média</SelectItem>
+                              <SelectItem value="3">Baixa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Setor</label>
+                          {isAdmin ? (
+                            <div className="relative">
+                              <Input
+                                ref={setorRef}
+                                value={setorInput}
+                                onChange={(e) => {
+                                  setSetorInput(e.target.value)
+                                  setShowSetorSuggestions(true)
+                                }}
+                                onFocus={() => setShowSetorSuggestions(true)}
+                                placeholder="Digite o setor"
+                                className="w-full"
+                              />
+                              {showSetorSuggestions && setorInput && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                                  {setores
+                                    .filter(s => 
+                                      s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
+                                      (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
+                                    )
+                                    .map(setor => (
+                                      <div
+                                        key={setor.id}
+                                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                        onClick={() => handleSetorSelect(setor)}
+                                      >
+                                        {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                                      </div>
+                                    ))}
                                 </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Lista de responsáveis selecionados */}
-                      <div className="mt-2 space-y-2">
-                        {selectedResponsaveis.map((responsavel) => (
-                          <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="w-6 h-6">
-                                <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
-                                <AvatarFallback>
-                                  {responsavel.EMAIL[0].toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-medium">
-                                {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
-                              </span>
+                              )}
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeResponsavel(responsavel.EMAIL)}
-                            >
-                              <X className="w-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Data de Início</label>
-                        <Input
-                          type="date"
-                          value={dataInicio}
-                          onChange={(e) => setDataInicio(e.target.value)}
-                        />
+                          ) : (
+                            <Input
+                              value={setorInput}
+                              disabled
+                              className="bg-gray-100"
+                            />
+                          )}
+                        </div>
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium">Data de Fim Prevista</label>
-                        <Input
-                          type="date"
-                          value={dataFim}
-                          onChange={(e) => setDataFim(e.target.value)}
-                        />
+                        <label className="text-sm font-medium">Responsáveis</label>
+                        <div className="relative" ref={responsavelRef}>
+                          <Input
+                            value={responsavelInput}
+                            onChange={(e) => {
+                              setResponsavelInput(e.target.value);
+                              setShowResponsavelSuggestions(true);
+                            }}
+                            onFocus={() => setShowResponsavelSuggestions(true)}
+                            placeholder="Digite o nome do responsável"
+                          />
+                          {showResponsavelSuggestions && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                              {responsaveis
+                                .filter(r => {
+                                  const nameMatches = !responsavelInput || 
+                                    ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                  const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                  return nameMatches && notAlreadySelected;
+                                })
+                                .map(responsavel => (
+                                  <div
+                                    key={responsavel.EMAIL}
+                                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                    onClick={() => handleResponsavelSelect(responsavel)}
+                                  >
+                                    <div>{responsavel.NOME}</div>
+                                    <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Lista de responsáveis selecionados */}
+                        <div className="mt-1 space-y-1">
+                          {selectedResponsaveis.map((responsavel) => (
+                            <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="w-6 h-6">
+                                  <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                  <AvatarFallback>
+                                    {responsavel.EMAIL[0].toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-medium">
+                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeResponsavel(responsavel.EMAIL)}
+                              >
+                                <X className="w-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Data de Início</label>
+                          <Input
+                            type="date"
+                            value={dataInicio}
+                            onChange={(e) => setDataInicio(e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Data de Fim Prevista</label>
+                          <Input
+                            type="date"
+                            value={dataFim}
+                            onChange={(e) => setDataFim(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? "Criando..." : "Criar Tarefa"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </TabsContent>
+
+                  <TabsContent value="anexos" className="py-2">
+                    <div>
+                      <FileUpload 
+                        onFileSelect={handleFileSelect}
+                        onRemoveFile={handleRemoveFile}
+                        files={cachedFiles}
+                        showUploadButton={false}
+                        totalAnexos={cachedFiles.length}
+                      />
                     </div>
-
-                    <DialogFooter>
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Criando..." : "Criar Tarefa"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="anexos" className="h-full py-4">
-                  <div className="h-full">
-                    <FileUpload 
-                      onFileSelect={handleFileSelect}
-                      onRemoveFile={handleRemoveFile}
-                      files={cachedFiles}
-                      showUploadButton={false}
-                      totalAnexos={cachedFiles.length}
-                    />
-                  </div>
-                </TabsContent>
+                  </TabsContent>
+                </div>
               </div>
             </Tabs>
           </DialogContent>

@@ -162,24 +162,32 @@ const TaskCard = memo(function TaskCard({
               ))}
               {!(task.responsaveis ?? []).length && <MemoizedAvatar />}
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">
-                {(task.responsaveis ?? []).length > 0 
-                  ? (task.responsaveis ?? []).map(r => {
-                      const displayName = r.nome 
-                        ? r.nome.split(' ')[0] 
-                        : r.email.split('@')[0].split('.')[0];
-                      return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                    }).join(', ')
-                  : 'Não atribuído'
-                }
-              </span>
-              {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
-                <span className="text-xs text-gray-500">
-                  {formatHours(task.estimativa_horas)}
+            {(task.responsaveis ?? []).length === 1 && (
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {(task.responsaveis ?? []).map(r => {
+                    const displayName = r.nome 
+                      ? r.nome.split(' ')[0] 
+                      : r.email.split('@')[0].split('.')[0];
+                    return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+                  }).join(', ')}
                 </span>
-              )}
-            </div>
+                {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {formatHours(task.estimativa_horas)}
+                  </span>
+                )}
+              </div>
+            )}
+            {(task.responsaveis ?? []).length > 1 && (
+              <div className="flex flex-col">
+                {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {formatHours(task.estimativa_horas)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           {task.ultima_atualizacao && (
             <div className="flex items-center">
