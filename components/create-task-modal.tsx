@@ -452,7 +452,7 @@ export function CreateTaskModal() {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="min-h-[600px] overflow-y-auto pr-2">
+              <div className="h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 <TabsContent value="detalhes" className="space-y-4 py-4">
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -671,13 +671,14 @@ export function CreateTaskModal() {
                   </form>
                 </TabsContent>
 
-                <TabsContent value="anexos" className="space-y-4 py-4">
-                  <div className="space-y-4">
+                <TabsContent value="anexos" className="h-full py-4">
+                  <div className="h-full">
                     <FileUpload 
                       onFileSelect={handleFileSelect}
                       onRemoveFile={handleRemoveFile}
                       files={cachedFiles}
                       showUploadButton={false}
+                      totalAnexos={cachedFiles.length}
                     />
                   </div>
                 </TabsContent>

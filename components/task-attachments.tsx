@@ -100,17 +100,18 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-[600px] flex flex-col">
       {canEdit && (
         <div className="mb-6">
           <FileUpload 
             taskId={taskId} 
             onUploadComplete={loadAnexos}
+            totalAnexos={anexos.length}
           />
         </div>
       )}
 
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Arquivos Anexados</h3>
           <span className="text-sm text-muted-foreground">
@@ -119,7 +120,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
         </div>
 
         {anexos.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 pb-4">
             {anexos.map((anexo) => (
               <Card key={anexo.id} className="group hover:shadow-md transition-shadow">
                 <CardContent className="p-4">

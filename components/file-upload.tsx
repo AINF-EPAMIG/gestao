@@ -11,6 +11,7 @@ interface FileUploadProps {
   onRemoveFile?: (id: string) => void
   files?: { id: string; file: File }[]
   showUploadButton?: boolean
+  totalAnexos?: number
 }
 
 export function FileUpload({ 
@@ -19,14 +20,32 @@ export function FileUpload({
   onFileSelect,
   onRemoveFile,
   files = [],
-  showUploadButton = true
+  showUploadButton = true,
+  totalAnexos = 0
 }: FileUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [localFiles, setLocalFiles] = useState<File[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null)
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files)
+      
+      // Verifica se está tentando enviar mais de um arquivo
+      if (selectedFiles.length > 1) {
+        setError("Por favor, selecione apenas 1 arquivo por vez")
+        e.target.value = "" // Limpa a seleção
+        return
+      }
+
+      // Verifica se já atingiu o limite de 10 arquivos
+      if (totalAnexos >= 10) {
+        setError("Limite máximo de 10 arquivos por tarefa atingido")
+        e.target.value = "" // Limpa a seleção
+        return
+      }
+
       if (onFileSelect) {
         onFileSelect(selectedFiles)
       } else {
@@ -108,7 +127,7 @@ export function FileUpload({
         <div className="flex-1">
           <input
             type="file"
-            multiple
+            multiple={false}
             onChange={handleFileSelect}
             className="hidden"
             id="file-upload"
@@ -118,8 +137,11 @@ export function FileUpload({
             className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
           >
             <Upload className="h-5 w-5" />
-            Selecionar Arquivos
+            Selecionar Arquivo
           </label>
+          {error && (
+            <p className="text-sm text-red-500 mt-2">{error}</p>
+          )}
         </div>
         {showUploadButton && localFiles.length > 0 && (
           <Button
