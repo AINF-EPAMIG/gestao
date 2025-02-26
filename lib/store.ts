@@ -41,7 +41,7 @@ interface PendingChange {
 interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
-  updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number) => void
+  updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number, updateTimestamp?: boolean) => void
   syncPendingChanges: () => Promise<void>
   pendingChanges: PendingChange[]
   getTasksByStatus: (statusId: number) => Task[]
@@ -118,7 +118,7 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     });
   },
   
-  updateTaskPosition: (taskId, newStatusId, newIndex) => {
+  updateTaskPosition: (taskId, newStatusId, newIndex, updateTimestamp = true) => {
     set((state) => {
       const nextSequence = state.lastSequence + 1;
       const tasks = [...state.tasks];
@@ -143,7 +143,8 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
         ...taskToMove,
         position: newIndex,
         status_id: newStatusId,
-        ultima_atualizacao: now
+        // Só atualiza o timestamp se for solicitado (mudança de status) ou se for forçado
+        ultima_atualizacao: (isStatusChange || updateTimestamp) ? now : taskToMove.ultima_atualizacao
       };
       
       // Reordena todas as tarefas do mesmo status

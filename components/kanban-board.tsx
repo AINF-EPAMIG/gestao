@@ -265,7 +265,8 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         
         // Se a posição mudou, atualiza no banco de dados
         if (task.id === taskId || index !== tasksInSameStatus.findIndex(t => t.id === task.id)) {
-          updateTaskPosition(task.id, task.status_id, index);
+          // Passa false para indicar que não deve atualizar a data
+          updateTaskPosition(task.id, task.status_id, index, false);
         }
       });
       
@@ -273,7 +274,8 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
       setLocalTasks(updatedTasks);
     } else {
       // Se estiver mudando de status, atualiza o status e a posição
-      updateTaskPosition(taskId, newStatusId, destination.index);
+      // Passa true para indicar que deve atualizar a data (mudança de status)
+      updateTaskPosition(taskId, newStatusId, destination.index, true);
       
       // Atualiza o estado local para refletir a mudança imediatamente
       taskToMove.status_id = newStatusId;
@@ -288,7 +290,8 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
       tasksInSourceStatus.forEach((task, index) => {
         if (task.position !== index) {
           task.position = index;
-          updateTaskPosition(task.id, sourceStatusId, index);
+          // Passa false para indicar que não deve atualizar a data
+          updateTaskPosition(task.id, sourceStatusId, index, false);
         }
       });
       
@@ -304,7 +307,8 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
       tasksInDestStatus.forEach((task, index) => {
         if (task.position !== index) {
           task.position = index;
-          updateTaskPosition(task.id, newStatusId, index);
+          // Passa false para indicar que não deve atualizar a data
+          updateTaskPosition(task.id, newStatusId, index, false);
         }
       });
       

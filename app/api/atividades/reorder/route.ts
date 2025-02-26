@@ -27,18 +27,34 @@ export async function PUT(request: NextRequest) {
     console.log('🔵 Reordenando tarefa...');
     
     // Primeiro, atualiza a posição da tarefa movida
-    await executeQuery({
-      query: `
-        UPDATE u711845530_gestao.atividades 
-        SET status_id = ?, 
-            position = ?,
-            ultima_atualizacao = ?
-        WHERE id = ?
-      `,
-      values: [statusId, position, ultima_atualizacao, taskId],
-    });
+    // Se for mudança de status, atualiza a data de última atualização
+    // Se for apenas reordenação, mantém a data anterior explicitamente
+    if (isStatusChange) {
+      await executeQuery({
+        query: `
+          UPDATE u711845530_gestao.atividades 
+          SET status_id = ?, 
+              position = ?,
+              ultima_atualizacao = ?
+          WHERE id = ?
+        `,
+        values: [statusId, position, ultima_atualizacao, taskId],
+      });
+    } else {
+      await executeQuery({
+        query: `
+          UPDATE u711845530_gestao.atividades 
+          SET status_id = ?, 
+              position = ?,
+              ultima_atualizacao = ultima_atualizacao
+          WHERE id = ?
+        `,
+        values: [statusId, position, taskId],
+      });
+    }
     
     // Depois, reordena todas as tarefas do mesmo status para garantir posições sequenciais
+    // Aqui também precisamos preservar o timestamp atual
     await executeQuery({
       query: `
         WITH RankedActivities AS (
@@ -57,13 +73,15 @@ export async function PUT(request: NextRequest) {
         )
         UPDATE u711845530_gestao.atividades a
         INNER JOIN RankedActivities r ON a.id = r.id
-        SET a.position = r.new_position
+        SET a.position = r.new_position,
+            a.ultima_atualizacao = a.ultima_atualizacao
         WHERE a.status_id = ?
       `,
       values: [taskId, statusId, statusId],
     });
     
     // Se houve mudança de status, também reordena as tarefas do status antigo
+    // Preservando o timestamp atual
     if (isStatusChange && oldStatusId) {
       await executeQuery({
         query: `
@@ -78,7 +96,8 @@ export async function PUT(request: NextRequest) {
           )
           UPDATE u711845530_gestao.atividades a
           INNER JOIN RankedActivities r ON a.id = r.id
-          SET a.position = r.new_position
+          SET a.position = r.new_position,
+              a.ultima_atualizacao = a.ultima_atualizacao
           WHERE a.status_id = ?
         `,
         values: [oldStatusId, oldStatusId],
