@@ -3,7 +3,7 @@
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts"
 import { useTaskStore } from "@/lib/store"
 import { useMemo, useState, useEffect } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Loader2 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getUserIcon } from "@/lib/utils"
 
@@ -95,7 +95,7 @@ export function RadarChart() {
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <Skeleton className="h-[200px] w-[200px] rounded-full" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }

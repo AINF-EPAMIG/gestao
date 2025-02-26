@@ -2,7 +2,7 @@
 import { Cell, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { useTaskStore } from "@/lib/store"
 import { useMemo, useState, useEffect } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Loader2 } from "lucide-react"
 
 const COLORS = {
   "Em desenvolvimento": "#3b82f6",
@@ -70,7 +70,7 @@ export function PieChart() {
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <Skeleton className="h-[200px] w-[200px] rounded-full" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }

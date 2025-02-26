@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart } from "@/components/charts/pie-chart"
 import { RadarChart } from "@/components/charts/radar-chart"
 import { useTaskStore, type Task } from "@/lib/store"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { TaskStack } from "@/components/task-stack"
 import AuthRequired from "@/components/auth-required"
 import { PollingWrapper } from "@/components/polling-wrapper"
+import { Loader2 } from "lucide-react"
 
 function getStatusName(statusId: number): string {
   const statusMap: Record<number, string> = {
@@ -21,6 +22,15 @@ function getStatusName(statusId: number): string {
 
 export default function DashboardPage() {
   const tasks = useTaskStore((state) => state.tasks)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Efeito para controlar o estado de carregamento
+  useEffect(() => {
+    if (tasks.length > 0) {
+      // Quando as tarefas são carregadas, desativa o loader
+      setIsLoading(false)
+    }
+  }, [tasks])
 
   const tasksInDevelopment = useMemo(() => {
     const tasksByUser = tasks
@@ -42,47 +52,49 @@ export default function DashboardPage() {
   return (
     <AuthRequired>
       <PollingWrapper>
-        <div className="min-h-screen w-full bg-background pt-8 md:pt-0">
-          {" "}
-          {/* Reduced from pt-14 to pt-12 */}
-          <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-6">
-            {" "}
-            {/* Reduced py-4 to py-2 */}
-            <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Painel de Controle Kanban</h1>{" "}
-            {/* Reduced mb-6 to mb-4 on mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-              <Card className="w-full">
-                <CardHeader>
-                  <CardTitle className="text-lg md:text-xl">Distribuição por Etapa</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
-                    <PieChart />
-                  </div>
-                </CardContent>
-              </Card>
+        {isLoading ? (
+          <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="min-h-screen w-full bg-background pt-8 md:pt-0">
+            <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-6">
+              <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Painel de Controle Kanban</h1>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+                <Card className="w-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg md:text-xl">Distribuição por Etapa</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                      <PieChart />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="w-full">
-                <CardHeader>
-                  <CardTitle className="text-lg md:text-xl">Cards Atribuídos por Usuário</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
-                    <RadarChart />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tasksInDevelopment.map(([email, tasks]) => (
-                  <TaskStack key={email} tasks={tasks} responsavelEmail={email} />
-                ))}
+                <Card className="w-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg md:text-xl">Cards Atribuídos por Usuário</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                      <RadarChart />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tasksInDevelopment.map(([email, tasks]) => (
+                    <TaskStack key={email} tasks={tasks} responsavelEmail={email} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </PollingWrapper>
     </AuthRequired>
   )
