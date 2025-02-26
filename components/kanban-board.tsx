@@ -4,10 +4,11 @@ import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableP
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
-import { useMemo, useCallback, useState, memo, useEffect } from "react"
+import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getUserIcon } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
+import { Loader2 } from "lucide-react"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -45,6 +46,33 @@ const TaskCard = memo(function TaskCard({
   snapshot: DraggableStateSnapshot;
 }) {
   const [showDetails, setShowDetails] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const previousStatusRef = useRef<number>(task.status_id)
+  const previousUpdateRef = useRef<string | null>(task.ultima_atualizacao)
+
+  // Efeito para detectar mudanças de status e mostrar o loader
+  useEffect(() => {
+    // Se o status mudou ou a data de atualização mudou
+    if (previousStatusRef.current !== task.status_id || 
+        previousUpdateRef.current !== task.ultima_atualizacao) {
+      
+      // Só mostra o loader se a data de atualização mudou (indicando mudança real de status)
+      if (previousUpdateRef.current !== task.ultima_atualizacao) {
+        setIsLoading(true)
+        
+        // Simula um tempo de carregamento de 2 segundos
+        const timer = setTimeout(() => {
+          setIsLoading(false)
+        }, 1000)
+        
+        return () => clearTimeout(timer)
+      }
+      
+      // Atualiza as referências
+      previousStatusRef.current = task.status_id
+      previousUpdateRef.current = task.ultima_atualizacao
+    }
+  }, [task.status_id, task.ultima_atualizacao])
 
   const formatDateTime = (dateTime: string | null) => {
     if (!dateTime) return null;
@@ -154,9 +182,17 @@ const TaskCard = memo(function TaskCard({
             </div>
           </div>
           {task.ultima_atualizacao && (
-            <span className="text-xs text-gray-500">
-              {formatDateTime(task.ultima_atualizacao)}
-            </span>
+            <div className="flex items-center">
+              {isLoading ? (
+                <div className="flex items-center text-xs text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  {formatDateTime(task.ultima_atualizacao)}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </Card>

@@ -67,6 +67,7 @@ export function CreateTaskModal() {
   const [setorInput, setSetorInput] = useState("")
   const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
   const setorRef = useRef<HTMLInputElement>(null)
+  const responsavelRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("detalhes")
   const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -99,6 +100,12 @@ export function CreateTaskModal() {
                   CARGO: sub.CARGO_SUBORDINADO
                 }));
                 setResponsaveis(formattedSubordinados);
+              }
+            } else {
+              // Para usuários comuns, buscar todos os responsáveis do setor
+              const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+              if (responsaveisData) {
+                setResponsaveis(responsaveisData);
               }
             }
 
@@ -137,9 +144,9 @@ export function CreateTaskModal() {
   }, [session?.user?.email]);
 
   useEffect(() => {
-    // Atualizar responsáveis quando o setor selecionado mudar (apenas para admin)
+    // Atualizar responsáveis quando o setor selecionado mudar (para todos os usuários)
     const updateResponsaveis = async () => {
-      if (isAdmin && selectedSetor) {
+      if (selectedSetor) {
         try {
           const responsaveisData = await getResponsaveisBySetor(selectedSetor);
           if (responsaveisData) {
@@ -152,7 +159,7 @@ export function CreateTaskModal() {
     };
 
     updateResponsaveis();
-  }, [isAdmin, selectedSetor]);
+  }, [selectedSetor]);
 
   useEffect(() => {
     // Carregar projetos do banco com contagem de tarefas
@@ -336,6 +343,20 @@ export function CreateTaskModal() {
       setIsSubmittingProjeto(false)
     }
   }
+
+  // Efeito para fechar a lista de sugestões quando clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (responsavelRef.current && !responsavelRef.current.contains(event.target as Node)) {
+        setShowResponsavelSuggestions(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <>
@@ -557,7 +578,7 @@ export function CreateTaskModal() {
 
                     <div>
                       <label className="text-sm font-medium">Responsáveis</label>
-                      <div className="relative">
+                      <div className="relative" ref={responsavelRef}>
                         <Input
                           value={responsavelInput}
                           onChange={(e) => {
@@ -567,13 +588,15 @@ export function CreateTaskModal() {
                           onFocus={() => setShowResponsavelSuggestions(true)}
                           placeholder="Digite o nome do responsável"
                         />
-                        {showResponsavelSuggestions && responsavelInput && (
+                        {showResponsavelSuggestions && (
                           <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
                             {responsaveis
-                              .filter(r => 
-                                (r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
-                                !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL)
-                              )
+                              .filter(r => {
+                                const nameMatches = !responsavelInput || 
+                                  ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                return nameMatches && notAlreadySelected;
+                              })
                               .map(responsavel => (
                                 <div
                                   key={responsavel.EMAIL}

@@ -134,7 +134,14 @@ export async function getResponsaveisBySetor(setor: string): Promise<Responsavel
     }
 
     const data = await response.json();
-    return data.filter((resp: ResponsavelSetor) => resp.EMAIL !== 'andrezza.fernandes@epamig.br');
+    // Mapear os dados para o formato esperado pela interface Responsavel
+    return data
+      .filter((resp: ResponsavelSetor) => resp.EMAIL !== 'andrezza.fernandes@epamig.br')
+      .map((resp: ResponsavelSetor) => ({
+        EMAIL: resp.EMAIL,
+        NOME: resp.NOME,
+        CARGO: resp.CHEFE === 'SIM' ? 'CHEFE' : ''
+      }));
   } catch (error) {
     console.error('Erro ao buscar responsáveis do setor:', error);
     return [];
