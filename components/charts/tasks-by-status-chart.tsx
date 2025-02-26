@@ -2,9 +2,10 @@
 
 import { useTaskStore, getStatusName } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, TooltipProps } from "recharts"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Loader2 } from "lucide-react"
 
 // Tipos para o gráfico
 interface ChartData {
@@ -33,6 +34,15 @@ const CHART_COLORS = {
 
 export function TasksByStatusChart() {
   const tasks = useTaskStore((state) => state.tasks)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Efeito para controlar o estado de carregamento
+  useEffect(() => {
+    if (tasks.length > 0) {
+      // Quando as tarefas são carregadas, desativa o loader
+      setIsLoading(false)
+    }
+  }, [tasks])
 
   const data = useMemo(() => {
     const tasksByResponsavel = tasks.reduce((acc, task) => {
@@ -118,6 +128,14 @@ export function TasksByStatusChart() {
             <span className="font-medium">{entry.value}</span>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full bg-white p-4 rounded-lg border flex items-center justify-center" style={{ height: "400px" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
