@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useTaskStore } from "@/lib/store"
+import { useTaskStore, Task } from "@/lib/store"
 import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
-import { Plus, X } from "lucide-react"
+import { Plus, X, Search } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUpload } from "./file-upload"
@@ -72,6 +72,14 @@ export function CreateTaskModal() {
   const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmittingProjeto, setIsSubmittingProjeto] = useState(false)
+  
+  // Novo estado para o modal de seleção de ID Release
+  const [openReleaseModal, setOpenReleaseModal] = useState(false)
+  const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [loadingTasks, setLoadingTasks] = useState(false)
+  const [selectedReleaseTask, setSelectedReleaseTask] = useState<Task | null>(null)
 
   useEffect(() => {
     // Verificar se o usuário é chefe ou admin e pré-selecionar o próprio usuário
@@ -280,6 +288,8 @@ export function CreateTaskModal() {
     setSelectedResponsaveis([])
     setActiveTab("detalhes")
     setCachedFiles([])
+    setIdRelease("")
+    setSelectedReleaseTask(null)
   }
 
   const handleProjetoSelect = (projeto: Projeto) => {
@@ -357,6 +367,99 @@ export function CreateTaskModal() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Função para buscar todas as tarefas
+  const fetchAllTasks = useCallback(async () => {
+    try {
+      setLoadingTasks(true)
+      console.log('Buscando todas as tarefas do banco de dados...')
+      
+      // Buscar todas as tarefas sem filtros
+      const response = await fetch('/api/atividades?all=true', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Resposta da API:', data)
+        console.log('Tarefas encontradas:', data.length)
+        
+        // Garantir que temos um array de tarefas
+        if (Array.isArray(data)) {
+          setAllTasks(data)
+          setFilteredTasks(data)
+          
+          // Se já tiver um ID Release selecionado, encontre a tarefa correspondente
+          if (idRelease) {
+            const selectedTask = data.find((task: Task) => task.id.toString() === idRelease)
+            if (selectedTask) {
+              setSelectedReleaseTask(selectedTask)
+            }
+          }
+        } else {
+          console.log('Formato inválido retornado da API:', data)
+          setAllTasks([])
+          setFilteredTasks([])
+        }
+      } else {
+        console.error('Erro na resposta da API:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Detalhes do erro:', errorText)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar tarefas:', error)
+    } finally {
+      setLoadingTasks(false)
+    }
+  }, [idRelease])
+
+  // Função para filtrar tarefas com base no termo de busca
+  const filterTasks = useCallback((term: string) => {
+    if (!term.trim()) {
+      setFilteredTasks(allTasks)
+      return
+    }
+    
+    const lowerTerm = term.toLowerCase()
+    const filtered = allTasks.filter(task => {
+      // Verificar se o ID da tarefa contém o termo de busca
+      const idMatch = task.id.toString().includes(lowerTerm)
+      
+      // Verificar se o título da tarefa contém o termo de busca (se existir)
+      const tituloMatch = task.titulo ? task.titulo.toLowerCase().includes(lowerTerm) : false
+      
+      // Verificar se a descrição da tarefa contém o termo de busca (se existir)
+      const descricaoMatch = task.descricao ? task.descricao.toLowerCase().includes(lowerTerm) : false
+      
+      return idMatch || tituloMatch || descricaoMatch
+    })
+    
+    setFilteredTasks(filtered)
+  }, [allTasks])
+
+  // Função para selecionar uma tarefa como ID Release
+  const selectTaskAsRelease = (task: Task) => {
+    setIdRelease(task.id.toString())
+    setSelectedReleaseTask(task)
+    setOpenReleaseModal(false)
+  }
+
+  // Efeito para buscar tarefas quando o modal de release é aberto
+  useEffect(() => {
+    if (openReleaseModal) {
+      console.log('Modal de release aberto, buscando tarefas...')
+      fetchAllTasks()
+    }
+  }, [openReleaseModal, fetchAllTasks])
+
+  // Efeito para filtrar tarefas quando o termo de busca muda
+  useEffect(() => {
+    filterTasks(searchTerm)
+  }, [searchTerm, filterTasks])
 
   return (
     <>
@@ -512,11 +615,45 @@ export function CreateTaskModal() {
 
                         <div>
                           <label className="text-sm font-medium">ID Release</label>
-                          <Input
-                            value={idRelease}
-                            onChange={(e) => setIdRelease(e.target.value)}
-                            placeholder="Digite o ID da release"
-                          />
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  value={idRelease || ''}
+                                  placeholder="Selecione um ID de release"
+                                  className="flex-1 bg-gray-50 pr-8"
+                                  readOnly
+                                />
+                                {idRelease && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                    onClick={() => {
+                                      setIdRelease("")
+                                      setSelectedReleaseTask(null)
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={() => setOpenReleaseModal(true)}
+                                className="shrink-0"
+                              >
+                                Selecionar
+                              </Button>
+                            </div>
+                            {selectedReleaseTask && (
+                              <div className="text-sm text-gray-500 truncate">
+                                {selectedReleaseTask.titulo}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -579,66 +716,68 @@ export function CreateTaskModal() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="text-sm font-medium">Responsáveis</label>
-                        <div className="relative" ref={responsavelRef}>
-                          <Input
-                            value={responsavelInput}
-                            onChange={(e) => {
-                              setResponsavelInput(e.target.value);
-                              setShowResponsavelSuggestions(true);
-                            }}
-                            onFocus={() => setShowResponsavelSuggestions(true)}
-                            placeholder="Digite o nome do responsável"
-                          />
-                          {showResponsavelSuggestions && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                              {responsaveis
-                                .filter(r => {
-                                  const nameMatches = !responsavelInput || 
-                                    ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                  const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                  return nameMatches && notAlreadySelected;
-                                })
-                                .map(responsavel => (
-                                  <div
-                                    key={responsavel.EMAIL}
-                                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                    onClick={() => handleResponsavelSelect(responsavel)}
-                                  >
-                                    <div>{responsavel.NOME}</div>
-                                    <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Lista de responsáveis selecionados */}
-                        <div className="mt-1 space-y-1">
-                          {selectedResponsaveis.map((responsavel) => (
-                            <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="w-6 h-6">
-                                  <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
-                                  <AvatarFallback>
-                                    {responsavel.EMAIL[0].toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium">
-                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
-                                </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Responsáveis</label>
+                          <div className="relative" ref={responsavelRef}>
+                            <Input
+                              value={responsavelInput}
+                              onChange={(e) => {
+                                setResponsavelInput(e.target.value);
+                                setShowResponsavelSuggestions(true);
+                              }}
+                              onFocus={() => setShowResponsavelSuggestions(true)}
+                              placeholder="Digite o nome do responsável"
+                            />
+                            {showResponsavelSuggestions && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                                {responsaveis
+                                  .filter(r => {
+                                    const nameMatches = !responsavelInput || 
+                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                    return nameMatches && notAlreadySelected;
+                                  })
+                                  .map(responsavel => (
+                                    <div
+                                      key={responsavel.EMAIL}
+                                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                      onClick={() => handleResponsavelSelect(responsavel)}
+                                    >
+                                      <div>{responsavel.NOME}</div>
+                                      <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
+                                    </div>
+                                  ))}
                               </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeResponsavel(responsavel.EMAIL)}
-                              >
-                                <X className="w-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
+                            )}
+                          </div>
+                          
+                          {/* Lista de responsáveis selecionados */}
+                          <div className="mt-1 space-y-1">
+                            {selectedResponsaveis.map((responsavel) => (
+                              <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                    <AvatarFallback>
+                                      {responsavel.EMAIL[0].toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm font-medium">
+                                    {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                >
+                                  <X className="w-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
@@ -691,6 +830,113 @@ export function CreateTaskModal() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Modal de seleção de ID Release */}
+      <Dialog open={openReleaseModal} onOpenChange={setOpenReleaseModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Selecionar ID Release</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center border rounded-md mb-4">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por ID ou título..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-muted-foreground">
+                {filteredTasks.length > 0 ? `${filteredTasks.length} tarefas encontradas` : ''}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchAllTasks}
+                disabled={loadingTasks}
+              >
+                {loadingTasks ? 'Carregando...' : 'Recarregar'}
+              </Button>
+            </div>
+            
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              {loadingTasks ? (
+                <div className="p-8 flex justify-center items-center">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <span className="ml-2">Carregando tarefas...</span>
+                </div>
+              ) : filteredTasks.length > 0 ? (
+                <div className="divide-y">
+                  {filteredTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                        idRelease === task.id.toString() ? 'bg-primary/10' : ''
+                      }`}
+                      onClick={() => selectTaskAsRelease(task)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">
+                          <span className="inline-block min-w-[30px] text-center bg-gray-100 rounded-md mr-2">
+                            {task.id}
+                          </span>
+                          {task.titulo || 'Sem título'}
+                        </div>
+                        {task.descricao && (
+                          <div className="text-sm text-gray-500 truncate max-w-[400px] pl-[40px]">
+                            {task.descricao}
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant={idRelease === task.id.toString() ? "default" : "ghost"} 
+                        size="sm"
+                        className="ml-2 shrink-0"
+                      >
+                        {idRelease === task.id.toString() ? "Selecionada" : "Selecionar"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 mb-4">
+                    {searchTerm ? 'Nenhuma tarefa encontrada para esta busca' : 'Nenhuma tarefa encontrada'}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={fetchAllTasks}
+                    disabled={loadingTasks}
+                  >
+                    Tentar novamente
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenReleaseModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 } 

@@ -6,6 +6,8 @@ import { Download, Trash2, FileIcon } from "lucide-react"
 import { FileUpload } from "./file-upload"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { getUserIcon } from "@/lib/utils"
 
 interface Anexo {
   id: number
@@ -14,6 +16,7 @@ interface Anexo {
   tipo_arquivo: string
   tamanho_bytes: number
   data_upload: string
+  usuario_email: string
 }
 
 interface TaskAttachmentsProps {
@@ -99,6 +102,23 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
     return '📁'
   }
 
+  const formatUserName = (email: string) => {
+    const NOME_EXCEPTIONS: Record<string, string> = {
+      "alexsolano@epamig.br": "Alex Solano"
+    };
+    
+    if (NOME_EXCEPTIONS[email]) {
+      return NOME_EXCEPTIONS[email];
+    }
+    
+    const username = email.split('@')[0];
+    
+    return username
+      .split('.')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   return (
     <div className="h-[600px] flex flex-col">
       {canEdit && (
@@ -138,46 +158,60 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-end gap-1 mt-4 pt-3 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(anexo.id, anexo.nome_arquivo)}
-                      className="h-8 gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Baixar
-                    </Button>
-                    {canEdit && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir o arquivo &ldquo;{anexo.nome_arquivo}&rdquo;? Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDelete(anexo.id)}
-                              className="bg-red-500 hover:bg-red-600 text-white"
+                  <div className="flex items-center justify-between gap-1 mt-4 pt-3 border-t">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={getUserIcon(anexo.usuario_email)} />
+                        <AvatarFallback>
+                          {anexo.usuario_email ? anexo.usuario_email[0].toUpperCase() : '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-muted-foreground">
+                        {anexo.usuario_email ? formatUserName(anexo.usuario_email) : 'Desconhecido'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(anexo.id, anexo.nome_arquivo)}
+                        className="h-8 gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Baixar
+                      </Button>
+                      {canEdit && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-2 text-red-500 hover:text-red-600 hover:bg-red-50"
                             >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o arquivo &ldquo;{anexo.nome_arquivo}&rdquo;? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(anexo.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

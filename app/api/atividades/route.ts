@@ -50,6 +50,71 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const userEmail = url.searchParams.get('userEmail');
     const setorSigla = url.searchParams.get('setorSigla');
+    const getAllTasks = url.searchParams.get('all') === 'true';
+
+    // Se o parâmetro 'all' for true, retornar todas as tarefas sem filtros
+    if (getAllTasks) {
+      console.log('Buscando todas as tarefas sem filtros');
+      
+      const atividades = await executeQuery({
+        query: `
+          SELECT 
+            a.*,
+            p.nome as projeto_nome, 
+            s.sigla as setor_sigla,
+            COALESCE(
+              CONCAT('[', 
+                GROUP_CONCAT(
+                  CASE 
+                    WHEN ar.responsavel_id IS NOT NULL 
+                    THEN JSON_OBJECT('id', ar.responsavel_id, 'email', r.email)
+                    ELSE NULL 
+                  END
+                ),
+              ']'),
+              '[]'
+            ) as responsaveis
+          FROM u711845530_gestao.atividades a
+          LEFT JOIN u711845530_gestao.atividades_responsaveis ar ON a.id = ar.atividade_id
+          LEFT JOIN u711845530_gestao.responsaveis r ON ar.responsavel_id = r.id
+          LEFT JOIN u711845530_gestao.projetos p ON a.projeto_id = p.id
+          LEFT JOIN u711845530_gestao.setor s ON a.setor_id = s.id
+          GROUP BY a.id, a.titulo, a.descricao, a.projeto_id, a.data_inicio, a.data_fim, 
+                  a.status_id, a.prioridade_id, a.estimativa_horas, a.data_criacao,
+                  a.id_release, a.position, a.ultima_atualizacao, a.setor_id,
+                  p.nome, s.sigla
+          ORDER BY a.id DESC
+        `,
+        values: [],
+      }) as Atividade[];
+
+      // Processar os responsáveis de string JSON para array
+      const atividadesProcessadas = atividades.map(atividade => {
+        let responsaveis = [];
+        if (atividade.responsaveis && typeof atividade.responsaveis === 'string') {
+          try {
+            responsaveis = JSON.parse(atividade.responsaveis);
+            // Filtrar responsáveis inválidos
+            responsaveis = responsaveis.filter((r: ResponsavelParcial) => r && r.id && r.email);
+          } catch (e) {
+            console.error('Erro ao processar responsáveis:', e);
+          }
+        }
+        return {
+          ...atividade,
+          responsaveis
+        };
+      });
+      
+      return new NextResponse(JSON.stringify(atividadesProcessadas), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
 
     if (!userEmail) {
       return NextResponse.json(
