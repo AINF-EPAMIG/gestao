@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, X, FileUp } from "lucide-react"
+import { useTaskStore } from "@/lib/store"
 
 interface FileUploadProps {
   taskId?: number
@@ -26,6 +27,7 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false)
   const [localFiles, setLocalFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
+  const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null)
@@ -97,6 +99,10 @@ export function FileUpload({
       console.log("[FileUpload] Upload concluído com sucesso:", responseData)
 
       setLocalFiles([])
+      
+      // Atualiza o timestamp da tarefa no store
+      updateTaskTimestamp(taskId)
+      
       if (onUploadComplete) {
         onUploadComplete()
       }

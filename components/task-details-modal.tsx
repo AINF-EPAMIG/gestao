@@ -89,6 +89,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [projetoId, setProjetoId] = useState(task.projeto_id?.toString() || "")
   const setTasks = useTaskStore((state) => state.setTasks)
+  const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
   const [comentario, setComentario] = useState("")
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
@@ -370,6 +371,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         const novoComentario = await response.json();
         setComentarios([...comentarios, novoComentario]);
         setComentario('');
+        
+        // Atualiza o timestamp da tarefa no store
+        updateTaskTimestamp(task.id);
       } else {
         alert('Erro ao enviar comentário');
       }
@@ -408,6 +412,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         ));
         setComentarioEditando(null);
         setTextoEditando("");
+        
+        // Atualiza o timestamp da tarefa no store
+        updateTaskTimestamp(task.id);
       } else {
         alert('Erro ao atualizar comentário');
       }

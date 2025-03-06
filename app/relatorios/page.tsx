@@ -138,6 +138,10 @@ export default function PlanilhaPage() {
               {/* Novo gráfico de barras */}
               <div className="mb-6">
                 <TasksByStatusChart />
+                {/* Mensagem para dispositivos móveis */}
+                <div className="sm:hidden p-4 bg-gray-50 rounded-lg border text-center">
+                  <p className="text-sm text-gray-600">O gráfico de análise de tarefas está disponível apenas na versão desktop.</p>
+                </div>
               </div>
 
               {/* Nova seção de filtros */}

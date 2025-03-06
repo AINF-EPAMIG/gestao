@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getUserIcon } from "@/lib/utils"
+import { useTaskStore } from "@/lib/store"
 
 interface Anexo {
   id: number
@@ -26,6 +27,7 @@ interface TaskAttachmentsProps {
 
 export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProps) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
+  const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
   const loadAnexos = useCallback(async () => {
     try {
@@ -77,6 +79,9 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
       }
 
       setAnexos(anexos.filter(anexo => anexo.id !== anexoId))
+      
+      // Atualiza o timestamp da tarefa no store
+      updateTaskTimestamp(taskId)
     } catch (error) {
       console.error("Erro ao excluir anexo:", error)
       alert("Erro ao excluir anexo")

@@ -42,6 +42,7 @@ interface TaskStore {
   tasks: Task[]
   setTasks: (tasks: Task[]) => void
   updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number, updateTimestamp?: boolean) => void
+  updateTaskTimestamp: (taskId: number) => void
   syncPendingChanges: () => Promise<void>
   pendingChanges: PendingChange[]
   getTasksByStatus: (statusId: number) => Task[]
@@ -216,6 +217,39 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
         pendingChanges: [...state.pendingChanges, change],
         optimisticUpdates: newOptimisticUpdates,
         lastSequence: nextSequence
+      };
+    });
+  },
+  
+  updateTaskTimestamp: (taskId) => {
+    set((state) => {
+      const tasks = [...state.tasks];
+      const taskToUpdate = tasks.find(t => t.id === taskId);
+      
+      if (!taskToUpdate) return state;
+      
+      // Atualiza a data da última atualização
+      const date = new Date();
+      date.setHours(date.getHours() - 3);
+      const now = date.toISOString();
+      
+      // Atualiza a tarefa
+      taskToUpdate.ultima_atualizacao = now;
+      
+      // Chama a API para atualizar a data no banco de dados
+      fetch('/api/atividades/update-timestamp', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          ultima_atualizacao: now
+        }),
+      }).catch(error => {
+        console.error('Erro ao atualizar timestamp:', error);
+      });
+      
+      return {
+        tasks
       };
     });
   },

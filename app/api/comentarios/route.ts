@@ -53,6 +53,16 @@ export async function POST(request: Request) {
       values: [atividade_id, usuario_email, usuario_nome, comentario]
     }) as InsertResult
 
+    // Atualiza a data da última atualização da tarefa
+    const date = new Date();
+    date.setHours(date.getHours() - 3);
+    const now = date.toISOString();
+    
+    await executeQuery({
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?',
+      values: [now, atividade_id]
+    });
+
     const [novoComentario] = await executeQuery({
       query: 'SELECT * FROM u711845530_gestao.comentarios WHERE id = ?',
       values: [result.insertId]
@@ -97,6 +107,16 @@ export async function PUT(request: Request) {
       query: 'UPDATE u711845530_gestao.comentarios SET comentario = ?, data_edicao = NOW() WHERE id = ?',
       values: [comentario, id]
     })
+
+    // Atualiza a data da última atualização da tarefa
+    const date = new Date();
+    date.setHours(date.getHours() - 3);
+    const now = date.toISOString();
+    
+    await executeQuery({
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?',
+      values: [now, comentarioExistente.atividade_id]
+    });
 
     const [comentarioAtualizado] = await executeQuery({
       query: 'SELECT * FROM u711845530_gestao.comentarios WHERE id = ?',

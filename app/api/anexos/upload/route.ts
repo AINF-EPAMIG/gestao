@@ -71,21 +71,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Atualiza a data da última atualização da tarefa
+    const date = new Date();
+    date.setHours(date.getHours() - 3);
+    const now = date.toISOString();
+    
+    await db.execute(
+      `UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?`,
+      [now, taskId]
+    );
+
     return NextResponse.json(savedFiles)
   } catch (error) {
-    console.error("Erro crítico no upload:", {
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : error
-    })
-    
+    console.error("Erro ao fazer upload:", error)
     return NextResponse.json(
-      { 
-        error: "Erro ao fazer upload dos arquivos",
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      },
+      { error: "Erro ao fazer upload" },
       { status: 500 }
     )
   }

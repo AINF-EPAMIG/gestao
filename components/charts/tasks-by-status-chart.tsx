@@ -134,14 +134,14 @@ export function TasksByStatusChart() {
 
   if (isLoading) {
     return (
-      <div className="w-full bg-white p-4 rounded-lg border flex items-center justify-center" style={{ height: "400px" }}>
+      <div className="w-full bg-white p-4 rounded-lg border flex items-center justify-center hidden sm:flex" style={{ height: "400px" }}>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="w-full bg-white p-4 rounded-lg border">
+    <div className="w-full bg-white p-4 rounded-lg border hidden sm:block">
       <h3 className="text-lg font-semibold mb-4 text-[#00714B]">Análise de Tarefas por Responsável</h3>
       <div className="w-full h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
