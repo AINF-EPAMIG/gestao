@@ -34,7 +34,7 @@ const RM_API_CONFIG = {
 
 // Lista de emails de administradores com acesso total
 const ADMIN_EMAILS = [
-  'arthur.souza@epamig.br',
+  'exemplo@epamig.br',
 ];
 
 export function isUserAdmin(email: string | null | undefined): boolean {
