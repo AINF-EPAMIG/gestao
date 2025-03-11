@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
+import { getResponsavelName } from '@/lib/utils'
 
 interface DataTableProps {
   tasks: Task[]
@@ -51,12 +52,7 @@ export function DataTable({ tasks }: DataTableProps) {
                   </div>
                   <span>
                     {(task.responsaveis ?? []).length > 0 
-                      ? (task.responsaveis ?? []).map(r => {
-                          const displayName = r.nome 
-                            ? r.nome.split(' ')[0] 
-                            : r.email.split('@')[0].split('.')[0];
-                          return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                        }).join(', ')
+                      ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
                       : 'Não atribuído'
                     }
                   </span>

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { cn, getUserIcon } from "@/lib/utils"
+import { cn, getUserIcon, getResponsavelName } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
 import { Loader2 } from "lucide-react"
 
@@ -167,12 +167,7 @@ const TaskCard = memo(function TaskCard({
             {(task.responsaveis ?? []).length === 1 && (
               <div className="flex flex-col">
                 <span className="text-sm font-medium">
-                  {(task.responsaveis ?? []).map(r => {
-                    const displayName = r.nome 
-                      ? r.nome.split(' ')[0] 
-                      : r.email.split('@')[0].split('.')[0];
-                    return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                  }).join(', ')}
+                  {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
                 </span>
                 {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
                   <span className="text-xs text-gray-500">

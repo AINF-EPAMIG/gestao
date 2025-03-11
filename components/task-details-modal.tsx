@@ -14,16 +14,23 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { getResponsavelName } from '@/lib/utils'
 
-interface Responsavel {
+interface TaskResponsavel {
   id: number;
   email: string;
   nome?: string;
   cargo?: string;
+}
+
+interface Responsavel {
+  EMAIL: string;
+  NOME: string;
+  CARGO?: string;
 }
 
 interface Projeto {
@@ -54,12 +61,7 @@ interface Task {
   data_fim: string | null;
   id_release: string | null;
   ultima_atualizacao: string | null;
-  responsaveis?: {
-    id: number;
-    email: string;
-    nome?: string;
-    cargo?: string;
-  }[];
+  responsaveis?: TaskResponsavel[];
 }
 
 interface TaskDetailsModalProps {
@@ -83,7 +85,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [dataInicio, setDataInicio] = useState(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "")
   const [dataFim, setDataFim] = useState(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "")
   const [responsavelInput, setResponsavelInput] = useState("")
-  const [selectedResponsaveis, setSelectedResponsaveis] = useState(task.responsaveis || [])
+  const [selectedResponsaveis, setSelectedResponsaveis] = useState<Responsavel[]>([])
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const [projetos, setProjetos] = useState<Projeto[]>([])
@@ -94,6 +96,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
   const [textoEditando, setTextoEditando] = useState("")
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [isChefe, setIsChefe] = useState<boolean>(false)
+  const [selectedSetor, setSelectedSetor] = useState<string>("")
   // Definindo o limite máximo de caracteres
   const MAX_TITLE_LENGTH = 40
   const MAX_DESCRIPTION_LENGTH = 100
@@ -143,30 +148,59 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         
         if (isAdmin) {
           setCanEdit(true);
+          setIsAdmin(true);
           return;
         }
 
         const userInfo = await getUserInfoFromRM(session.user.email);
-        const isChefe = isUserChefe(userInfo);
-        
-        if (isChefe) {
-          setCanEdit(true);
-          return;
-        }
+        if (userInfo) {
+          const isUserChefeResult = isUserChefe(userInfo);
+          
+          if (isUserChefeResult) {
+            setCanEdit(true);
+            setIsChefe(true);
+            setSelectedSetor(userInfo.SECAO);
+          }
 
-        // Verificar se é responsável
-        const isResponsavel = task.responsaveis?.some((responsavel: Responsavel) => responsavel.email === session.user.email);
-        if (isResponsavel) {
-          setCanEdit(true);
-          return;
-        }
+          // Verificar se é responsável
+          const isResponsavel = task.responsaveis?.some((responsavel) => responsavel.email === session.user.email);
+          if (isResponsavel) {
+            setCanEdit(true);
+          }
 
-        setCanEdit(false);
+          // Carregar responsáveis baseado no papel do usuário
+          if (isUserChefeResult || isAdmin) {
+            const subordinadosData = await getSubordinadosFromRM(session.user.email);
+            if (subordinadosData) {
+              const formattedSubordinados = subordinadosData.map(sub => ({
+                EMAIL: sub.EMAIL_SUBORDINADO,
+                NOME: sub.NOME_SUBORDINADO,
+                CARGO: sub.CARGO_SUBORDINADO
+              }));
+              setResponsaveis(formattedSubordinados);
+            }
+          } else if (userInfo.SECAO) {
+            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+            if (responsaveisData) {
+              setResponsaveis(responsaveisData);
+            }
+          }
+
+          // Converter responsáveis atuais para o novo formato
+          const currentResponsaveis = task.responsaveis?.map(r => ({
+            EMAIL: r.email,
+            NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
+            CARGO: r.cargo
+          })) || [];
+          setSelectedResponsaveis(currentResponsaveis);
+        }
       }
     };
 
-    checkPermissions();
-  }, [session?.user?.email, task.responsaveis]);
+    if (open) {
+      checkPermissions();
+    }
+  }, [session?.user?.email, task.responsaveis, open]);
 
   useEffect(() => {
     // Carregar projetos do banco
@@ -250,7 +284,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   };
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
-    if (!selectedResponsaveis.find((r: Responsavel) => r.email === responsavel.email)) {
+    if (!selectedResponsaveis.find(r => r.EMAIL === responsavel.EMAIL)) {
       setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
     }
     setResponsavelInput("");
@@ -258,7 +292,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   }
 
   const removeResponsavel = (email: string) => {
-    setSelectedResponsaveis(selectedResponsaveis.filter((r: Responsavel) => r.email !== email));
+    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
 
   const handleSave = async () => {
@@ -269,8 +303,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       // Identificar novos responsáveis
       const responsaveisAtuais = task.responsaveis?.map(r => r.email) || [];
       const novosResponsaveis = selectedResponsaveis
-        .filter((r: Responsavel) => !responsaveisAtuais.includes(r.email))
-        .map((r: Responsavel) => r.email);
+        .filter(r => !responsaveisAtuais.includes(r.EMAIL))
+        .map(r => r.EMAIL);
 
       // Armazenar o projeto_id original para comparação
       const originalProjetoId = task.projeto_id;
@@ -282,7 +316,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         titulo,
         descricao,
         projeto_id: newProjetoId,
-        responsaveis_emails: selectedResponsaveis.map((r: Responsavel) => r.email),
+        responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
         data_inicio: dataInicio,
         data_fim: dataFim,
         prioridade_id: parseInt(prioridade),
@@ -644,7 +678,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     <div className="flex items-center gap-2">
                       <div className="flex -space-x-2">
                         {task.responsaveis && task.responsaveis.length > 0 ? (
-                          task.responsaveis.map((responsavel: Responsavel) => (
+                          task.responsaveis.map((responsavel) => (
                             <Avatar key={responsavel.email} className="w-8 h-8 border-2 border-white">
                               <AvatarImage src={getUserIcon(responsavel.email)} />
                               <AvatarFallback>
@@ -658,9 +692,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         {task.responsaveis && task.responsaveis.length > 0 ? (
                           <span className="text-sm">
                             {task.responsaveis
-                              .map((responsavel: Responsavel) => 
-                                (responsavel.nome || responsavel.email.split('@')[0]).split(' ')[0]
-                              )
+                              .map((responsavel) => getResponsavelName(responsavel.email))
                               .join(', ')}
                           </span>
                         ) : (
@@ -781,8 +813,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         <Input
                           value={responsavelInput}
                           onChange={(e) => {
-                            setResponsavelInput(e.target.value)
-                            setShowResponsavelSuggestions(true)
+                            setResponsavelInput(e.target.value);
+                            setShowResponsavelSuggestions(true);
                           }}
                           onFocus={() => setShowResponsavelSuggestions(true)}
                           placeholder="Digite o nome do responsável"
@@ -791,18 +823,34 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         {showResponsavelSuggestions && responsavelInput && (
                           <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                             {responsaveis
-                              .filter((r: Responsavel) => 
-                                (r.nome || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
-                                !selectedResponsaveis.find((sr: Responsavel) => sr.email === r.email)
-                              )
-                              .map((responsavel: Responsavel) => (
+                              .filter(r => {
+                                const nameMatches = !responsavelInput || 
+                                  ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                return nameMatches && notAlreadySelected;
+                              })
+                              .map(responsavel => (
                                 <div
-                                  key={responsavel.email}
+                                  key={responsavel.EMAIL}
                                   className="px-4 py-2.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
                                   onClick={() => handleResponsavelSelect(responsavel)}
                                 >
-                                  <div className="font-medium">{responsavel.nome}</div>
-                                  <div className="text-xs text-gray-500">{responsavel.email}</div>
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                      <AvatarFallback>
+                                        {responsavel.EMAIL[0].toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-medium truncate" title={responsavel.NOME}>
+                                        {responsavel.NOME.length > 25 
+                                          ? `${responsavel.NOME.slice(0, 25)}...`
+                                          : responsavel.NOME}
+                                      </div>
+                                      <div className="text-xs text-gray-500 truncate">{responsavel.EMAIL}</div>
+                                    </div>
+                                  </div>
                                 </div>
                               ))}
                           </div>
@@ -811,23 +859,23 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       
                       {/* Lista de responsáveis selecionados */}
                       <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-50 rounded-md">
-                        {selectedResponsaveis.map((responsavel: Responsavel) => (
-                          <div key={responsavel.email} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border shadow-sm">
+                        {selectedResponsaveis.map((responsavel) => (
+                          <div key={responsavel.EMAIL} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border shadow-sm">
                             <Avatar className="w-5 h-5">
-                              <AvatarImage src={getUserIcon(responsavel.email)} />
+                              <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
                               <AvatarFallback>
-                                {responsavel.email[0].toUpperCase()}
+                                {responsavel.EMAIL[0].toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-xs font-medium">
-                              {responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ')}
+                              {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
                             </span>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
-                              onClick={() => removeResponsavel(responsavel.email)}
+                              onClick={() => removeResponsavel(responsavel.EMAIL)}
                             >
                               <X className="w-3 h-3" />
                             </Button>

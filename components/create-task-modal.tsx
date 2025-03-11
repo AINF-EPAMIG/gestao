@@ -266,6 +266,22 @@ export function CreateTaskModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!titulo.trim()) {
+      alert('Digite o título da tarefa')
+      return
+    }
+
+    if (!projetoId) {
+      alert('Selecione um projeto')
+      return
+    }
+    
+    if (selectedResponsaveis.length === 0) {
+      alert('Selecione pelo menos um responsável para a tarefa')
+      return
+    }
+    
     setIsSubmitting(true)
     
     try {
@@ -834,7 +850,7 @@ export function CreateTaskModal() {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-sm font-medium">Projeto</label>
+                          <label className="text-sm font-medium">Projeto *</label>
                           <div className="relative">
                             <Input
                               ref={inputRef}
@@ -848,16 +864,23 @@ export function CreateTaskModal() {
                               className="w-full"
                             />
                             {showSuggestions && projetoInput && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                                 {projetos
                                   .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
                                   .map(projeto => (
                                     <div
                                       key={projeto.id}
-                                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                      className="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
                                       onClick={() => handleProjetoSelect(projeto)}
                                     >
-                                      {projeto.nome}
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{projeto.nome}</span>
+                                        {projeto.taskCount !== undefined && (
+                                          <Badge variant="outline" className="ml-2">
+                                            {projeto.taskCount} {projeto.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
                                   ))}
                               </div>
@@ -970,7 +993,7 @@ export function CreateTaskModal() {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
-                          <label className="text-sm text-gray-500">Responsáveis</label>
+                          <label className="text-sm text-gray-500">Responsáveis *</label>
                           <div className="space-y-2">
                             <div className="relative">
                               <Input
@@ -1075,9 +1098,13 @@ export function CreateTaskModal() {
                         <Button 
                           type="submit" 
                           className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || selectedResponsaveis.length === 0 || !titulo.trim() || !projetoId}
                         >
-                          {isSubmitting ? "Criando..." : "Criar Tarefa"}
+                          {isSubmitting ? "Criando..." : 
+                           !titulo.trim() ? "Digite o título da tarefa" :
+                           !projetoId ? "Selecione um projeto" :
+                           selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" : 
+                           "Criar Tarefa"}
                         </Button>
                       </DialogFooter>
                     </form>

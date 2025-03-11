@@ -381,27 +381,6 @@ export function getPriorityName(priorityId: number): Priority {
   return priorityMap[priorityId] || "Média"
 }
 
-// Mapeamento de exceções para formatação de nomes
-const NOME_EXCEPTIONS: Record<string, string> = {
-  "alexsolano@epamig.br": "Alex Solano"
-};
-
-export function getResponsavelName(responsavelId: number | null, email?: string): string {
-  if (!responsavelId || !email) return "Não atribuído";
-  
-  // Verifica se o email está nas exceções
-  if (NOME_EXCEPTIONS[email]) {
-    return NOME_EXCEPTIONS[email];
-  }
-  
-  const username = email.split('@')[0];
-  
-  return username
-    .split('.')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
-
 export function formatHours(hours: string | number | null): string {
   if (!hours) return "Sem estimativa";
   return `${Number(hours)}h`;

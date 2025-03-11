@@ -22,4 +22,25 @@ const userIconMap: Record<string, string> = {
 export function getUserIcon(email: string | undefined): string | undefined {
   if (!email) return undefined;
   return userIconMap[email];
+}
+
+// Mapeamento de exceções para formatação de nomes
+const NOME_EXCEPTIONS: Record<string, string> = {
+  "alexsolano@epamig.br": "Alex Solano"
+};
+
+export function getResponsavelName(email?: string): string {
+  if (!email) return "Não atribuído";
+  
+  // Verifica se o email está nas exceções
+  if (NOME_EXCEPTIONS[email]) {
+    return NOME_EXCEPTIONS[email];
+  }
+  
+  const username = email.split('@')[0];
+  
+  return username
+    .split('.')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 } 

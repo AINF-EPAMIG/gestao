@@ -15,6 +15,7 @@ import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
 import AuthRequired from "@/components/auth-required"
 import { getUserIcon } from "@/lib/utils"
 import { PollingWrapper } from "@/components/polling-wrapper"
+import { getResponsavelName } from '@/lib/utils'
 
 const STATUS_COLORS = {
   Desenvolvimento: "bg-blue-500",
@@ -279,14 +280,9 @@ export default function PlanilhaPage() {
                               </div>
                               <span className="text-sm">
                                 {(task.responsaveis ?? []).length > 0 
-                                  ? (task.responsaveis ?? []).map(r => {
-                                      const displayName = r.nome 
-                                        ? r.nome.split(' ')[0] 
-                                        : r.email.split('@')[0].split('.')[0];
-                                      return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                                    }).join(', ')
+                                  ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
                                   : 'Não atribuído'
-                              }
+                                }
                               </span>
                             </div>
                           </TableCell>
@@ -362,12 +358,7 @@ export default function PlanilhaPage() {
                             </div>
                             <span>
                               {(task.responsaveis ?? []).length > 0 
-                                ? (task.responsaveis ?? []).map(r => {
-                                    const displayName = r.nome 
-                                      ? r.nome.split(' ')[0] 
-                                      : r.email.split('@')[0].split('.')[0];
-                                    return displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-                                  }).join(', ')
+                                ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
                                 : 'Não atribuído'
                               }
                             </span>

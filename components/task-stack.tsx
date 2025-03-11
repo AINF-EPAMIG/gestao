@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { getUserIcon } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { TaskDetailsModal } from "@/components/task-details-modal"
+import { getResponsavelName } from '@/lib/utils'
 
 interface TaskStackProps {
   tasks: Task[]
@@ -17,12 +18,6 @@ interface TaskStackProps {
 export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
   const [showDetails, setShowDetails] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-
-  const formatName = (email: string) => {
-    return email.split('@')[0].split('.').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ')
-  }
 
   const handleCardClick = (task: Task) => {
     setSelectedTask(task)
@@ -36,7 +31,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
           <AvatarImage src={getUserIcon(responsavelEmail)} />
           <AvatarFallback>{responsavelEmail[0].toUpperCase()}</AvatarFallback>
         </Avatar>
-        <span className="font-medium">{formatName(responsavelEmail)}</span>
+        <span className="font-medium">{getResponsavelName(responsavelEmail)}</span>
       </div>
 
       <div className="relative space-y-2">
