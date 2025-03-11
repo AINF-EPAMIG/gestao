@@ -96,9 +96,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
   const [textoEditando, setTextoEditando] = useState("")
-  const [isAdmin, setIsAdmin] = useState<boolean>(false)
-  const [isChefe, setIsChefe] = useState<boolean>(false)
-  const [selectedSetor, setSelectedSetor] = useState<string>("")
   // Definindo o limite máximo de caracteres
   const MAX_TITLE_LENGTH = 40
   const MAX_DESCRIPTION_LENGTH = 100
@@ -144,40 +141,40 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   useEffect(() => {
     const checkPermissions = async () => {
       if (session?.user?.email) {
-        const isAdmin = isUserAdmin(session.user.email);
-        
-        if (isAdmin) {
+        // Verificar se é admin
+        if (isUserAdmin(session.user.email)) {
           setCanEdit(true);
-          setIsAdmin(true);
           return;
         }
 
+        // Buscar informações do usuário
         const userInfo = await getUserInfoFromRM(session.user.email);
         if (userInfo) {
-          const isUserChefeResult = isUserChefe(userInfo);
-          
-          if (isUserChefeResult) {
+          // Verificar se é chefe
+          if (isUserChefe(userInfo)) {
             setCanEdit(true);
-            setIsChefe(true);
-            setSelectedSetor(userInfo.SECAO);
           }
 
           // Verificar se é responsável
-          const isResponsavel = task.responsaveis?.some((responsavel) => responsavel.email === session.user.email);
+          const isResponsavel = task.responsaveis?.some(
+            (responsavel) => responsavel.email === session.user.email
+          );
           if (isResponsavel) {
             setCanEdit(true);
           }
 
           // Carregar responsáveis baseado no papel do usuário
-          if (isUserChefeResult || isAdmin) {
+          const isAdmin = isUserAdmin(session.user.email);
+          const isChefe = isUserChefe(userInfo);
+
+          if (isChefe || isAdmin) {
             const subordinadosData = await getSubordinadosFromRM(session.user.email);
             if (subordinadosData) {
-              const formattedSubordinados = subordinadosData.map(sub => ({
+              setResponsaveis(subordinadosData.map(sub => ({
                 EMAIL: sub.EMAIL_SUBORDINADO,
                 NOME: sub.NOME_SUBORDINADO,
                 CARGO: sub.CARGO_SUBORDINADO
-              }));
-              setResponsaveis(formattedSubordinados);
+              })));
             }
           } else if (userInfo.SECAO) {
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
@@ -186,13 +183,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             }
           }
 
-          // Converter responsáveis atuais para o novo formato
-          const currentResponsaveis = task.responsaveis?.map(r => ({
-            EMAIL: r.email,
-            NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
-            CARGO: r.cargo
-          })) || [];
-          setSelectedResponsaveis(currentResponsaveis);
+          // Converter responsáveis atuais
+          setSelectedResponsaveis(
+            task.responsaveis?.map(r => ({
+              EMAIL: r.email,
+              NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
+              CARGO: r.cargo
+            })) || []
+          );
         }
       }
     };
@@ -295,7 +293,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
 
-  const handleSave = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     try {
       setIsSaving(true);
       setIsFading(true);
@@ -564,7 +564,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               <div className="flex items-center gap-2 mr-4">
                 <Button 
                   size="sm" 
-                  onClick={handleSave}
+                  onClick={handleSubmit}
                   disabled={isSaving}
                   className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
                 >
