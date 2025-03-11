@@ -25,6 +25,7 @@ export default function KanbanPage() {
   const [prioridadeFilter, setPrioridadeFilter] = useState<string | null>(null)
   const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>("este_ano")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [projetoFilter, setProjetoFilter] = useState<string | null>(null)
   const [responsaveisSetor, setResponsaveisSetor] = useState<ResponsavelRM[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -63,6 +64,7 @@ export default function KanbanPage() {
       const matchesResponsavel = !responsavelFilter || task.responsaveis?.some(r => r.email === responsavelFilter)
       const matchesPrioridade = !prioridadeFilter || task.prioridade_id === parseInt(prioridadeFilter || "0")
       const matchesStatus = !statusFilter || task.status_id === parseInt(statusFilter || "0")
+      const matchesProjeto = !projetoFilter || task.projeto_id === parseInt(projetoFilter || "0")
       
       // Lógica de filtragem por período (data de criação OU última atualização)
       let matchesPeriodo = true
@@ -100,9 +102,9 @@ export default function KanbanPage() {
         matchesPeriodo = verificarData(task.data_criacao) || verificarData(task.ultima_atualizacao)
       }
       
-      return matchesResponsavel && matchesPrioridade && matchesPeriodo && matchesStatus
+      return matchesResponsavel && matchesPrioridade && matchesPeriodo && matchesStatus && matchesProjeto
     })
-  }, [tasks, responsavelFilter, prioridadeFilter, periodoFilter, statusFilter])
+  }, [tasks, responsavelFilter, prioridadeFilter, periodoFilter, statusFilter, projetoFilter])
 
   return (
     <AuthRequired>
@@ -131,13 +133,36 @@ export default function KanbanPage() {
                       <SelectValue placeholder="Responsável" />
                     )}
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todos">Todos</SelectItem>
                     {responsaveisSetor.map((resp) => (
                       <SelectItem key={resp.EMAIL} value={resp.EMAIL}>
                         {resp.NOME}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5 w-full md:w-auto">
+                <label className="text-sm text-gray-500">Filtrar por Projeto</label>
+                <Select 
+                  value={projetoFilter || "todos"}
+                  onValueChange={(value) => setProjetoFilter(value === "todos" ? null : value)}
+                >
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Projeto" />
+                  </SelectTrigger>
+                  <SelectContent className="overflow-y-auto max-h-[200px]">
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {Array.from(new Set(tasks.map(task => task.projeto_id))).filter(id => id).map((projetoId) => {
+                      const projeto = tasks.find(t => t.projeto_id === projetoId);
+                      return (
+                        <SelectItem key={projetoId} value={projetoId.toString()}>
+                          {projeto?.projeto_nome || `Projeto ${projetoId}`}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -151,7 +176,7 @@ export default function KanbanPage() {
                   <SelectTrigger className="w-full md:w-[200px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="1">Não iniciada</SelectItem>
                     <SelectItem value="2">Em desenvolvimento</SelectItem>
@@ -170,7 +195,7 @@ export default function KanbanPage() {
                   <SelectTrigger className="w-full md:w-[200px]">
                     <SelectValue placeholder="Prioridade" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todas">Todas</SelectItem>
                     <SelectItem value="1">Alta</SelectItem>
                     <SelectItem value="2">Média</SelectItem>
@@ -188,7 +213,7 @@ export default function KanbanPage() {
                   <SelectTrigger className="w-full md:w-[200px]">
                     <SelectValue placeholder="Período" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todos">Todos os Períodos</SelectItem>
                     <SelectItem value="hoje">Hoje</SelectItem>
                     <SelectItem value="esta_semana">Esta Semana</SelectItem>

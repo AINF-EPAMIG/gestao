@@ -94,8 +94,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
   const [textoEditando, setTextoEditando] = useState("")
-  // Definindo o limite máximo de caracteres para comentários
-  const MAX_COMMENT_LENGTH = 250
+  // Definindo o limite máximo de caracteres
+  const MAX_TITLE_LENGTH = 40
+  const MAX_DESCRIPTION_LENGTH = 100
+  const MAX_COMMENT_LENGTH = 100
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
@@ -604,8 +606,13 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         </SelectTrigger>
                         <SelectContent className="!max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                           {projetos.map(projeto => (
-                            <SelectItem key={projeto.id} value={projeto.id.toString()}>
-                              {projeto.nome}
+                            <SelectItem 
+                              key={projeto.id} 
+                              value={projeto.id.toString()}
+                              className="truncate"
+                              title={projeto.nome}
+                            >
+                              {projeto.nome.length > 30 ? `${projeto.nome.slice(0, 30)}...` : projeto.nome}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -676,23 +683,43 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           onChange={(e) => setTitulo(e.target.value)}
                           placeholder="Digite o título da tarefa"
                           className="h-8"
+                          maxLength={MAX_TITLE_LENGTH}
                         />
                       ) : (
-                        <div className="font-medium">{task.titulo}</div>
+                        <div className="font-medium max-h-20 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words whitespace-pre-wrap">
+                          {task.titulo}
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="flex justify-end mt-1">
+                          <span className={`text-xs ${titulo.length > MAX_TITLE_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {titulo.length}/{MAX_TITLE_LENGTH}
+                          </span>
+                        </div>
                       )}
                     </div>
 
                     <div>
                       <div className="text-sm text-gray-500">Descrição</div>
                       {isEditing ? (
-                        <Textarea
-                          value={descricao}
-                          onChange={(e) => setDescricao(e.target.value)}
-                          placeholder="Digite a descrição da tarefa"
-                          className="h-20 resize-none"
-                        />
+                        <>
+                          <Textarea
+                            value={descricao}
+                            onChange={(e) => setDescricao(e.target.value)}
+                            placeholder="Digite a descrição da tarefa"
+                            className="h-20 resize-none"
+                            maxLength={MAX_DESCRIPTION_LENGTH}
+                          />
+                          <div className="flex justify-end mt-1">
+                            <span className={`text-xs ${descricao.length > MAX_DESCRIPTION_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {descricao.length}/{MAX_DESCRIPTION_LENGTH}
+                            </span>
+                          </div>
+                        </>
                       ) : (
-                        <div className="text-sm mt-1 whitespace-pre-wrap h-20 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">{task.descricao || "-"}</div>
+                        <div className="text-sm mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
+                          {task.descricao || "-"}
+                        </div>
                       )}
                     </div>
                   </div>

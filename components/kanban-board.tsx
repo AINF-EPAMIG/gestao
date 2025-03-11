@@ -146,12 +146,14 @@ const TaskCard = memo(function TaskCard({
           >
             {getPriorityName(task.prioridade_id)}
           </Badge>
-          <Badge variant="outline">
-            {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+          <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}>
+            {task.projeto_nome 
+              ? (task.projeto_nome.length > 15 ? `${task.projeto_nome.slice(0, 15)}...` : task.projeto_nome)
+              : (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
           </Badge>
         </div>
-        <h4 className="font-medium">{task.titulo}</h4>
-        <p className="text-sm text-gray-500 line-clamp-2">
+        <h4 className="font-medium truncate" title={task.titulo}>{task.titulo}</h4>
+        <p className="text-sm text-gray-500 line-clamp-2" title={task.descricao}>
           {task.descricao}
         </p>
         <div className="flex items-center justify-between pt-2 border-t">

@@ -81,7 +81,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
                       {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
                     </Badge>
                   </div>
-                  <h4 className="font-medium">{task.titulo}</h4>
+                  <h4 className="font-medium truncate" title={task.titulo}>{task.titulo}</h4>
                   <div className="flex items-center gap-2">
                     {task.data_inicio && (
                       <span className="text-xs text-gray-500">

@@ -807,7 +807,13 @@ export function CreateTaskModal() {
                           onChange={(e) => setTitulo(e.target.value)}
                           placeholder="Digite o título da tarefa"
                           className="h-8"
+                          maxLength={40}
                         />
+                        <div className="flex justify-end mt-1">
+                          <span className={`text-xs ${titulo.length > 32 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {titulo.length}/40
+                          </span>
+                        </div>
                       </div>
                       
                       <div>
@@ -817,7 +823,13 @@ export function CreateTaskModal() {
                           onChange={(e) => setDescricao(e.target.value)}
                           placeholder="Digite a descrição da tarefa"
                           className="h-20"
+                          maxLength={100}
                         />
+                        <div className="flex justify-end mt-1">
+                          <span className={`text-xs ${descricao.length > 80 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {descricao.length}/100
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
@@ -993,9 +1005,13 @@ export function CreateTaskModal() {
                                               {responsavel.EMAIL[0].toUpperCase()}
                                             </AvatarFallback>
                                           </Avatar>
-                                          <div>
-                                            <div className="font-medium">{responsavel.NOME}</div>
-                                            <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="font-medium truncate" title={responsavel.NOME}>
+                                              {responsavel.NOME.length > 25 
+                                                ? `${responsavel.NOME.slice(0, 25)}...`
+                                                : responsavel.NOME}
+                                            </div>
+                                            <div className="text-xs text-gray-500 truncate">{responsavel.EMAIL}</div>
                                           </div>
                                         </div>
                                       </div>
@@ -1014,8 +1030,10 @@ export function CreateTaskModal() {
                                       {responsavel.EMAIL[0].toUpperCase()}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="text-sm font-medium">
-                                    {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                  <span className="text-sm font-medium" title={responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}>
+                                    {(responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')).length > 20 
+                                      ? `${(responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')).slice(0, 20)}...`
+                                      : (responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' '))}
                                   </span>
                                   <Button
                                     type="button"
