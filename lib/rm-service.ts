@@ -25,7 +25,7 @@ interface ResponsavelSetor {
 }
 
 const RM_API_CONFIG = {
-  baseUrl: 'https://empresade125373.rm.cloudtotvs.com.br:8051/api/framework/v1/consultaSQLServer/RealizaConsulta',
+  baseUrl: 'https://empresade125373.rm.cloudtotvs.com.br:8059/api/framework/v1/consultaSQLServer/RealizaConsulta',
   auth: {
     username: 'arthur.souza',
     password: '4518Adz74$'
