@@ -61,4 +61,63 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { id, nome } = await request.json();
+    const nomeCapitalizado = capitalizeFirstLetter(nome);
+    
+    await executeQuery({
+      query: 'UPDATE u711845530_gestao.projetos SET nome = ? WHERE id = ?',
+      values: [nomeCapitalizado, id],
+    });
+
+    const projetoAtualizado = {
+      id,
+      nome: nomeCapitalizado
+    };
+    
+    return NextResponse.json(projetoAtualizado);
+  } catch (error) {
+    console.error('Erro ao atualizar projeto:', error);
+    return NextResponse.json(
+      { error: 'Erro ao atualizar projeto' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do projeto não fornecido' },
+        { status: 400 }
+      );
+    }
+
+    // Atualizar tarefas associadas para ficarem com projeto indefinido
+    await executeQuery({
+      query: 'UPDATE u711845530_gestao.atividades SET projeto_id = NULL WHERE projeto_id = ?',
+      values: [id],
+    });
+    
+    // Excluir o projeto
+    await executeQuery({
+      query: 'DELETE FROM u711845530_gestao.projetos WHERE id = ?',
+      values: [id],
+    });
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao excluir projeto:', error);
+    return NextResponse.json(
+      { error: 'Erro ao excluir projeto' },
+      { status: 500 }
+    );
+  }
 } 

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Trash2, Edit2, X, Check, Send, Loader2 } from "lucide-react"
+import { Trash, Edit2, X, Check, Send, Loader2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName } from "@/lib/store"
 import { getUserIcon } from "@/lib/utils"
@@ -170,15 +170,23 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     // Carregar projetos do banco
     const fetchProjetos = async () => {
       try {
-        const response = await fetch('/api/projetos')
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/projetos?t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         if (response.ok) {
-          const data = await response.json()
-          setProjetos(data)
+          const data = await response.json();
+          setProjetos(data);
         }
       } catch (error) {
-        console.error('Erro ao carregar projetos:', error)
+        console.error('Erro ao carregar projetos:', error);
       }
-    }
+    };
 
     // Carregar responsáveis do setor
     const fetchResponsaveis = async () => {
@@ -262,11 +270,16 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         .filter((r: Responsavel) => !responsaveisAtuais.includes(r.email))
         .map((r: Responsavel) => r.email);
 
+      // Armazenar o projeto_id original para comparação
+      const originalProjetoId = task.projeto_id;
+      const newProjetoId = parseInt(projetoId);
+      const projetoChanged = originalProjetoId !== newProjetoId;
+
       const requestBody = {
         id: task.id,
         titulo,
         descricao,
-        projeto_id: parseInt(projetoId),
+        projeto_id: newProjetoId,
         responsaveis_emails: selectedResponsaveis.map((r: Responsavel) => r.email),
         data_inicio: dataInicio,
         data_fim: dataFim,
@@ -295,6 +308,21 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         const updatedTasks = await response.json();
         setTasks(updatedTasks);
         setIsEditing(false);
+        
+        // Disparar evento personalizado para notificar sobre a atualização de tarefas
+        // Só dispara se o projeto foi alterado
+        if (projetoChanged) {
+          console.log('Projeto alterado de', originalProjetoId, 'para', newProjetoId);
+          const taskUpdatedEvent = new CustomEvent('taskUpdated', {
+            detail: { 
+              taskId: task.id, 
+              oldProjetoId: originalProjetoId,
+              newProjetoId: newProjetoId,
+              action: 'edit'
+            }
+          });
+          window.dispatchEvent(taskUpdatedEvent);
+        }
       } else {
         const error = await response.json();
         alert(error.error || 'Erro ao atualizar tarefa');
@@ -315,6 +343,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       setIsDeleting(true);
       setIsFading(true);
       
+      // Armazenar o projeto_id para uso no evento
+      const projetoId = task.projeto_id;
+      
       // Primeiro faz a requisição ao banco
       const deletePromise = fetch(`/api/atividades?id=${task.id}`, {
         method: 'DELETE',
@@ -333,6 +364,18 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
       // Remove do estado local e fecha o modal
       await deleteTask(task.id);
+      
+      // Disparar evento personalizado para notificar sobre a exclusão de tarefa
+      console.log('Tarefa excluída, projeto_id:', projetoId);
+      const taskUpdatedEvent = new CustomEvent('taskUpdated', {
+        detail: { 
+          taskId: task.id, 
+          oldProjetoId: projetoId,
+          action: 'delete'
+        }
+      });
+      window.dispatchEvent(taskUpdatedEvent);
+      
       onOpenChange(false);
 
     } catch (error) {
@@ -427,7 +470,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "sm:max-w-[600px] sm:h-auto p-6",
+        "sm:max-w-[600px] h-[90vh] p-0 flex flex-col overflow-hidden",
         (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
       )}>
         {showLoading && (
@@ -437,19 +480,27 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             </div>
           </div>
         )}
-        <DialogHeader>
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <span>Detalhes da Tarefa</span>
             {canEdit && !isEditing && (
-              <div className="flex items-center gap-2 mr-8">
+              <div className="flex items-center gap-2 mr-4">
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => setIsEditing(true)}
+                  className="h-9 w-9 p-0"
+                >
+                  <Edit2 className="h-[18px] w-[18px] text-gray-500" />
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-red-500 hover:text-red-600"
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash className="h-[18px] w-[18px] text-red-500" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -471,46 +522,46 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
               </div>
             )}
             {isEditing && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-4">
                 <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setIsEditing(false)}
+                  size="sm" 
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
                 >
-                  <X className="h-4 w-4" />
+                  {isSaving ? (
+                    <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                  ) : (
+                    <Check className="h-[18px] w-[18px]" />
+                  )}
                 </Button>
                 <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={handleSave}
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="h-9 w-9 p-0"
                 >
-                  <Check className="h-4 w-4" />
+                  <X className="h-[18px] w-[18px]" />
                 </Button>
               </div>
             )}
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="detalhes" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="detalhes" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 px-6 shrink-0">
             <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
             <TabsTrigger value="anexos">Anexos</TabsTrigger>
           </TabsList>
 
-          <div className="overflow-y-auto">
-            <div className="p-1">
-              <TabsContent value="detalhes" className="space-y-3">
-                {/* Cabeçalho com Badges */}
+          <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="p-6">
+              <TabsContent value="detalhes" className="space-y-3 mt-0 h-full">
+                {/* Cabeçalho com Status */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge 
@@ -526,8 +577,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     >
                       {getStatusName(task.status_id)}
                     </Badge>
+                  </div>
+                </div>
 
-                    {isEditing ? (
+                {/* Prioridade e Projeto */}
+                {isEditing ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm text-gray-500">Prioridade</label>
                       <Select value={prioridade} onValueChange={setPrioridade}>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Selecione a prioridade" />
@@ -538,40 +595,41 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           <SelectItem value="3">Baixa</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <Badge
-                        className={
-                          getPriorityName(task.prioridade_id) === "Alta"
-                            ? "bg-red-500"
-                            : getPriorityName(task.prioridade_id) === "Média"
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                        }
-                      >
-                        {getPriorityName(task.prioridade_id)}
-                      </Badge>
-                    )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm text-gray-500">Projeto</label>
+                      <Select value={projetoId} onValueChange={setProjetoId}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Selecione o projeto" />
+                        </SelectTrigger>
+                        <SelectContent className="!max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                          {projetos.map(projeto => (
+                            <SelectItem key={projeto.id} value={projeto.id.toString()}>
+                              {projeto.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-
-                  {isEditing ? (
-                    <Select value={projetoId} onValueChange={setProjetoId}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Selecione o projeto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projetos.map(projeto => (
-                          <SelectItem key={projeto.id} value={projeto.id.toString()}>
-                            {projeto.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      className={
+                        getPriorityName(task.prioridade_id) === "Alta"
+                          ? "bg-red-500"
+                          : getPriorityName(task.prioridade_id) === "Média"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }
+                    >
+                      {getPriorityName(task.prioridade_id)}
+                    </Badge>
                     <Badge variant="outline">
                       {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
                     </Badge>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Responsáveis e ID Release */}
                 {!isEditing && (
@@ -690,7 +748,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 {/* Responsáveis - Modo de Edição */}
                 {isEditing && (
                   <div>
-                    <div className="text-sm text-gray-500">Responsáveis</div>
+                    <div className="text-sm text-gray-500 mb-1.5">Responsáveis</div>
                     <div className="space-y-2">
                       <div className="relative">
                         <Input
@@ -704,7 +762,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           className="h-8"
                         />
                         {showResponsavelSuggestions && responsavelInput && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[100px] overflow-y-auto">
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                             {responsaveis
                               .filter((r: Responsavel) => 
                                 (r.nome || '').toLowerCase().includes(responsavelInput.toLowerCase()) &&
@@ -713,11 +771,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                               .map((responsavel: Responsavel) => (
                                 <div
                                   key={responsavel.email}
-                                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                                  className="px-4 py-2.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
                                   onClick={() => handleResponsavelSelect(responsavel)}
                                 >
-                                  <div>{responsavel.nome}</div>
-                                  <div className="text-sm text-gray-500">{responsavel.email}</div>
+                                  <div className="font-medium">{responsavel.nome}</div>
+                                  <div className="text-xs text-gray-500">{responsavel.email}</div>
                                 </div>
                               ))}
                           </div>
@@ -725,9 +783,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       </div>
                       
                       {/* Lista de responsáveis selecionados */}
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-50 rounded-md">
                         {selectedResponsaveis.map((responsavel: Responsavel) => (
-                          <div key={responsavel.email} className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1">
+                          <div key={responsavel.email} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border shadow-sm">
                             <Avatar className="w-5 h-5">
                               <AvatarImage src={getUserIcon(responsavel.email)} />
                               <AvatarFallback>
@@ -741,7 +799,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-5 w-5 p-0 hover:bg-gray-200"
+                              className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
                               onClick={() => removeResponsavel(responsavel.email)}
                             >
                               <X className="w-3 h-3" />
@@ -762,7 +820,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   </div>
 
                   {/* Lista de Comentários */}
-                  <div className="space-y-2 min-h-[40px] max-h-[150px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+                  <div className="space-y-2 min-h-[40px] max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                     {comentarios.length > 0 ? (
                       comentarios.map((comment) => (
                         <div key={comment.id} className="bg-gray-50 p-3 rounded-lg space-y-2 w-full overflow-hidden">
@@ -884,7 +942,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 </div>
 
                 {/* Última Atualização e ID Release */}
-                <div className="text-xs text-gray-400 text-center mt-4 space-y-1">
+                <div className="text-xs text-gray-400 text-center space-y-1">
                   <div>
                     ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
                   </div>
@@ -894,8 +952,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       : '-'}
                   </div>
                 </div>
-              </TabsContent>
 
+              </TabsContent>
               <TabsContent value="anexos" className="space-y-4 py-4">
                 <TaskAttachments 
                   taskId={task.id} 

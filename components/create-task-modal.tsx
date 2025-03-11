@@ -9,12 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTaskStore, Task } from "@/lib/store"
 import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
-import { Plus, X, Search } from "lucide-react"
+import { Plus, X, Search, FolderIcon, Edit, Check, Trash } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUpload } from "./file-upload"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { getUserIcon } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
 
 interface Projeto {
   id: number
@@ -60,7 +63,7 @@ export function CreateTaskModal() {
   const [selectedSetor, setSelectedSetor] = useState<string>("")
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
-  const [idRelease, setIdRelease] = useState("")
+  const [idRelease, setIdRelease] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
@@ -72,6 +75,12 @@ export function CreateTaskModal() {
   const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmittingProjeto, setIsSubmittingProjeto] = useState(false)
+  const [projetoEditando, setProjetoEditando] = useState<Projeto | null>(null)
+  const [nomeProjetoEditando, setNomeProjetoEditando] = useState("")
+  const [isSubmittingEdicao, setIsSubmittingEdicao] = useState(false)
+  const [isExcluindoProjeto, setIsExcluindoProjeto] = useState(false)
+  const [projetoParaExcluir, setProjetoParaExcluir] = useState<Projeto | null>(null)
+  const [erroExclusao, setErroExclusao] = useState("")
   
   // Novo estado para o modal de seleção de ID Release
   const [openReleaseModal, setOpenReleaseModal] = useState(false)
@@ -173,17 +182,47 @@ export function CreateTaskModal() {
     // Carregar projetos do banco com contagem de tarefas
     const fetchProjetos = async () => {
       try {
-        const response = await fetch('/api/projetos?includeTaskCount=true')
+        console.log('Buscando projetos do servidor...');
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/projetos?includeTaskCount=true&t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         if (response.ok) {
-          const data = await response.json()
-          setProjetos(data)
+          const data = await response.json();
+          console.log('Projetos atualizados:', data);
+          setProjetos(data);
         }
       } catch (error) {
-        console.error('Erro ao carregar projetos:', error)
+        console.error('Erro ao carregar projetos:', error);
       }
     }
 
+    // Buscar projetos inicialmente
     fetchProjetos()
+
+    // Configurar intervalo para atualização periódica
+    const intervalId = setInterval(() => {
+      fetchProjetos()
+    }, 10000) // Atualiza a cada 10 segundos
+
+    // Adicionar listener para o evento de atualização de tarefas
+    const handleTaskUpdated = (event: Event) => {
+      console.log('Evento taskUpdated recebido:', (event as CustomEvent).detail);
+      fetchProjetos();
+    }
+    
+    window.addEventListener('taskUpdated', handleTaskUpdated)
+
+    // Limpar intervalo e listener quando o componente for desmontado
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('taskUpdated', handleTaskUpdated)
+    }
   }, [])
 
   const handleFileSelect = (files: File[]) => {
@@ -260,11 +299,24 @@ export function CreateTaskModal() {
           task.descricao === descricao
         )
         
-        if (createdTask) {
-          // Upload dos arquivos em cache
+        // Se tiver anexos, faz o upload
+        if (createdTask && cachedFiles.length > 0) {
           await uploadCachedFiles(createdTask.id)
-          handleFinish()
         }
+        
+        // Disparar evento personalizado para notificar sobre a criação de tarefa
+        const newProjetoId = parseInt(projetoId);
+        console.log('Tarefa criada, projeto_id:', newProjetoId);
+        const taskUpdatedEvent = new CustomEvent('taskUpdated', {
+          detail: { 
+            taskId: createdTask?.id, 
+            newProjetoId: newProjetoId,
+            action: 'create'
+          }
+        });
+        window.dispatchEvent(taskUpdatedEvent);
+        
+        handleFinish()
       } else {
         const error = await response.json()
         alert(error.error || 'Erro ao criar tarefa')
@@ -288,7 +340,7 @@ export function CreateTaskModal() {
     setSelectedResponsaveis([])
     setActiveTab("detalhes")
     setCachedFiles([])
-    setIdRelease("")
+    setIdRelease(null)
     setSelectedReleaseTask(null)
   }
 
@@ -352,6 +404,75 @@ export function CreateTaskModal() {
     } finally {
       setIsSubmittingProjeto(false)
     }
+  }
+
+  const handleEditarProjeto = (projeto: Projeto) => {
+    setProjetoEditando(projeto)
+    setNomeProjetoEditando(projeto.nome)
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!projetoEditando) return
+    setIsSubmittingEdicao(true)
+
+    try {
+      const response = await fetch('/api/projetos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: projetoEditando.id, nome: nomeProjetoEditando })
+      })
+
+      if (response.ok) {
+        const projetoAtualizado = await response.json()
+        setProjetos(prev => prev.map(p => 
+          p.id === projetoAtualizado.id ? projetoAtualizado : p
+        ))
+        setProjetoEditando(null)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar projeto:', error)
+    } finally {
+      setIsSubmittingEdicao(false)
+    }
+  }
+
+  const handleCancelarEdicao = () => {
+    setProjetoEditando(null)
+    setNomeProjetoEditando("")
+  }
+
+  const handleConfirmarExclusao = (projeto: Projeto) => {
+    setProjetoParaExcluir(projeto)
+    setIsExcluindoProjeto(true)
+  }
+
+  const handleExcluirProjeto = async () => {
+    if (!projetoParaExcluir) return
+    
+    try {
+      const response = await fetch(`/api/projetos?id=${projetoParaExcluir.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setProjetos(prev => prev.filter(p => p.id !== projetoParaExcluir.id))
+        setIsExcluindoProjeto(false)
+        setProjetoParaExcluir(null)
+        setErroExclusao("")
+      } else {
+        const data = await response.json()
+        setErroExclusao(data.error || "Erro ao excluir projeto")
+      }
+    } catch (error) {
+      console.error('Erro ao excluir projeto:', error)
+      setErroExclusao("Erro ao excluir projeto")
+    }
+  }
+
+  const handleCancelarExclusao = () => {
+    setIsExcluindoProjeto(false)
+    setProjetoParaExcluir(null)
+    setErroExclusao("")
   }
 
   // Efeito para fechar a lista de sugestões quando clicar fora
@@ -464,72 +585,191 @@ export function CreateTaskModal() {
   return (
     <>
       <div className="flex gap-2">
-        <Dialog open={openProjeto} onOpenChange={setOpenProjeto}>
+        <Dialog>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               className="bg-blue-600 text-white hover:bg-blue-500"
               disabled={!isChefe && !isAdmin}
-              title={!isChefe && !isAdmin ? "Apenas chefes e administradores podem criar novos projetos" : ""}
+              title={!isChefe && !isAdmin ? "Apenas chefes e administradores podem gerenciar projetos" : ""}
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Projeto
+              <FolderIcon className="w-4 h-4 mr-2" />
+              Projetos
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Criar Novo Projeto</DialogTitle>
+              <DialogTitle>Gerenciar Projetos</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <div className="border rounded-md divide-y max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  {projetos.map(projeto => (
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Lista de Projetos</h3>
+                <Button 
+                  onClick={() => setOpenProjeto(true)} 
+                  size="sm" 
+                  className="bg-blue-600 text-white hover:bg-blue-500"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Novo Projeto
+                </Button>
+              </div>
+              <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {projetos.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    Nenhum projeto encontrado
+                  </div>
+                ) : (
+                  projetos.map(projeto => (
                     <div 
                       key={projeto.id} 
                       className="p-3 flex items-center justify-between hover:bg-gray-50"
                     >
-                      <span className="font-medium">{projeto.nome}</span>
-                      <span className="text-sm text-gray-500">
-                        {projeto.taskCount || 0} tarefa{projeto.taskCount !== 1 ? 's' : ''}
-                      </span>
+                      {projetoEditando?.id === projeto.id ? (
+                        <div className="flex-1 flex items-center space-x-2">
+                          <Input 
+                            value={nomeProjetoEditando} 
+                            onChange={(e) => setNomeProjetoEditando(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button 
+                            size="sm" 
+                            onClick={handleSalvarEdicao}
+                            disabled={isSubmittingEdicao}
+                            className="bg-green-600 hover:bg-green-500 text-white"
+                          >
+                            {isSubmittingEdicao ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleCancelarEdicao}
+                            disabled={isSubmittingEdicao}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{projeto.nome}</span>
+                            {projeto.taskCount !== undefined && (
+                              <Badge variant="outline" className="ml-2">
+                                {projeto.taskCount} {projeto.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => handleEditarProjeto(projeto)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4 text-gray-500" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => handleConfirmarExclusao(projeto)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Trash className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-
-              {(isChefe || isAdmin) && (
-                <>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">Criar Novo Projeto</span>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleCreateProjeto} className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Nome do Projeto *</label>
+            </div>
+            
+            {/* Modal para criar novo projeto */}
+            <Dialog open={openProjeto} onOpenChange={setOpenProjeto}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Criar Novo Projeto</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateProjeto}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="nome-projeto">Nome do Projeto</Label>
                       <Input
-                        required
+                        id="nome-projeto"
                         value={novoProjeto}
                         onChange={(e) => setNovoProjeto(e.target.value)}
                         placeholder="Digite o nome do projeto"
+                        className="col-span-3"
                       />
                     </div>
-                    <DialogFooter>
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-blue-600 text-white hover:bg-blue-500"
-                        disabled={isSubmittingProjeto}
-                      >
-                        {isSubmittingProjeto ? "Criando..." : "Criar Projeto"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </>
-              )}
-            </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setOpenProjeto(false)}
+                      disabled={isSubmittingProjeto}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={!novoProjeto.trim() || isSubmittingProjeto}
+                      className="bg-blue-600 text-white hover:bg-blue-500"
+                    >
+                      {isSubmittingProjeto ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Criando...
+                        </>
+                      ) : (
+                        'Criar Projeto'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmação de exclusão */}
+            <Dialog open={isExcluindoProjeto} onOpenChange={setIsExcluindoProjeto}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Confirmar Exclusão</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <p>Tem certeza que deseja excluir o projeto &quot;{projetoParaExcluir?.nome}&quot;?</p>
+                  {projetoParaExcluir?.taskCount && projetoParaExcluir.taskCount > 0 ? (
+                    <p className="mt-2 text-amber-600">
+                      Este projeto possui {projetoParaExcluir.taskCount} {projetoParaExcluir.taskCount === 1 ? 'tarefa associada' : 'tarefas associadas'}.
+                      Ao excluir o projeto, estas tarefas ficarão com projeto indefinido.
+                    </p>
+                  ) : null}
+                  {erroExclusao && (
+                    <p className="text-red-500 mt-2">{erroExclusao}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCancelarExclusao}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleExcluirProjeto}
+                    className="bg-red-600 text-white hover:bg-red-500"
+                  >
+                    Excluir
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </DialogContent>
         </Dialog>
 
@@ -631,7 +871,7 @@ export function CreateTaskModal() {
                                     size="icon"
                                     className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
                                     onClick={() => {
-                                      setIdRelease("")
+                                      setIdRelease(null)
                                       setSelectedReleaseTask(null)
                                     }}
                                   >
@@ -717,46 +957,57 @@ export function CreateTaskModal() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-sm font-medium">Responsáveis</label>
-                          <div className="relative" ref={responsavelRef}>
-                            <Input
-                              value={responsavelInput}
-                              onChange={(e) => {
-                                setResponsavelInput(e.target.value);
-                                setShowResponsavelSuggestions(true);
-                              }}
-                              onFocus={() => setShowResponsavelSuggestions(true)}
-                              placeholder="Digite o nome do responsável"
-                            />
-                            {showResponsavelSuggestions && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                                {responsaveis
-                                  .filter(r => {
-                                    const nameMatches = !responsavelInput || 
-                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                    return nameMatches && notAlreadySelected;
-                                  })
-                                  .map(responsavel => (
-                                    <div
-                                      key={responsavel.EMAIL}
-                                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                      onClick={() => handleResponsavelSelect(responsavel)}
-                                    >
-                                      <div>{responsavel.NOME}</div>
-                                      <div className="text-sm text-gray-500">{responsavel.EMAIL}</div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Lista de responsáveis selecionados */}
-                          <div className="mt-1 space-y-1">
-                            {selectedResponsaveis.map((responsavel) => (
-                              <div key={responsavel.EMAIL} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                <div className="flex items-center gap-2">
+                        <div className="col-span-2">
+                          <label className="text-sm text-gray-500">Responsáveis</label>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Input
+                                value={responsavelInput}
+                                onChange={(e) => {
+                                  setResponsavelInput(e.target.value);
+                                  setShowResponsavelSuggestions(true);
+                                }}
+                                onFocus={() => setShowResponsavelSuggestions(true)}
+                                placeholder="Digite o nome do responsável"
+                                className="h-9"
+                              />
+                              {showResponsavelSuggestions && responsavelInput && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                                  {responsaveis
+                                    .filter(r => {
+                                      const nameMatches = !responsavelInput || 
+                                        ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                      const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                      return nameMatches && notAlreadySelected;
+                                    })
+                                    .map(responsavel => (
+                                      <div
+                                        key={responsavel.EMAIL}
+                                        className="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
+                                        onClick={() => handleResponsavelSelect(responsavel)}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <Avatar className="w-6 h-6">
+                                            <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                            <AvatarFallback>
+                                              {responsavel.EMAIL[0].toUpperCase()}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div>
+                                            <div className="font-medium">{responsavel.NOME}</div>
+                                            <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Lista de responsáveis selecionados */}
+                            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-gray-50 rounded-md">
+                              {selectedResponsaveis.map((responsavel) => (
+                                <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-full pl-1.5 pr-2 py-1 border shadow-sm">
                                   <Avatar className="w-6 h-6">
                                     <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
                                     <AvatarFallback>
@@ -766,17 +1017,18 @@ export function CreateTaskModal() {
                                   <span className="text-sm font-medium">
                                     {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
                                   </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full ml-1"
+                                    onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
                                 </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
-                                >
-                                  <X className="w-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
