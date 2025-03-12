@@ -7,7 +7,6 @@ import { FileUpload } from "./file-upload"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { getUserIcon } from "@/lib/utils"
 import { useTaskStore } from "@/lib/store"
 
 interface Anexo {
@@ -166,7 +165,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                   <div className="flex items-center justify-between gap-1 mt-4 pt-3 border-t">
                     <div className="flex items-center gap-2">
                       <Avatar className="w-6 h-6">
-                        <AvatarImage src={getUserIcon(anexo.usuario_email)} />
+                        <AvatarImage email={anexo.usuario_email} />
                         <AvatarFallback>
                           {anexo.usuario_email ? anexo.usuario_email[0].toUpperCase() : '?'}
                         </AvatarFallback>

@@ -14,7 +14,6 @@ import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUpload } from "./file-upload"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { getUserIcon } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -1023,7 +1022,7 @@ export function CreateTaskModal() {
                                       >
                                         <div className="flex items-center gap-2">
                                           <Avatar className="w-6 h-6">
-                                            <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                            <AvatarImage email={responsavel.EMAIL} />
                                             <AvatarFallback>
                                               {responsavel.EMAIL[0].toUpperCase()}
                                             </AvatarFallback>
@@ -1048,7 +1047,7 @@ export function CreateTaskModal() {
                               {selectedResponsaveis.map((responsavel) => (
                                 <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-full pl-1.5 pr-2 py-1 border shadow-sm">
                                   <Avatar className="w-6 h-6">
-                                    <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                    <AvatarImage email={responsavel.EMAIL} />
                                     <AvatarFallback>
                                       {responsavel.EMAIL[0].toUpperCase()}
                                     </AvatarFallback>

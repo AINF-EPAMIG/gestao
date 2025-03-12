@@ -5,7 +5,6 @@ import { Task, getPriorityName } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { getUserIcon } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { TaskDetailsModal } from "@/components/task-details-modal"
 import { getResponsavelName } from '@/lib/utils'
@@ -28,7 +27,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
     <div className="relative">
       <div className="flex items-center gap-2 mb-3">
         <Avatar className="h-8 w-8">
-          <AvatarImage src={getUserIcon(responsavelEmail)} />
+          <AvatarImage email={responsavelEmail} />
           <AvatarFallback>{responsavelEmail[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <span className="font-medium">{getResponsavelName(responsavelEmail)}</span>

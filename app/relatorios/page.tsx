@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, getStatusName, getPriorityName, formatHours } from "@/lib/store"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react"
@@ -13,9 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
 import AuthRequired from "@/components/auth-required"
-import { getUserIcon } from "@/lib/utils"
-import { PollingWrapper } from "@/components/polling-wrapper"
 import { getResponsavelName } from '@/lib/utils'
+import { PollingWrapper } from "@/components/polling-wrapper"
 
 const STATUS_COLORS = {
   Desenvolvimento: "bg-blue-500",
@@ -263,21 +261,6 @@ export default function PlanilhaPage() {
                           <TableCell className="max-w-[300px] truncate">{task.titulo}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="flex -space-x-2">
-                                {(task.responsaveis ?? []).map(resp => (
-                                  <Avatar key={resp.email} className="w-6 h-6 border-2 border-white">
-                                    <AvatarImage src={getUserIcon(resp.email)} />
-                                    <AvatarFallback>
-                                      {resp.email[0].toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ))}
-                                {!(task.responsaveis ?? []).length && (
-                                  <Avatar className="w-6 h-6">
-                                    <AvatarFallback>?</AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </div>
                               <span className="text-sm">
                                 {(task.responsaveis ?? []).length > 0 
                                   ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
@@ -341,21 +324,6 @@ export default function PlanilhaPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Responsável:</span>
                           <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2">
-                              {(task.responsaveis ?? []).map(resp => (
-                                <Avatar key={resp.email} className="w-6 h-6 border-2 border-white">
-                                  <AvatarImage src={getUserIcon(resp.email)} />
-                                  <AvatarFallback>
-                                    {resp.email[0].toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {!(task.responsaveis ?? []).length && (
-                                <Avatar className="w-6 h-6">
-                                  <AvatarFallback>?</AvatarFallback>
-                                </Avatar>
-                              )}
-                            </div>
                             <span>
                               {(task.responsaveis ?? []).length > 0 
                                 ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')

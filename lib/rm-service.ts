@@ -25,6 +25,8 @@ interface ResponsavelSetor {
 }
 
 const RM_API_CONFIG = {
+  // 8051 - base teste
+  // 8059 - produção
   baseUrl: 'https://empresade125373.rm.cloudtotvs.com.br:8059/api/framework/v1/consultaSQLServer/RealizaConsulta',
   auth: {
     username: 'arthur.souza',

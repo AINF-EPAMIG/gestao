@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { cn, getUserIcon, getResponsavelName } from "@/lib/utils"
+import { cn, getResponsavelName } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
 import { Loader2 } from "lucide-react"
 
@@ -27,7 +27,7 @@ const statusMap = {
 const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email?: string }) {
   return (
     <Avatar className="w-8 h-8">
-      <AvatarImage src={getUserIcon(email)} />
+      <AvatarImage email={email} />
       <AvatarFallback>
         {email ? email[0].toUpperCase() : '?'}
       </AvatarFallback>

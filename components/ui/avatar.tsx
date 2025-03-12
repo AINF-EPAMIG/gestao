@@ -28,7 +28,15 @@ const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
 >(({ className, email, ...props }, ref) => {
-  const avatarUrl = email ? getUserIcon(email) : props.src;
+  const [avatarUrl, setAvatarUrl] = React.useState<string | undefined>(props.src);
+
+  React.useEffect(() => {
+    if (email) {
+      getUserIcon(email).then(url => {
+        if (url) setAvatarUrl(url);
+      });
+    }
+  }, [email]);
 
   return (
     <AvatarPrimitive.Image

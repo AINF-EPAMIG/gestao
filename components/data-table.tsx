@@ -5,7 +5,6 @@ import { Task } from "@/lib/store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { getStatusName, getPriorityName, formatHours } from "@/lib/store"
-import { getUserIcon } from "@/lib/utils"
 import { getResponsavelName } from '@/lib/utils'
 
 interface DataTableProps {
@@ -38,7 +37,7 @@ export function DataTable({ tasks }: DataTableProps) {
                   <div className="flex -space-x-2">
                     {(task.responsaveis ?? []).map(resp => (
                       <Avatar key={resp.email} className="h-6 w-6 border-2 border-white">
-                        <AvatarImage src={getUserIcon(resp.email)} />
+                        <AvatarImage email={resp.email} />
                         <AvatarFallback>
                           {resp.email[0].toUpperCase()}
                         </AvatarFallback>

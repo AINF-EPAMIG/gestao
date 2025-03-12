@@ -5,7 +5,6 @@ import { useTaskStore } from "@/lib/store"
 import { useMemo, useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { getUserIcon } from "@/lib/utils"
 
 interface CustomAxisTickProps {
   x: number
@@ -46,7 +45,7 @@ const CustomAxisTick = ({ x, y, payload }: CustomAxisTickProps) => {
           }`}
         >
           <Avatar className="w-5 h-5 shrink-0">
-            <AvatarImage src={getUserIcon(email)} />
+            <AvatarImage email={email} />
             <AvatarFallback>{email[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <span className="text-[10px] sm:text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[60px] sm:max-w-[80px]">

@@ -9,7 +9,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash, Edit2, X, Check, Send, Loader2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName } from "@/lib/store"
-import { getUserIcon } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -680,7 +679,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         {task.responsaveis && task.responsaveis.length > 0 ? (
                           task.responsaveis.map((responsavel) => (
                             <Avatar key={responsavel.email} className="w-8 h-8 border-2 border-white">
-                              <AvatarImage src={getUserIcon(responsavel.email)} />
+                              <AvatarImage email={responsavel.email} />
                               <AvatarFallback>
                                 {responsavel.email[0].toUpperCase()}
                               </AvatarFallback>
@@ -837,7 +836,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                                 >
                                   <div className="flex items-center gap-2">
                                     <Avatar className="w-6 h-6">
-                                      <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                                      <AvatarImage email={responsavel.EMAIL} />
                                       <AvatarFallback>
                                         {responsavel.EMAIL[0].toUpperCase()}
                                       </AvatarFallback>
@@ -862,7 +861,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         {selectedResponsaveis.map((responsavel) => (
                           <div key={responsavel.EMAIL} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border shadow-sm">
                             <Avatar className="w-5 h-5">
-                              <AvatarImage src={getUserIcon(responsavel.EMAIL)} />
+                              <AvatarImage email={responsavel.EMAIL} />
                               <AvatarFallback>
                                 {responsavel.EMAIL[0].toUpperCase()}
                               </AvatarFallback>
@@ -902,7 +901,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Avatar className="w-6 h-6">
-                                <AvatarImage src={getUserIcon(comment.usuario_email)} />
+                                <AvatarImage email={comment.usuario_email} />
                                 <AvatarFallback>
                                   {comment.usuario_email[0].toUpperCase()}
                                 </AvatarFallback>

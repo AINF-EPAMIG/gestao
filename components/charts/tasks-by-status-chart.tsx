@@ -1,8 +1,7 @@
 "use client"
 
 import { useTaskStore, getStatusName } from "@/lib/store"
-import { getUserIcon } from "@/lib/utils"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, memo } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, TooltipProps } from "recharts"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2 } from "lucide-react"
@@ -23,6 +22,16 @@ interface CustomTickProps {
   payload: {
     value: string
   }
+  email: string
+  primeiroNome: string
+}
+
+interface AxisTickProps {
+  x: number
+  y: number
+  payload: {
+    value: string
+  }
 }
 
 // Esquema de cores com maior contraste, mantendo o verde institucional
@@ -31,6 +40,34 @@ const CHART_COLORS = {
   desenvolvimento: "#2563eb", // Azul vibrante para desenvolvimento
   concluida: "#00714B",  // Verde institucional para concluídas
 } as const
+
+// Componente memoizado para o Avatar
+const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email: string }) {
+  return (
+    <Avatar className="w-12 h-12 border-2 border-white">
+      <AvatarImage email={email} />
+      <AvatarFallback>
+        {email[0].toUpperCase()}
+      </AvatarFallback>
+    </Avatar>
+  )
+})
+
+// Componente memoizado para o CustomXAxisTick
+const CustomXAxisTick = memo(function CustomXAxisTick({ x, y, email, primeiroNome }: CustomTickProps) {
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x="-45" y="10" width="90" height="80">
+        <div className="flex flex-col items-center">
+          <MemoizedAvatar email={email} />
+          <span className="text-sm mt-2 font-medium text-gray-700">
+            {primeiroNome}
+          </span>
+        </div>
+      </foreignObject>
+    </g>
+  )
+})
 
 export function TasksByStatusChart() {
   const tasks = useTaskStore((state) => state.tasks)
@@ -82,29 +119,16 @@ export function TasksByStatusChart() {
     return Object.values(tasksByResponsavel)
   }, [tasks])
 
-  const CustomXAxisTick = (props: CustomTickProps) => {
-    const { x, y, payload } = props
-    const item = data.find(d => d.email === payload.value)
-    if (!item) return null
-
-    const primeiroNome = item.primeiroNome.charAt(0).toUpperCase() + item.primeiroNome.slice(1).toLowerCase()
+  const renderCustomAxisTick = (props: AxisTickProps) => {
+    const item = data.find(d => d.email === props.payload.value)
+    if (!item) return <g />
 
     return (
-      <g transform={`translate(${x},${y})`}>
-        <foreignObject x="-45" y="10" width="90" height="80">
-          <div className="flex flex-col items-center">
-            <Avatar className="w-12 h-12 border-2 border-white">
-              <AvatarImage src={getUserIcon(item.email)} />
-              <AvatarFallback>
-                {item.email[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm mt-2 font-medium text-gray-700">
-              {primeiroNome}
-            </span>
-          </div>
-        </foreignObject>
-      </g>
+      <CustomXAxisTick 
+        {...props} 
+        email={item.email}
+        primeiroNome={item.primeiroNome.charAt(0).toUpperCase() + item.primeiroNome.slice(1).toLowerCase()}
+      />
     )
   }
 
@@ -159,7 +183,7 @@ export function TasksByStatusChart() {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis 
               dataKey="email" 
-              tick={<CustomXAxisTick x={0} y={0} payload={{ value: "" }} />}
+              tick={renderCustomAxisTick}
               interval={0}
               height={100}
             />
