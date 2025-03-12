@@ -14,6 +14,14 @@ import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
 import AuthRequired from "@/components/auth-required"
 import { getResponsavelName } from '@/lib/utils'
 import { PollingWrapper } from "@/components/polling-wrapper"
+import { useSession } from "next-auth/react"
+import { getUserInfoFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
+
+interface ResponsavelRM {
+  EMAIL: string;
+  NOME: string;
+  CARGO?: string;
+}
 
 const STATUS_COLORS = {
   Desenvolvimento: "bg-blue-500",
@@ -33,9 +41,11 @@ function formatDate(dateString: string | null): string {
 }
 
 export default function PlanilhaPage() {
+  const { data: session } = useSession()
   const tasks = useTaskStore((state) => state.tasks)
   const [expandedTasks, setExpandedTasks] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [responsaveis, setResponsaveis] = useState<ResponsavelRM[]>([])
   
   // Estados para filtros
   const [statusFilter, setStatusFilter] = useState<string>("todos")
@@ -45,13 +55,26 @@ export default function PlanilhaPage() {
   const [dataInicioFilter, setDataInicioFilter] = useState<string>("")
   const [dataFimFilter, setDataFimFilter] = useState<string>("")
 
-  // Efeito para controlar o estado de carregamento
+  // Efeito para buscar responsáveis do setor
   useEffect(() => {
-    if (tasks.length > 0) {
-      // Quando as tarefas são carregadas, desativa o loader
-      setIsLoading(false)
+    const fetchResponsaveis = async () => {
+      if (session?.user?.email) {
+        try {
+          const userInfo = await getUserInfoFromRM(session.user.email)
+          if (userInfo?.SECAO) {
+            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO)
+            setResponsaveis(responsaveisData)
+          }
+        } catch (error) {
+          console.error('Erro ao carregar responsáveis:', error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
     }
-  }, [tasks])
+
+    fetchResponsaveis()
+  }, [session?.user?.email])
 
   // Obter listas únicas para os selects
   const uniqueResponsaveis = useMemo(() => {
@@ -170,9 +193,9 @@ export default function PlanilhaPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                      {uniqueResponsaveis.map((resp) => (
-                        <SelectItem key={resp.email} value={resp.email}>
-                          {resp.nome}
+                      {responsaveis.map((resp) => (
+                        <SelectItem key={resp.EMAIL} value={resp.EMAIL}>
+                          {resp.NOME}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -7,7 +7,7 @@ import AuthRequired from "@/components/auth-required"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, getResponsaveisBySetor } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, getResponsaveisBySetor, isUserAdmin } from "@/lib/rm-service"
 import { Loader2 } from "lucide-react"
 
 type PeriodoFilter = "todos" | "hoje" | "esta_semana" | "este_mes" | "este_ano"
@@ -21,6 +21,7 @@ interface ResponsavelRM {
 export default function KanbanPage() {
   const { data: session } = useSession()
   const tasks = useTaskStore((state) => state.tasks)
+  const selectedSetor = useTaskStore((state) => state.selectedSetor)
   const [responsavelFilter, setResponsavelFilter] = useState<string | null>(null)
   const [prioridadeFilter, setPrioridadeFilter] = useState<string | null>(null)
   const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>("este_ano")
@@ -37,15 +38,19 @@ export default function KanbanPage() {
           setIsLoading(true)
           const userInfo = await getUserInfoFromRM(session.user.email);
           
+          // Verifica se é admin
+          const isAdmin = isUserAdmin(session.user.email);
+          
           // Verifica se é chefe e configura o filtro inicial
           const isChefe = isUserChefe(userInfo);
-          if (!isChefe) {
+          if (!isChefe && !isAdmin) {
             setResponsavelFilter(session.user.email);
           }
 
-          // Busca responsáveis do setor
-          if (userInfo?.SECAO) {
-            const responsaveis = await getResponsaveisBySetor(userInfo.SECAO);
+          // Busca responsáveis do setor selecionado ou do setor do usuário
+          const setorParaBuscar = selectedSetor || userInfo?.SECAO;
+          if (setorParaBuscar) {
+            const responsaveis = await getResponsaveisBySetor(setorParaBuscar);
             setResponsaveisSetor(responsaveis);
           }
         } catch (error) {
@@ -57,7 +62,7 @@ export default function KanbanPage() {
     };
 
     fetchResponsaveisSetor();
-  }, [session?.user?.email]);
+  }, [session?.user?.email, selectedSetor]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
@@ -134,9 +139,9 @@ export default function KanbanPage() {
                     )}
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem key="todos" value="todos">Todos</SelectItem>
                     {responsaveisSetor.map((resp) => (
-                      <SelectItem key={resp.EMAIL} value={resp.EMAIL}>
+                      <SelectItem key={`resp-${resp.EMAIL}`} value={resp.EMAIL}>
                         {resp.NOME}
                       </SelectItem>
                     ))}

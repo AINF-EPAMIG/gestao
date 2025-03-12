@@ -227,10 +227,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         try {
           const userInfo = await getUserInfoFromRM(session.user.email);
           if (userInfo?.SECAO) {
-            const response = await fetch(`/api/responsaveis?setor=${userInfo.SECAO}`);
-            if (response.ok) {
-              const data = await response.json();
-              setResponsaveis(data);
+            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+            if (responsaveisData) {
+              setResponsaveis(responsaveisData);
             }
           }
         } catch (error) {
