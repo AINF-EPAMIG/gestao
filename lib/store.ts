@@ -207,7 +207,10 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       fetch('/api/atividades/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(change),
+        body: JSON.stringify({
+          ...change,
+          updateTimestamp: isStatusChange || updateTimestamp
+        }),
       }).catch(error => {
         console.error('Erro ao sincronizar:', error);
       });

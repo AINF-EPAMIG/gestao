@@ -543,11 +543,12 @@ export async function POST(request: NextRequest) {
       query: `
         INSERT INTO u711845530_gestao.atividades 
         (titulo, descricao, projeto_id, data_inicio, data_fim, 
-         status_id, prioridade_id, estimativa_horas, setor_id, data_criacao, id_release) 
+         status_id, prioridade_id, estimativa_horas, setor_id, data_criacao, id_release, position) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?,
           ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'},
           ?,
-          ?
+          ?,
+          0
         )
       `,
       values: [
@@ -566,6 +567,16 @@ export async function POST(request: NextRequest) {
     }) as QueryResult;
 
     const atividadeId = result.insertId;
+
+    // Atualizar posições das outras tarefas no mesmo status
+    await executeQuery({
+      query: `
+        UPDATE u711845530_gestao.atividades
+        SET position = position + 1
+        WHERE status_id = ? AND id != ?
+      `,
+      values: [status_id, atividadeId],
+    });
 
     // Enviar e-mail para cada responsável
     if (responsaveis_emails && responsaveis_emails.length > 0) {

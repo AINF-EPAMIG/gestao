@@ -22,14 +22,13 @@ interface Responsavel {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { taskId, statusId, position, ultima_atualizacao, isStatusChange, oldStatusId } = await request.json();
+    const { taskId, statusId, position, ultima_atualizacao, isStatusChange, oldStatusId, updateTimestamp } = await request.json();
 
     console.log('🔵 Reordenando tarefa...');
     
     // Primeiro, atualiza a posição da tarefa movida
-    // Se for mudança de status, atualiza a data de última atualização
-    // Se for apenas reordenação, mantém a data anterior explicitamente
-    if (isStatusChange) {
+    // Se for mudança de status ou updateTimestamp for true, atualiza a data de última atualização
+    if (updateTimestamp) {
       await executeQuery({
         query: `
           UPDATE u711845530_gestao.atividades 
@@ -45,8 +44,7 @@ export async function PUT(request: NextRequest) {
         query: `
           UPDATE u711845530_gestao.atividades 
           SET status_id = ?, 
-              position = ?,
-              ultima_atualizacao = ultima_atualizacao
+              position = ?
           WHERE id = ?
         `,
         values: [statusId, position, taskId],
@@ -54,34 +52,30 @@ export async function PUT(request: NextRequest) {
     }
     
     // Depois, reordena todas as tarefas do mesmo status para garantir posições sequenciais
-    // Aqui também precisamos preservar o timestamp atual
+    // Não atualiza o timestamp para reordenação
     await executeQuery({
       query: `
         WITH RankedActivities AS (
-          SELECT id, 
-                 ROW_NUMBER() OVER (
-                   PARTITION BY status_id 
-                   ORDER BY CASE 
-                     WHEN id = ? THEN 0 
-                     ELSE 1 
-                   END,
-                   position,
-                   id
-                 ) - 1 as new_position
+          SELECT 
+            id,
+            CASE 
+              WHEN id = ? THEN ?  -- Define a posição específica para a tarefa movida
+              WHEN position >= ? THEN position + 1  -- Incrementa posições das tarefas após a posição de destino
+              ELSE position  -- Mantém as posições das tarefas anteriores
+            END as new_position
           FROM u711845530_gestao.atividades
           WHERE status_id = ?
+          ORDER BY position, id
         )
         UPDATE u711845530_gestao.atividades a
         INNER JOIN RankedActivities r ON a.id = r.id
-        SET a.position = r.new_position,
-            a.ultima_atualizacao = a.ultima_atualizacao
+        SET a.position = r.new_position
         WHERE a.status_id = ?
       `,
-      values: [taskId, statusId, statusId],
+      values: [taskId, position, position, statusId, statusId],
     });
     
     // Se houve mudança de status, também reordena as tarefas do status antigo
-    // Preservando o timestamp atual
     if (isStatusChange && oldStatusId) {
       await executeQuery({
         query: `
@@ -96,8 +90,7 @@ export async function PUT(request: NextRequest) {
           )
           UPDATE u711845530_gestao.atividades a
           INNER JOIN RankedActivities r ON a.id = r.id
-          SET a.position = r.new_position,
-              a.ultima_atualizacao = a.ultima_atualizacao
+          SET a.position = r.new_position
           WHERE a.status_id = ?
         `,
         values: [oldStatusId, oldStatusId],

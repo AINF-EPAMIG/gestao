@@ -295,19 +295,19 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       
       // Remove a tarefa da posição atual
-      const reorderedTasks = tasksInSameStatus.filter(t => t.id !== taskId);
+      const taskIndex = tasksInSameStatus.findIndex(t => t.id === taskId);
+      const [movedTask] = tasksInSameStatus.splice(taskIndex, 1);
       
       // Insere a tarefa na nova posição
-      reorderedTasks.splice(destination.index, 0, taskToMove);
+      tasksInSameStatus.splice(destination.index, 0, movedTask);
       
       // Atualiza as posições de todas as tarefas
-      reorderedTasks.forEach((task, index) => {
-        task.position = index;
-        
-        // Se a posição mudou, atualiza no banco de dados
-        if (task.id === taskId || index !== tasksInSameStatus.findIndex(t => t.id === task.id)) {
+      tasksInSameStatus.forEach((task, index) => {
+        const newPosition = index;
+        if (task.position !== newPosition) {
+          task.position = newPosition;
           // Passa false para indicar que não deve atualizar a data
-          updateTaskPosition(task.id, task.status_id, index, false);
+          updateTaskPosition(task.id, task.status_id, newPosition, false);
         }
       });
       
