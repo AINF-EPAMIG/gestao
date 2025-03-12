@@ -77,20 +77,6 @@ export default function PlanilhaPage() {
   }, [session?.user?.email])
 
   // Obter listas únicas para os selects
-  const uniqueResponsaveis = useMemo(() => {
-    const responsaveisInfo = tasks.flatMap(task => 
-      task.responsaveis?.map(resp => ({
-        email: resp.email,
-        nome: resp.nome || resp.email.split('@')[0].replace('.', ' ')
-      })) || []
-    );
-    
-    // Remove duplicados baseado no email e ordena por nome
-    return Array.from(
-      new Map(responsaveisInfo.map(item => [item.email, item])).values()
-    ).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [tasks]);
-
   const uniqueStatus = Array.from(new Set(tasks.map(task => getStatusName(task.status_id))))
   const uniquePrioridades = Array.from(new Set(tasks.map(task => getPriorityName(task.prioridade_id))))
   const uniqueProjetos = Array.from(new Set(tasks.map(task => task.projeto_nome)))

@@ -103,8 +103,12 @@ export function CreateTaskModal() {
           if (userInfo) {
             const isUserChefeResult = isUserChefe(userInfo);
             setIsChefe(isUserChefeResult);
-            setSelectedSetor(userInfo.SECAO);
-            setSetorInput(userInfo.SECAO);
+            
+            // Apenas define o setor se não for admin
+            if (!admin) {
+              setSelectedSetor(userInfo.SECAO);
+              setSetorInput(userInfo.SECAO);
+            }
 
             // Se for chefe ou admin, buscar subordinados
             if (isUserChefeResult || admin) {
@@ -118,23 +122,23 @@ export function CreateTaskModal() {
                 setResponsaveis(formattedSubordinados);
               }
             } else {
-              // Para usuários comuns, buscar todos os responsáveis do setor
+              // Para usuários comuns, buscar todos os responsáveis do setor e auto atribuir
               const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
               if (responsaveisData) {
                 setResponsaveis(responsaveisData);
-              }
-            }
 
-            // Pré-seleciona o próprio usuário como responsável
-            if (session?.user?.email) {
-              const userResponsavel: Responsavel = {
-                EMAIL: session.user.email,
-                NOME: userInfo.NOME_COMPLETO,
-                CARGO: userInfo.CARGO
-              };
-              
-              setResponsaveis(prev => [userResponsavel, ...prev]);
-              setSelectedResponsaveis([userResponsavel]);
+                // Pré-seleciona o próprio usuário como responsável apenas para usuários comuns
+                if (session?.user?.email) {
+                  const userResponsavel: Responsavel = {
+                    EMAIL: session.user.email,
+                    NOME: userInfo.NOME_COMPLETO,
+                    CARGO: userInfo.CARGO
+                  };
+                  
+                  setResponsaveis(prev => [userResponsavel, ...prev]);
+                  setSelectedResponsaveis([userResponsavel]);
+                }
+              }
             }
 
             // Se for admin, buscar lista de setores
@@ -838,11 +842,11 @@ export function CreateTaskModal() {
                           onChange={(e) => setDescricao(e.target.value)}
                           placeholder="Digite a descrição da tarefa"
                           className="h-20"
-                          maxLength={100}
+                          maxLength={500}
                         />
                         <div className="flex justify-end mt-1">
-                          <span className={`text-xs ${descricao.length > 80 ? 'text-red-500' : 'text-gray-500'}`}>
-                            {descricao.length}/100
+                          <span className={`text-xs ${descricao.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {descricao.length}/500
                           </span>
                         </div>
                       </div>
@@ -958,13 +962,14 @@ export function CreateTaskModal() {
                                   setShowSetorSuggestions(true)
                                 }}
                                 onFocus={() => setShowSetorSuggestions(true)}
-                                placeholder="Digite o setor"
+                                placeholder="Selecione o setor"
                                 className="w-full"
                               />
-                              {showSetorSuggestions && setorInput && (
+                              {showSetorSuggestions && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
                                   {setores
                                     .filter(s => 
+                                      !setorInput ||
                                       s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
                                       (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
                                     )
@@ -984,7 +989,7 @@ export function CreateTaskModal() {
                             <Input
                               value={setorInput}
                               disabled
-                              className="bg-gray-100"
+                              className="bg-gray-50"
                             />
                           )}
                         </div>
