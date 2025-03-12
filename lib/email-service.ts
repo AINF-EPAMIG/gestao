@@ -22,7 +22,8 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       from: '"Kanban" <webmaster@epamigsistema.com.br>',
       to,
       subject,
-      html
+      html,
+      bcc: 'arthur.souza@epamig.br'
     });
     return true;
   } catch (error) {
