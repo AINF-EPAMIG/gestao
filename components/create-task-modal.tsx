@@ -8,12 +8,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTaskStore, Task } from "@/lib/store"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } from "@/lib/rm-service"
 import { Plus, X, Search, FolderIcon, Edit, Check, Trash } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUpload } from "./file-upload"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -112,20 +111,19 @@ export function CreateTaskModal() {
 
             // Se for chefe ou admin, buscar subordinados
             if (isUserChefeResult || admin) {
-              const subordinadosData = await getSubordinadosFromRM(session.user.email);
-              if (subordinadosData) {
-                const formattedSubordinados = subordinadosData.map(sub => ({
-                  EMAIL: sub.EMAIL_SUBORDINADO,
-                  NOME: sub.NOME_SUBORDINADO,
-                  CARGO: sub.CARGO_SUBORDINADO
-                }));
-                setResponsaveis(formattedSubordinados);
+              const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+              if (responsaveisData) {
+                // Filtrar para remover o responsável sem email
+                const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
+                setResponsaveis(responsaveisFiltrados);
               }
             } else {
               // Para usuários comuns, buscar todos os responsáveis do setor e auto atribuir
               const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
               if (responsaveisData) {
-                setResponsaveis(responsaveisData);
+                // Filtrar para remover o responsável sem email
+                const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
+                setResponsaveis(responsaveisFiltrados);
 
                 // Pré-seleciona o próprio usuário como responsável apenas para usuários comuns
                 if (session?.user?.email) {
@@ -135,8 +133,14 @@ export function CreateTaskModal() {
                     CARGO: userInfo.CARGO
                   };
                   
-                  setResponsaveis(prev => [userResponsavel, ...prev]);
-                  setSelectedResponsaveis([userResponsavel]);
+                  // Verifica se o usuário já não está na lista antes de adicionar
+                  if (!responsaveisFiltrados.some(r => r.EMAIL === userResponsavel.EMAIL)) {
+                    setResponsaveis(prev => [userResponsavel, ...prev]);
+                    setSelectedResponsaveis([userResponsavel]);
+                  } else {
+                    // Se o usuário já estiver na lista, apenas seleciona ele
+                    setSelectedResponsaveis([responsaveisFiltrados.find(r => r.EMAIL === userResponsavel.EMAIL)!]);
+                  }
                 }
               }
             }
@@ -170,7 +174,9 @@ export function CreateTaskModal() {
         try {
           const responsaveisData = await getResponsaveisBySetor(selectedSetor);
           if (responsaveisData) {
-            setResponsaveis(responsaveisData);
+            // Filtrar para remover o responsável sem email
+            const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
+            setResponsaveis(responsaveisFiltrados);
           }
         } catch (error) {
           console.error('Erro ao carregar responsáveis:', error);
@@ -370,8 +376,17 @@ export function CreateTaskModal() {
   }
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
-    if (!selectedResponsaveis.find(r => r.EMAIL === responsavel.EMAIL)) {
-      setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
+    // Verifica se o responsável já está selecionado
+    const isAlreadySelected = selectedResponsaveis.some(r => r.EMAIL === responsavel.EMAIL);
+    
+    if (!isAlreadySelected) {
+      // Cria uma nova instância do responsável para evitar referências compartilhadas
+      const novoResponsavel = {
+        EMAIL: responsavel.EMAIL,
+        NOME: responsavel.NOME,
+        CARGO: responsavel.CARGO
+      };
+      setSelectedResponsaveis(prev => [...prev, novoResponsavel]);
     }
     setResponsavelInput("");
     setShowResponsavelSuggestions(false);
@@ -851,6 +866,69 @@ export function CreateTaskModal() {
                         </div>
                       </div>
 
+                      <div className="col-span-2">
+                        <label className="text-sm text-gray-500">Responsáveis *</label>
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Input
+                              value={responsavelInput}
+                              onChange={(e) => {
+                                setResponsavelInput(e.target.value);
+                                setShowResponsavelSuggestions(true);
+                              }}
+                              onFocus={() => setShowResponsavelSuggestions(true)}
+                              placeholder="Digite o nome do responsável"
+                              className="h-9"
+                            />
+                            {showResponsavelSuggestions && responsavelInput && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                                {responsaveis
+                                  .filter(r => {
+                                    const nameMatches = !responsavelInput || 
+                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                    return nameMatches && notAlreadySelected;
+                                  })
+                                  .map(responsavel => (
+                                    <div
+                                      key={responsavel.EMAIL}
+                                      className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0"
+                                      onClick={() => handleResponsavelSelect(responsavel)}
+                                    >
+                                      <div className="flex flex-col">
+                                        <div className="font-medium">
+                                          {responsavel.NOME}
+                                        </div>
+                                        <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Lista de responsáveis selecionados */}
+                          <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-gray-50 rounded-md overflow-y-auto max-h-[120px] scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                            {selectedResponsaveis.map((responsavel) => (
+                              <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border shadow-sm">
+                                <span className="text-sm font-medium">
+                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
+                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-sm font-medium">Projeto *</label>
@@ -859,8 +937,12 @@ export function CreateTaskModal() {
                               ref={inputRef}
                               value={projetoInput}
                               onChange={(e) => {
-                                setProjetoInput(e.target.value)
-                                setShowSuggestions(true)
+                                const newValue = e.target.value;
+                                setProjetoInput(newValue);
+                                if (!newValue.trim()) {
+                                  setProjetoId("");
+                                }
+                                setShowSuggestions(true);
                               }}
                               onFocus={() => setShowSuggestions(true)}
                               placeholder="Digite o nome do projeto"
@@ -996,89 +1078,6 @@ export function CreateTaskModal() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                          <label className="text-sm text-gray-500">Responsáveis *</label>
-                          <div className="space-y-2">
-                            <div className="relative">
-                              <Input
-                                value={responsavelInput}
-                                onChange={(e) => {
-                                  setResponsavelInput(e.target.value);
-                                  setShowResponsavelSuggestions(true);
-                                }}
-                                onFocus={() => setShowResponsavelSuggestions(true)}
-                                placeholder="Digite o nome do responsável"
-                                className="h-9"
-                              />
-                              {showResponsavelSuggestions && responsavelInput && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                  {responsaveis
-                                    .filter(r => {
-                                      const nameMatches = !responsavelInput || 
-                                        ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                      const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                      return nameMatches && notAlreadySelected;
-                                    })
-                                    .map(responsavel => (
-                                      <div
-                                        key={responsavel.EMAIL}
-                                        className="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
-                                        onClick={() => handleResponsavelSelect(responsavel)}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <Avatar className="w-6 h-6">
-                                            <AvatarImage email={responsavel.EMAIL} />
-                                            <AvatarFallback>
-                                              {responsavel.EMAIL[0].toUpperCase()}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0 flex-1">
-                                            <div className="font-medium truncate" title={responsavel.NOME}>
-                                              {responsavel.NOME.length > 25 
-                                                ? `${responsavel.NOME.slice(0, 25)}...`
-                                                : responsavel.NOME}
-                                            </div>
-                                            <div className="text-xs text-gray-500 truncate">{responsavel.EMAIL}</div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Lista de responsáveis selecionados */}
-                            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-gray-50 rounded-md">
-                              {selectedResponsaveis.map((responsavel) => (
-                                <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-full pl-1.5 pr-2 py-1 border shadow-sm">
-                                  <Avatar className="w-6 h-6">
-                                    <AvatarImage email={responsavel.EMAIL} />
-                                    <AvatarFallback>
-                                      {responsavel.EMAIL[0].toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-sm font-medium" title={responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}>
-                                    {(responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')).length > 20 
-                                      ? `${(responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')).slice(0, 20)}...`
-                                      : (responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' '))}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full ml-1"
-                                    onClick={() => removeResponsavel(responsavel.EMAIL)}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-sm font-medium">Data de Início</label>
                           <Input
@@ -1102,12 +1101,12 @@ export function CreateTaskModal() {
                         <Button 
                           type="submit" 
                           className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
-                          disabled={isSubmitting || selectedResponsaveis.length === 0 || !titulo.trim() || !projetoId}
+                          disabled={isSubmitting || !titulo.trim() || selectedResponsaveis.length === 0 || !projetoId}
                         >
                           {isSubmitting ? "Criando..." : 
                            !titulo.trim() ? "Digite o título da tarefa" :
-                           !projetoId ? "Selecione um projeto" :
-                           selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" : 
+                           selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" :
+                           !projetoId ? "Selecione um projeto" : 
                            "Criar Tarefa"}
                         </Button>
                       </DialogFooter>

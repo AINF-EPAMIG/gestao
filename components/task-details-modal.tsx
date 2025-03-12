@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin, getSubordinadosFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
+import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } from "@/lib/rm-service"
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
@@ -138,21 +138,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   };
 
   useEffect(() => {
-    const checkPermissions = async () => {
+    const checkUserRole = async () => {
       if (session?.user?.email) {
-        // Verificar se é admin
-        if (isUserAdmin(session.user.email)) {
-          setCanEdit(true);
-          return;
-        }
-
-        // Buscar informações do usuário
-        const userInfo = await getUserInfoFromRM(session.user.email);
-        if (userInfo) {
-          // Verificar se é chefe
-          if (isUserChefe(userInfo)) {
-            setCanEdit(true);
-          }
+        try {
+          // Verificar se é admin
+          const admin = isUserAdmin(session.user.email);
+          setCanEdit(admin);
 
           // Verificar se é responsável
           const isResponsavel = task.responsaveis?.some(
@@ -162,40 +153,39 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             setCanEdit(true);
           }
 
-          // Carregar responsáveis baseado no papel do usuário
-          const isAdmin = isUserAdmin(session.user.email);
-          const isChefe = isUserChefe(userInfo);
-
-          if (isChefe || isAdmin) {
-            const subordinadosData = await getSubordinadosFromRM(session.user.email);
-            if (subordinadosData) {
-              setResponsaveis(subordinadosData.map(sub => ({
-                EMAIL: sub.EMAIL_SUBORDINADO,
-                NOME: sub.NOME_SUBORDINADO,
-                CARGO: sub.CARGO_SUBORDINADO
-              })));
+          // Buscar informações do usuário
+          const userInfo = await getUserInfoFromRM(session.user.email);
+          if (userInfo) {
+            const isUserChefeResult = isUserChefe(userInfo);
+            if (isUserChefeResult) {
+              setCanEdit(true);
             }
-          } else if (userInfo.SECAO) {
+
+            // Buscar responsáveis do setor
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
             if (responsaveisData) {
-              setResponsaveis(responsaveisData);
+              // Filtrar para remover o responsável sem email
+              const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
+              setResponsaveis(responsaveisFiltrados);
             }
-          }
 
-          // Converter responsáveis atuais
-          setSelectedResponsaveis(
-            task.responsaveis?.map(r => ({
-              EMAIL: r.email,
-              NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
-              CARGO: r.cargo
-            })) || []
-          );
+            // Converter responsáveis atuais
+            setSelectedResponsaveis(
+              task.responsaveis?.map(r => ({
+                EMAIL: r.email,
+                NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
+                CARGO: r.cargo
+              })) || []
+            );
+          }
+        } catch (error) {
+          console.error('Erro ao verificar papel do usuário:', error);
         }
       }
     };
 
     if (open) {
-      checkPermissions();
+      checkUserRole();
     }
   }, [session?.user?.email, task.responsaveis, open]);
 
@@ -229,7 +219,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           if (userInfo?.SECAO) {
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
             if (responsaveisData) {
-              setResponsaveis(responsaveisData);
+              // Filtrar para remover o responsável sem email
+              const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
+              setResponsaveis(responsaveisFiltrados);
             }
           }
         } catch (error) {
@@ -674,18 +666,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 {!isEditing && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="flex -space-x-2">
-                        {task.responsaveis && task.responsaveis.length > 0 ? (
-                          task.responsaveis.map((responsavel) => (
-                            <Avatar key={responsavel.email} className="w-8 h-8 border-2 border-white">
-                              <AvatarImage email={responsavel.email} />
-                              <AvatarFallback>
-                                {responsavel.email[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))
-                        ) : null}
-                      </div>
                       <div>
                         {task.responsaveis && task.responsaveis.length > 0 ? (
                           <span className="text-sm">
@@ -830,24 +810,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                               .map(responsavel => (
                                 <div
                                   key={responsavel.EMAIL}
-                                  className="px-4 py-2.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
+                                  className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0"
                                   onClick={() => handleResponsavelSelect(responsavel)}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="w-6 h-6">
-                                      <AvatarImage email={responsavel.EMAIL} />
-                                      <AvatarFallback>
-                                        {responsavel.EMAIL[0].toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-medium truncate" title={responsavel.NOME}>
-                                        {responsavel.NOME.length > 25 
-                                          ? `${responsavel.NOME.slice(0, 25)}...`
-                                          : responsavel.NOME}
-                                      </div>
-                                      <div className="text-xs text-gray-500 truncate">{responsavel.EMAIL}</div>
+                                  <div className="flex flex-col">
+                                    <div className="font-medium">
+                                      {responsavel.NOME}
                                     </div>
+                                    <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
                                   </div>
                                 </div>
                               ))}
@@ -858,14 +828,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       {/* Lista de responsáveis selecionados */}
                       <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-50 rounded-md">
                         {selectedResponsaveis.map((responsavel) => (
-                          <div key={responsavel.EMAIL} className="flex items-center gap-1.5 bg-white rounded-full px-2 py-1 border shadow-sm">
-                            <Avatar className="w-5 h-5">
-                              <AvatarImage email={responsavel.EMAIL} />
-                              <AvatarFallback>
-                                {responsavel.EMAIL[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-medium">
+                          <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border shadow-sm">
+                            <span className="text-sm font-medium">
                               {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
                             </span>
                             <Button
