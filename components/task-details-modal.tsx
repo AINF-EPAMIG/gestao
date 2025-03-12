@@ -17,7 +17,6 @@ import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } f
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { getResponsavelName } from '@/lib/utils'
 
 interface TaskResponsavel {
   id: number;
@@ -587,26 +586,57 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
             <div className="p-6">
               <TabsContent value="detalhes" className="space-y-3 mt-0 h-full">
-                {/* Cabeçalho com Status */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      className={
-                        getStatusName(task.status_id) === "Concluída"
-                          ? "bg-emerald-500"
-                          : getStatusName(task.status_id) === "Em desenvolvimento"
-                          ? "bg-blue-500"
-                          : getStatusName(task.status_id) === "Em testes"
-                          ? "bg-amber-500"
-                          : "bg-orange-500"
-                      }
-                    >
-                      {getStatusName(task.status_id)}
-                    </Badge>
+                {/* Cabeçalho com Avatar, Status, Prioridade e Projeto */}
+                {!isEditing && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex -space-x-2">
+                      {(task.responsaveis ?? []).map(resp => (
+                        <Avatar key={resp.email} className="w-10 h-10 border-2 border-white">
+                          <AvatarImage email={resp.email} />
+                          <AvatarFallback>
+                            {resp.email ? resp.email[0].toUpperCase() : '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {!(task.responsaveis ?? []).length && (
+                        <Avatar className="w-10 h-10 border-2 border-white">
+                          <AvatarFallback>?</AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        className={
+                          getStatusName(task.status_id) === "Concluída"
+                            ? "bg-emerald-500"
+                            : getStatusName(task.status_id) === "Em desenvolvimento"
+                            ? "bg-blue-500"
+                            : getStatusName(task.status_id) === "Em testes"
+                            ? "bg-amber-500"
+                            : "bg-orange-500"
+                        }
+                      >
+                        {getStatusName(task.status_id)}
+                      </Badge>
+                      <Badge
+                        className={
+                          getPriorityName(task.prioridade_id) === "Alta"
+                            ? "bg-red-500"
+                            : getPriorityName(task.prioridade_id) === "Média"
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                        }
+                      >
+                        {getPriorityName(task.prioridade_id)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Prioridade e Projeto */}
+                {/* Prioridade e Projeto - Modo Edição */}
                 {isEditing ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -643,43 +673,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       </Select>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      className={
-                        getPriorityName(task.prioridade_id) === "Alta"
-                          ? "bg-red-500"
-                          : getPriorityName(task.prioridade_id) === "Média"
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }
-                    >
-                      {getPriorityName(task.prioridade_id)}
-                    </Badge>
-                    <Badge variant="outline">
-                      {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
-                    </Badge>
-                  </div>
-                )}
-
-                {/* Responsáveis e ID Release */}
-                {!isEditing && (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div>
-                        {task.responsaveis && task.responsaveis.length > 0 ? (
-                          <span className="text-sm">
-                            {task.responsaveis
-                              .map((responsavel) => getResponsavelName(responsavel.email))
-                              .join(', ')}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-500">Sem responsáveis atribuídos</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* Conteúdo em duas colunas */}
                 <div className="grid grid-cols-2 gap-3">
