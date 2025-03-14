@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 
 // Tamanho máximo para arquivos compactados (em bytes) - 30MB
-export const MAX_COMPRESSED_SIZE = 30 * 1024 * 1024;
+export const MAX_COMPRESSED_SIZE = 27 * 1024 * 1024;
 
 /**
  * Verifica se um arquivo precisa ser processado (compactado)
