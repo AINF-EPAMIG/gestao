@@ -12,11 +12,13 @@ const TEMP_DIR = path.join(os.tmpdir(), "upload-chunks");
 export const config = {
   api: {
     bodyParser: false, // Desativando o bodyParser padrão para lidar com arquivos grandes
-    responseLimit: '10mb',
+    responseLimit: false,
   },
 }
 
 export async function POST(request: NextRequest) {
+  console.log("[ChunkUpload] Recebendo chunk para upload");
+  
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

@@ -92,33 +92,48 @@ export function FileUpload({
     console.log(`[ChunkUpload] Iniciando upload em chunks para ${fileName}`, {
       fileSize,
       totalChunks,
-      chunkSize: CHUNK_SIZE
+      chunkSize: CHUNK_SIZE,
+      taskId
     });
     
     // Criar um ID de sessão único para este upload
     const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
     
     try {
+      // Preparar os dados para iniciar a sessão
+      const initData = {
+        fileName,
+        fileType,
+        fileSize,
+        totalChunks,
+        taskId,
+        sessionId
+      };
+      
+      console.log("[ChunkUpload] Enviando dados para iniciar sessão:", initData);
+      
       // Iniciar a sessão de upload
       const initResponse = await fetch("/api/anexos/upload-init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          fileName,
-          fileType,
-          fileSize,
-          totalChunks,
-          taskId,
-          sessionId
-        }),
+        body: JSON.stringify(initData),
+      });
+      
+      console.log("[ChunkUpload] Resposta da inicialização:", {
+        status: initResponse.status,
+        statusText: initResponse.statusText
       });
       
       if (!initResponse.ok) {
         const errorData = await initResponse.json();
-        throw new Error(errorData.error || "Erro ao iniciar upload em chunks");
+        console.error("[ChunkUpload] Erro ao iniciar upload:", errorData);
+        throw new Error(errorData.error || errorData.details || "Erro ao iniciar upload em chunks");
       }
+      
+      const initResult = await initResponse.json();
+      console.log("[ChunkUpload] Sessão iniciada com sucesso:", initResult);
       
       // Enviar cada chunk
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -132,14 +147,22 @@ export function FileUpload({
         formData.append("chunkIndex", chunkIndex.toString());
         formData.append("totalChunks", totalChunks.toString());
         
+        console.log(`[ChunkUpload] Enviando chunk ${chunkIndex + 1}/${totalChunks}`);
+        
         const chunkResponse = await fetch("/api/anexos/upload-chunk", {
           method: "POST",
           body: formData,
         });
         
+        console.log(`[ChunkUpload] Resposta do envio do chunk ${chunkIndex + 1}:`, {
+          status: chunkResponse.status,
+          statusText: chunkResponse.statusText
+        });
+        
         if (!chunkResponse.ok) {
           const errorData = await chunkResponse.json();
-          throw new Error(errorData.error || `Erro ao enviar chunk ${chunkIndex + 1}/${totalChunks}`);
+          console.error(`[ChunkUpload] Erro ao enviar chunk ${chunkIndex + 1}:`, errorData);
+          throw new Error(errorData.error || errorData.details || `Erro ao enviar chunk ${chunkIndex + 1}/${totalChunks}`);
         }
         
         // Atualizar o progresso
@@ -149,24 +172,35 @@ export function FileUpload({
         console.log(`[ChunkUpload] Chunk ${chunkIndex + 1}/${totalChunks} enviado com sucesso (${progress}%)`);
       }
       
+      // Preparar dados para finalizar o upload
+      const completeData = {
+        sessionId,
+        fileName,
+        fileType,
+        fileSize,
+        taskId
+      };
+      
+      console.log("[ChunkUpload] Enviando solicitação para finalizar upload:", completeData);
+      
       // Finalizar o upload
       const completeResponse = await fetch("/api/anexos/upload-complete", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          sessionId,
-          fileName,
-          fileType,
-          fileSize,
-          taskId
-        }),
+        body: JSON.stringify(completeData),
+      });
+      
+      console.log("[ChunkUpload] Resposta da finalização:", {
+        status: completeResponse.status,
+        statusText: completeResponse.statusText
       });
       
       if (!completeResponse.ok) {
         const errorData = await completeResponse.json();
-        throw new Error(errorData.error || "Erro ao finalizar upload em chunks");
+        console.error("[ChunkUpload] Erro ao finalizar upload:", errorData);
+        throw new Error(errorData.error || errorData.details || "Erro ao finalizar upload em chunks");
       }
       
       const result = await completeResponse.json();

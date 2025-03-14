@@ -3,13 +3,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false, // Apenas temporariamente!
   },
-  // Configurações para o servidor
-  serverRuntimeConfig: {
-    // Aumentando o limite de tamanho para uploads
-    bodyParserLimit: '50mb', // Aumentando para 50MB
-    responseLimit: '50mb',
+  serverExternalPackages: ['mysql2'],
+  webpack: (config) => {
+    config.externals.push({
+      'utf-8-validate': 'commonjs utf-8-validate',
+      'bufferutil': 'commonjs bufferutil',
+    })
+    return config
   },
-  // ... outras configurações
 }
 
 module.exports = nextConfig 

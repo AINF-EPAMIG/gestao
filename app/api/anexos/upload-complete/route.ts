@@ -11,7 +11,16 @@ import os from "os"
 // Diretório temporário para armazenar os chunks
 const TEMP_DIR = path.join(os.tmpdir(), "upload-chunks");
 
+// Configuração para aumentar o limite de tamanho
+export const config = {
+  api: {
+    responseLimit: false,
+  },
+}
+
 export async function POST(request: NextRequest) {
+  console.log("[ChunkUpload] Recebendo solicitação para finalizar upload em chunks");
+  
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
