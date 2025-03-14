@@ -3,13 +3,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false, // Apenas temporariamente!
   },
-  // Configurações para aumentar o limite de tamanho do corpo da requisição
-  serverRuntimeConfig: {
-    maxBodySize: '50mb',
+  // Aumentando o limite de tamanho para uploads
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb', // Aumentando para 50MB
+    },
+    responseLimit: '50mb',
   },
-  publicRuntimeConfig: {
-    maxUploadSize: '50mb',
-  }
+  // ... outras configurações
 }
 
 module.exports = nextConfig 
