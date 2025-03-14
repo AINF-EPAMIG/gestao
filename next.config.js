@@ -3,11 +3,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false, // Apenas temporariamente!
   },
-  // Aumentando o limite de tamanho para uploads
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb', // Aumentando para 50MB
-    },
+  // Configurações para o servidor
+  serverRuntimeConfig: {
+    // Aumentando o limite de tamanho para uploads
+    bodyParserLimit: '50mb', // Aumentando para 50MB
     responseLimit: '50mb',
   },
   // ... outras configurações

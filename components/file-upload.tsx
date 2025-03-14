@@ -16,8 +16,10 @@ interface FileUploadProps {
   totalAnexos?: number
 }
 
-// Tamanho máximo do arquivo em bytes (30MB)
-const MAX_FILE_SIZE = 30 * 1024 * 1024;
+// Tamanho máximo do arquivo em bytes (50MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+// Tamanho do chunk em bytes (5MB)
+const CHUNK_SIZE = 5 * 1024 * 1024;
 
 export function FileUpload({ 
   taskId, 
@@ -80,77 +82,171 @@ export function FileUpload({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
+  // Função para fazer upload em chunks
+  const uploadFileInChunks = async (file: File, taskId: string) => {
+    const fileSize = file.size;
+    const fileName = file.name;
+    const fileType = file.type;
+    const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
+    
+    console.log(`[ChunkUpload] Iniciando upload em chunks para ${fileName}`, {
+      fileSize,
+      totalChunks,
+      chunkSize: CHUNK_SIZE
+    });
+    
+    // Criar um ID de sessão único para este upload
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    
+    try {
+      // Iniciar a sessão de upload
+      const initResponse = await fetch("/api/anexos/upload-init", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileName,
+          fileType,
+          fileSize,
+          totalChunks,
+          taskId,
+          sessionId
+        }),
+      });
+      
+      if (!initResponse.ok) {
+        const errorData = await initResponse.json();
+        throw new Error(errorData.error || "Erro ao iniciar upload em chunks");
+      }
+      
+      // Enviar cada chunk
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, fileSize);
+        const chunk = file.slice(start, end);
+        
+        const formData = new FormData();
+        formData.append("chunk", chunk);
+        formData.append("sessionId", sessionId);
+        formData.append("chunkIndex", chunkIndex.toString());
+        formData.append("totalChunks", totalChunks.toString());
+        
+        const chunkResponse = await fetch("/api/anexos/upload-chunk", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (!chunkResponse.ok) {
+          const errorData = await chunkResponse.json();
+          throw new Error(errorData.error || `Erro ao enviar chunk ${chunkIndex + 1}/${totalChunks}`);
+        }
+        
+        // Atualizar o progresso
+        const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+        setUploadProgress(progress);
+        
+        console.log(`[ChunkUpload] Chunk ${chunkIndex + 1}/${totalChunks} enviado com sucesso (${progress}%)`);
+      }
+      
+      // Finalizar o upload
+      const completeResponse = await fetch("/api/anexos/upload-complete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          fileName,
+          fileType,
+          fileSize,
+          taskId
+        }),
+      });
+      
+      if (!completeResponse.ok) {
+        const errorData = await completeResponse.json();
+        throw new Error(errorData.error || "Erro ao finalizar upload em chunks");
+      }
+      
+      const result = await completeResponse.json();
+      console.log(`[ChunkUpload] Upload em chunks concluído com sucesso:`, result);
+      
+      return result;
+    } catch (error) {
+      console.error("[ChunkUpload] Erro durante upload em chunks:", error);
+      throw error;
+    }
+  };
+
   const handleUpload = async () => {
     if (localFiles.length === 0 || !taskId) return
 
     setUploading(true)
-    setUploadProgress(10) // Inicia com 10% para feedback visual
+    setUploadProgress(0)
     
-    console.log("[FileUpload] Iniciando upload de arquivos", {
-      numberOfFiles: localFiles.length,
-      taskId,
-      fileSize: localFiles[0].size
-    })
-
-    const formData = new FormData()
-    formData.append("taskId", taskId.toString())
-    
-    localFiles.forEach(file => {
-      console.log("[FileUpload] Adicionando arquivo ao FormData:", {
-        name: file.name,
-        type: file.type,
-        size: file.size
-      })
-      formData.append("files", file)
+    const file = localFiles[0];
+    console.log("[FileUpload] Iniciando upload de arquivo", {
+      fileName: file.name,
+      fileSize: file.size,
+      taskId
     })
 
     try {
-      setUploadProgress(30) // Atualiza progresso - formulário preparado
-      console.log("[FileUpload] Enviando requisição para o servidor")
+      let result;
       
-      // Simula progresso durante o upload
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = prev + 5;
-          return newProgress < 90 ? newProgress : prev;
+      // Verificar se o arquivo é grande o suficiente para usar upload em chunks
+      if (file.size > CHUNK_SIZE) {
+        console.log(`[FileUpload] Arquivo grande (${formatFileSize(file.size)}), usando upload em chunks`);
+        result = await uploadFileInChunks(file, taskId.toString());
+      } else {
+        // Para arquivos pequenos, usar o método tradicional
+        console.log(`[FileUpload] Arquivo pequeno (${formatFileSize(file.size)}), usando upload normal`);
+        setUploadProgress(10);
+        
+        const formData = new FormData();
+        formData.append("taskId", taskId.toString());
+        formData.append("files", file);
+        
+        // Simula progresso durante o upload
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const newProgress = prev + 5;
+            return newProgress < 90 ? newProgress : prev;
+          });
+        }, 1000);
+        
+        const response = await fetch("/api/anexos/upload", {
+          method: "POST",
+          body: formData
         });
-      }, 1000);
-      
-      const response = await fetch("/api/anexos/upload", {
-        method: "POST",
-        body: formData
-      })
-
-      clearInterval(progressInterval);
-      setUploadProgress(95); // Quase concluído
-      
-      const responseData = await response.json()
-      
-      if (!response.ok) {
-        console.error("[FileUpload] Erro na resposta do servidor:", {
-          status: response.status,
-          statusText: response.statusText,
-          data: responseData,
-          details: responseData.details || 'Sem detalhes adicionais'
-        })
-        throw new Error(responseData.error || responseData.details || "Erro ao fazer upload dos arquivos")
+        
+        clearInterval(progressInterval);
+        setUploadProgress(95);
+        
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(responseData.error || responseData.details || "Erro ao fazer upload do arquivo");
+        }
+        
+        setUploadProgress(100);
+        result = responseData;
       }
 
-      setUploadProgress(100); // Upload concluído
-      console.log("[FileUpload] Upload concluído com sucesso:", responseData)
-
-      setLocalFiles([])
+      console.log("[FileUpload] Upload concluído com sucesso:", result);
+      setLocalFiles([]);
       
       // Limpa o input de arquivo para permitir selecionar o mesmo arquivo novamente
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
       
       // Atualiza o timestamp da tarefa no store
-      updateTaskTimestamp(taskId)
+      updateTaskTimestamp(taskId);
       
       if (onUploadComplete) {
-        onUploadComplete()
+        onUploadComplete();
       }
       
       // Reseta o progresso após um tempo
@@ -164,20 +260,19 @@ export function FileUpload({
           message: error.message,
           stack: error.stack,
           name: error.name
-        } : error,
-        type: typeof error
-      })
+        } : error
+      });
       
       setUploadProgress(0);
       
       // Mensagem de erro mais detalhada
       const errorMessage = error instanceof Error 
         ? error.message 
-        : "Erro ao fazer upload dos arquivos. Verifique o tamanho do arquivo e tente novamente.";
+        : "Erro ao fazer upload do arquivo. Verifique o tamanho do arquivo e tente novamente.";
       
-      alert(errorMessage)
+      alert(errorMessage);
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
   }
 
