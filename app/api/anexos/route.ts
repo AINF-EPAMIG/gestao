@@ -2,19 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { RowDataPacket } from "mysql2"
-
-interface AnexoRow extends RowDataPacket {
-  id: number
-  nome_arquivo: string
-  caminho_arquivo: string
-  tipo_arquivo: string
-  tamanho_bytes: number
-  data_upload: string
-  usuario_email: string
-  google_drive_id: string
-  google_drive_link: string
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
+    // Obter o ID da tarefa da query string
     const { searchParams } = new URL(request.url)
     const taskId = searchParams.get("taskId")
 
@@ -33,26 +21,30 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const [rows] = await db.execute<AnexoRow[]>(
+    // Buscar anexos da tarefa
+    const [anexos] = await db.execute(
       `SELECT 
         id,
         nome_arquivo,
         caminho_arquivo,
         tipo_arquivo,
         tamanho_bytes,
-        data_upload,
         usuario_email,
         google_drive_id,
-        google_drive_link
-      FROM u711845530_gestao.anexos 
+        google_drive_link,
+        DATE_FORMAT(data_upload, '%Y-%m-%dT%H:%i:%s.000Z') as data_upload
+      FROM u711845530_gestao.anexos
       WHERE atividade_id = ?
       ORDER BY data_upload DESC`,
       [taskId]
     )
 
-    return NextResponse.json(rows || [])
+    return NextResponse.json(anexos)
   } catch (error) {
-    console.error("Erro ao listar anexos:", error)
-    return NextResponse.json([])
+    console.error("Erro ao buscar anexos:", error)
+    return NextResponse.json(
+      { error: "Erro ao buscar anexos", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    )
   }
 } 

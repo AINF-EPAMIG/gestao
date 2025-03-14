@@ -18,48 +18,74 @@ export async function getGoogleDriveClient(accessToken: string) {
 // Função para fazer upload de um arquivo para o Google Drive
 export async function uploadFileToDrive(
   accessToken: string,
-  file: Buffer,
+  fileBuffer: Buffer,
   fileName: string,
-  mimeType: string,
-  folderId?: string
+  mimeType: string
 ) {
   try {
-    const drive = await getGoogleDriveClient(accessToken);
-    
-    // Configuração do arquivo a ser enviado
-    const fileMetadata: { name: string; parents?: string[] } = {
+    // Criar um stream a partir do buffer
+    const fileStream = Readable.from(fileBuffer)
+
+    // Criar metadados do arquivo
+    const metadata = {
       name: fileName,
-    };
-    
-    // Se tiver um ID de pasta, adiciona ao arquivo
-    if (folderId) {
-      fileMetadata.parents = [folderId];
+      mimeType: mimeType,
     }
 
-    // Converter o Buffer para um stream legível
-    const fileStream = Readable.from(file);
+    // Criar o corpo da requisição multipart
+    const boundary = "-------" + Math.random().toString(36).substring(2)
+    
+    // Parte 1: Metadados
+    let requestBody = `--${boundary}\r\n`
+    requestBody += 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+    requestBody += JSON.stringify(metadata) + '\r\n'
+    
+    // Parte 2: Conteúdo do arquivo
+    requestBody += `--${boundary}\r\n`
+    requestBody += `Content-Type: ${mimeType}\r\n\r\n`
+    
+    // Converter a primeira parte para buffer
+    const requestBodyBuffer = Buffer.from(requestBody, 'utf-8')
+    
+    // Parte final do boundary
+    const endBoundaryBuffer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8')
+    
+    // Fazer a requisição para a API do Google Drive
+    const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body: Buffer.concat([
+        requestBodyBuffer,
+        fileBuffer,
+        endBoundaryBuffer
+      ]),
+    })
 
-    // Configuração da mídia
-    const media = {
-      mimeType,
-      body: fileStream,
-    };
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(`Erro ao fazer upload para o Google Drive: ${JSON.stringify(errorData)}`)
+    }
 
-    // Executa o upload
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id,name,webViewLink',
-    });
-
+    const data = await response.json()
+    
+    // Compartilhar o arquivo publicamente para visualização
+    await shareFileWithUser(accessToken, data.id, 'anyone', 'reader')
+    
+    // Obter o link de visualização
+    const fileData = await getFileInfo(accessToken, data.id)
+    
     return {
-      id: response.data.id,
-      name: response.data.name,
-      webViewLink: response.data.webViewLink,
-    };
+      id: data.id,
+      name: data.name,
+      mimeType: data.mimeType,
+      webViewLink: fileData.webViewLink
+    }
   } catch (error) {
-    console.error('Erro ao fazer upload para o Google Drive:', error);
-    throw new Error('Falha ao fazer upload do arquivo para o Google Drive');
+    console.error('Erro ao fazer upload para o Google Drive:', error)
+    throw error
   }
 }
 
@@ -93,32 +119,78 @@ export async function getFileFromDrive(accessToken: string, fileId: string) {
 // Função para excluir um arquivo do Google Drive
 export async function deleteFileFromDrive(accessToken: string, fileId: string) {
   try {
-    const drive = await getGoogleDriveClient(accessToken);
-    await drive.files.delete({ fileId });
-    return true;
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.text()
+      throw new Error(`Erro ao excluir arquivo: ${errorData}`)
+    }
+    
+    return true
   } catch (error) {
-    console.error('Erro ao excluir arquivo do Google Drive:', error);
-    throw new Error('Falha ao excluir arquivo do Google Drive');
+    console.error('Erro ao excluir arquivo do Google Drive:', error)
+    throw error
   }
 }
 
-// Função para compartilhar um arquivo com um usuário específico
-export async function shareFileWithUser(accessToken: string, fileId: string, userEmail: string, role: 'reader' | 'writer' | 'commenter' = 'reader') {
+// Função para compartilhar um arquivo com um usuário ou grupo
+async function shareFileWithUser(
+  accessToken: string,
+  fileId: string,
+  emailOrDomain: string,
+  role: 'reader' | 'writer' | 'commenter' | 'owner'
+) {
   try {
-    const drive = await getGoogleDriveClient(accessToken);
+    const permission = {
+      type: emailOrDomain === 'anyone' ? 'anyone' : 'user',
+      role: role,
+      allowFileDiscovery: false
+    }
     
-    await drive.permissions.create({
-      fileId,
-      requestBody: {
-        type: 'user',
-        role,
-        emailAddress: userEmail,
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-    });
+      body: JSON.stringify(permission),
+    })
     
-    return true;
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(`Erro ao compartilhar arquivo: ${JSON.stringify(errorData)}`)
+    }
+    
+    return await response.json()
   } catch (error) {
-    console.error('Erro ao compartilhar arquivo:', error);
-    throw new Error('Falha ao compartilhar arquivo com o usuário');
+    console.error('Erro ao compartilhar arquivo:', error)
+    throw error
+  }
+}
+
+// Função para obter informações de um arquivo
+async function getFileInfo(accessToken: string, fileId: string) {
+  try {
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(`Erro ao obter informações do arquivo: ${JSON.stringify(errorData)}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Erro ao obter informações do arquivo:', error)
+    throw error
   }
 } 

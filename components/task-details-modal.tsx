@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
 import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } from "@/lib/rm-service"
-import { TaskAttachments } from "./task-attachments"
+import { Anexos } from "./anexos"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -986,10 +986,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
               </TabsContent>
               <TabsContent value="anexos" className="space-y-4 py-4">
-                <TaskAttachments 
-                  taskId={task.id} 
-                  canEdit={canEdit}
-                />
+                <Anexos taskId={task.id.toString()} />
               </TabsContent>
             </div>
           </div>
