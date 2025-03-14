@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, Trash2, FileIcon } from "lucide-react"
+import { Download, Trash2, FileIcon, Loader2, Eye } from "lucide-react"
 import { FileUpload } from "./file-upload"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useTaskStore } from "@/lib/store"
@@ -17,6 +17,8 @@ interface Anexo {
   tamanho_bytes: number
   data_upload: string
   usuario_email: string
+  google_drive_id: string
+  google_drive_link: string
 }
 
 interface TaskAttachmentsProps {
@@ -26,6 +28,10 @@ interface TaskAttachmentsProps {
 
 export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProps) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
+  const [loadingDownload, setLoadingDownload] = useState<number | null>(null)
+  const [loadingDelete, setLoadingDelete] = useState<number | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<number | null>(null)
+  const [fileUploadKey, setFileUploadKey] = useState(0)
   const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
   const loadAnexos = useCallback(async () => {
@@ -47,6 +53,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
 
   const handleDownload = async (anexoId: number, fileName: string) => {
     try {
+      setLoadingDownload(anexoId)
       const response = await fetch(`/api/anexos/download/${anexoId}`)
       if (!response.ok) {
         throw new Error("Erro ao baixar arquivo")
@@ -64,11 +71,16 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
     } catch (error) {
       console.error("Erro ao baixar arquivo:", error)
       alert("Erro ao baixar arquivo")
+    } finally {
+      setLoadingDownload(null)
     }
   }
 
   const handleDelete = async (anexoId: number) => {
     try {
+      setLoadingDelete(anexoId)
+      setDeleteDialogOpen(null)
+      
       const response = await fetch(`/api/anexos/${anexoId}`, {
         method: "DELETE"
       })
@@ -79,11 +91,14 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
 
       setAnexos(anexos.filter(anexo => anexo.id !== anexoId))
       
-      // Atualiza o timestamp da tarefa no store
+      setFileUploadKey(prev => prev + 1)
+      
       updateTaskTimestamp(taskId)
     } catch (error) {
       console.error("Erro ao excluir anexo:", error)
       alert("Erro ao excluir anexo")
+    } finally {
+      setLoadingDelete(null)
     }
   }
 
@@ -128,6 +143,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
       {canEdit && (
         <div className="mb-6">
           <FileUpload 
+            key={`file-upload-${fileUploadKey}`}
             taskId={taskId} 
             onUploadComplete={loadAnexos}
             totalAnexos={anexos.length}
@@ -144,7 +160,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
         </div>
 
         {anexos.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 pb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
             {anexos.map((anexo) => (
               <Card key={anexo.id} className="group hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -162,8 +178,8 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between gap-1 mt-4 pt-3 border-t">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t">
+                    <div className="flex items-center gap-2 mb-2 md:mb-0">
                       <Avatar className="w-6 h-6">
                         <AvatarImage email={anexo.usuario_email} />
                         <AvatarFallback>
@@ -175,45 +191,71 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                       </span>
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center space-x-2">
+                      {anexo.google_drive_link && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => window.open(anexo.google_drive_link, '_blank')}
+                          className="h-8 w-8 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
+                          title="Visualizar"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         onClick={() => handleDownload(anexo.id, anexo.nome_arquivo)}
-                        className="h-8 gap-2"
+                        disabled={loadingDownload === anexo.id}
+                        className="h-8 w-8 rounded-md bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
+                        title="Baixar"
                       >
-                        <Download className="h-4 w-4" />
-                        Baixar
+                        {loadingDownload === anexo.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </Button>
                       {canEdit && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 gap-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            >
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-md bg-white border border-gray-300 hover:bg-red-50 text-red-500"
+                            title="Excluir"
+                            disabled={loadingDelete === anexo.id}
+                            onClick={() => setDeleteDialogOpen(anexo.id)}
+                          >
+                            {loadingDelete === anexo.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
                               <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja excluir o arquivo &ldquo;{anexo.nome_arquivo}&rdquo;? Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDelete(anexo.id)}
-                                className="bg-red-500 hover:bg-red-600 text-white"
-                              >
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                            )}
+                          </Button>
+                          
+                          <AlertDialog open={deleteDialogOpen === anexo.id} onOpenChange={(open) => {
+                            if (!open) setDeleteDialogOpen(null);
+                          }}>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o arquivo &ldquo;{anexo.nome_arquivo}&rdquo;? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDelete(anexo.id)}
+                                  className="bg-red-500 hover:bg-red-600 text-white"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
                       )}
                     </div>
                   </div>

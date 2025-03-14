@@ -12,6 +12,8 @@ interface AnexoRow extends RowDataPacket {
   tamanho_bytes: number
   data_upload: string
   usuario_email: string
+  google_drive_id: string
+  google_drive_link: string
 }
 
 export async function GET(request: NextRequest) {
@@ -39,7 +41,9 @@ export async function GET(request: NextRequest) {
         tipo_arquivo,
         tamanho_bytes,
         data_upload,
-        usuario_email
+        usuario_email,
+        google_drive_id,
+        google_drive_link
       FROM u711845530_gestao.anexos 
       WHERE atividade_id = ?
       ORDER BY data_upload DESC`,

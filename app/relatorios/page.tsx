@@ -162,8 +162,8 @@ export default function PlanilhaPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos os status</SelectItem>
-                      {uniqueStatus.map(status => (
-                        <SelectItem key={status} value={status}>
+                      {uniqueStatus.map((status, index) => (
+                        <SelectItem key={`status-${status}-${index}`} value={status}>
                           {status}
                         </SelectItem>
                       ))}
@@ -196,8 +196,8 @@ export default function PlanilhaPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todas as prioridades</SelectItem>
-                      {uniquePrioridades.map(prioridade => (
-                        <SelectItem key={prioridade} value={prioridade}>
+                      {uniquePrioridades.map((prioridade, index) => (
+                        <SelectItem key={`prioridade-${prioridade}-${index}`} value={prioridade}>
                           {prioridade}
                         </SelectItem>
                       ))}
@@ -215,8 +215,8 @@ export default function PlanilhaPage() {
                       <SelectItem value="todos">Todos os projetos</SelectItem>
                       {uniqueProjetos
                         .filter((projeto): projeto is string => projeto !== undefined)
-                        .map(projeto => (
-                          <SelectItem key={projeto} value={projeto}>
+                        .map((projeto, index) => (
+                          <SelectItem key={`projeto-${projeto}-${index}`} value={projeto}>
                             {projeto}
                           </SelectItem>
                         ))}

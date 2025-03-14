@@ -3,10 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { RowDataPacket } from "mysql2";
+import { deleteFileFromDrive } from "@/lib/google-drive";
 
 // Interface para o resultado da consulta
 interface AnexoInfo extends RowDataPacket {
   atividade_id: number;
+  google_drive_id: string;
 }
 
 export async function DELETE(
@@ -22,14 +24,32 @@ export async function DELETE(
     }
     console.log("[Delete] Usuário autenticado:", session.user?.email)
 
+    // Verificar se temos o token de acesso
+    if (!session.accessToken) {
+      console.log("[Delete] Erro: Token de acesso do Google não disponível")
+      return NextResponse.json(
+        { error: "Token de acesso do Google não disponível" },
+        { status: 401 }
+      )
+    }
+
+    // Verificar se há erro no token
+    if (session.error) {
+      console.log(`[Delete] Erro: Erro na autenticação: ${session.error}`)
+      return NextResponse.json(
+        { error: `Erro na autenticação: ${session.error}` },
+        { status: 401 }
+      );
+    }
+
     // Extrair o ID da URL
     const pathParts = request.nextUrl.pathname.split('/');
     const anexoId = pathParts[pathParts.length - 1];
     console.log("[Delete] ID do anexo:", anexoId)
 
-    // Buscar o ID da atividade antes de excluir o anexo
+    // Buscar o ID da atividade e o ID do arquivo no Google Drive antes de excluir o anexo
     const [anexoInfo] = await db.execute<AnexoInfo[]>(
-      "SELECT atividade_id FROM u711845530_gestao.anexos WHERE id = ?",
+      "SELECT atividade_id, google_drive_id FROM u711845530_gestao.anexos WHERE id = ?",
       [anexoId]
     );
     
@@ -39,6 +59,19 @@ export async function DELETE(
     }
     
     const atividadeId = anexoInfo[0].atividade_id;
+    const driveFileId = anexoInfo[0].google_drive_id;
+
+    // Se tiver um ID do Google Drive, excluir o arquivo de lá
+    if (driveFileId) {
+      try {
+        console.log("[Delete] Tentando excluir arquivo do Google Drive:", driveFileId);
+        await deleteFileFromDrive(session.accessToken, driveFileId);
+        console.log("[Delete] Arquivo excluído do Google Drive com sucesso");
+      } catch (driveError) {
+        console.error("[Delete] Erro ao excluir arquivo do Google Drive:", driveError);
+        // Continuamos mesmo se falhar a exclusão no Drive
+      }
+    }
 
     // Excluir do banco de dados
     await db.execute(

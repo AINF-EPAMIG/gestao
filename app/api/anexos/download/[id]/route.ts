@@ -3,12 +3,15 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { RowDataPacket } from "mysql2"
+import { getFileFromDrive } from "@/lib/google-drive"
 
 interface AnexoRow extends RowDataPacket {
   id: number
   nome_arquivo: string
   caminho_arquivo: string
   tipo_arquivo: string
+  google_drive_id: string
+  google_drive_link: string
 }
 
 export async function GET(
@@ -27,6 +30,24 @@ export async function GET(
     if (!session) {
       console.log("Erro: Usuário não autenticado")
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    }
+
+    // Verificar se temos o token de acesso
+    if (!session.accessToken) {
+      console.log("Erro: Token de acesso do Google não disponível")
+      return NextResponse.json(
+        { error: "Token de acesso do Google não disponível" },
+        { status: 401 }
+      )
+    }
+
+    // Verificar se há erro no token
+    if (session.error) {
+      console.log(`Erro: Erro na autenticação: ${session.error}`)
+      return NextResponse.json(
+        { error: `Erro na autenticação: ${session.error}` },
+        { status: 401 }
+      );
     }
 
     // Extrair ID
@@ -58,17 +79,44 @@ export async function GET(
         id: anexo.id,
         nome: anexo.nome_arquivo,
         tipo: anexo.tipo_arquivo,
-        caminho: anexo.caminho_arquivo
+        driveFileId: anexo.google_drive_id
       })
 
-      // Por enquanto, vamos apenas retornar os dados do arquivo
+      // Se temos um ID do Google Drive, baixamos o arquivo de lá
+      if (anexo.google_drive_id) {
+        try {
+          // Obter o arquivo do Google Drive
+          const driveFile = await getFileFromDrive(session.accessToken, anexo.google_drive_id)
+          
+          // Criar uma resposta com o conteúdo do arquivo
+          const response = new NextResponse(driveFile.content)
+          
+          // Definir os cabeçalhos apropriados
+          response.headers.set('Content-Type', anexo.tipo_arquivo)
+          response.headers.set('Content-Disposition', `attachment; filename="${anexo.nome_arquivo}"`)
+          
+          return response
+        } catch (driveError) {
+          console.error("Erro ao obter arquivo do Google Drive:", driveError)
+          
+          // Se falhar o download, redirecionamos para o link de visualização
+          if (anexo.google_drive_link) {
+            return NextResponse.redirect(anexo.google_drive_link)
+          }
+          
+          throw driveError
+        }
+      }
+
+      // Fallback para o método antigo ou retornar apenas os dados
       return NextResponse.json({
-        message: "Arquivo encontrado",
+        message: "Arquivo encontrado, mas não está no Google Drive",
         dados: {
           id: anexo.id,
           nome: anexo.nome_arquivo,
           tipo: anexo.tipo_arquivo,
-          caminho: anexo.caminho_arquivo
+          caminho: anexo.caminho_arquivo,
+          google_drive_link: anexo.google_drive_link
         }
       })
 

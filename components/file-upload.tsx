@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, FileUp } from "lucide-react"
+import { Upload, X, FileUp, Loader2 } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
 
 interface FileUploadProps {
@@ -27,6 +27,7 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false)
   const [localFiles, setLocalFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +101,11 @@ export function FileUpload({
 
       setLocalFiles([])
       
+      // Limpa o input de arquivo para permitir selecionar o mesmo arquivo novamente
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+      
       // Atualiza o timestamp da tarefa no store
       updateTaskTimestamp(taskId)
       
@@ -123,6 +129,11 @@ export function FileUpload({
 
   const handleRemoveFile = (index: number) => {
     setLocalFiles(localFiles.filter((_, i) => i !== index))
+    
+    // Limpa o input de arquivo para permitir selecionar o mesmo arquivo novamente
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   const filesToShow = onFileSelect ? files : localFiles.map(file => ({ id: file.name, file }))
@@ -132,15 +143,19 @@ export function FileUpload({
       <div className="flex items-center gap-4">
         <div className="flex-1">
           <input
+            ref={fileInputRef}
             type="file"
             multiple={false}
             onChange={handleFileSelect}
             className="hidden"
             id="file-upload"
+            disabled={uploading}
+            // Adicionando key para forçar a recriação do componente
+            key={`file-input-${localFiles.length}`}
           />
           <label
             htmlFor="file-upload"
-            className="flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+            className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
           >
             <Upload className="h-5 w-5" />
             Selecionar Arquivo
@@ -155,8 +170,17 @@ export function FileUpload({
             disabled={uploading}
             className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
           >
-            <FileUp className="h-4 w-4" />
-            {uploading ? "Enviando..." : `Enviar ${localFiles.length} ${localFiles.length === 1 ? 'arquivo' : 'arquivos'}`}
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                <FileUp className="h-4 w-4" />
+                {`Enviar ${localFiles.length} ${localFiles.length === 1 ? 'arquivo' : 'arquivos'}`}
+              </>
+            )}
           </Button>
         )}
       </div>

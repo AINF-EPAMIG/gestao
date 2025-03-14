@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Task, getPriorityName } from "@/lib/store"
+import { Task, getPriorityName, getStatusName } from "@/lib/store"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +13,13 @@ interface TaskStackProps {
   tasks: Task[]
   responsavelEmail: string
 }
+
+const statusColors = {
+  "Não iniciada": "border-l-orange-500",
+  "Em desenvolvimento": "border-l-blue-500",
+  "Em testes": "border-l-amber-500",
+  "Concluída": "border-l-emerald-500",
+} as const;
 
 export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
   const [showDetails, setShowDetails] = useState(false)
@@ -50,11 +57,7 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
             >
               <Card
                 className={`p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4 ${
-                  getPriorityName(task.prioridade_id) === "Alta"
-                    ? "border-l-red-500"
-                    : getPriorityName(task.prioridade_id) === "Média"
-                    ? "border-l-yellow-500"
-                    : "border-l-green-500"
+                  statusColors[getStatusName(task.status_id) as keyof typeof statusColors]
                 }`}
                 onClick={() => handleCardClick(task)}
               >
@@ -72,7 +75,9 @@ export function TaskStack({ tasks, responsavelEmail }: TaskStackProps) {
                       {getPriorityName(task.prioridade_id)}
                     </Badge>
                     <Badge variant="outline">
-                      {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+                      {task.projeto_nome 
+                        ? (task.projeto_nome.length > 15 ? `${task.projeto_nome.slice(0, 15)}...` : task.projeto_nome)
+                        : (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
                     </Badge>
                   </div>
                   <h4 className="font-medium truncate" title={task.titulo}>{task.titulo}</h4>

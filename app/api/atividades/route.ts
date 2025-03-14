@@ -321,7 +321,7 @@ export async function PUT(request: NextRequest) {
               data_fim = ?,
               prioridade_id = ?,
               estimativa_horas = ?,
-              ultima_atualizacao = NOW()
+              ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR)
           WHERE id = ?
         `,
         values: [

@@ -24,6 +24,20 @@ const statusMap = {
   "Concluída": 4,
 } as const;
 
+const statusColors = {
+  "Não iniciada": "border-l-orange-500",
+  "Em desenvolvimento": "border-l-blue-500",
+  "Em testes": "border-l-amber-500",
+  "Concluída": "border-l-emerald-500",
+} as const;
+
+const statusTitleColors = {
+  "Não iniciada": "text-orange-700 bg-orange-50 px-2 py-1 rounded",
+  "Em desenvolvimento": "text-blue-700 bg-blue-50 px-2 py-1 rounded",
+  "Em testes": "text-amber-700 bg-amber-50 px-2 py-1 rounded",
+  "Concluída": "text-emerald-700 bg-emerald-50 px-2 py-1 rounded",
+} as const;
+
 const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email?: string }) {
   return (
     <Avatar className="w-8 h-8">
@@ -126,11 +140,7 @@ const TaskCard = memo(function TaskCard({
         className={cn(
           "p-4 space-y-3 border-l-4 cursor-pointer",
           snapshot.isDragging && "dragging-card",
-          getPriorityName(task.prioridade_id) === "Alta"
-            ? "border-l-red-500"
-            : getPriorityName(task.prioridade_id) === "Média"
-            ? "border-l-yellow-500"
-            : "border-l-green-500"
+          statusColors[getStatusName(task.status_id) as keyof typeof statusColors]
         )}
         onClick={() => setShowDetails(true)}
       >
@@ -214,7 +224,7 @@ const TaskCard = memo(function TaskCard({
 // Componente Column extraído e memoizado
 const Column = memo(function Column({
   column,
-  tasks
+  tasks,
 }: {
   column: { id: Status; title: string };
   tasks: Task[];
@@ -222,7 +232,7 @@ const Column = memo(function Column({
   return (
     <div key={column.id} className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">{column.title}</h3>
+        <h3 className={cn("font-medium", statusTitleColors[column.id as keyof typeof statusTitleColors])}>{column.title}</h3>
         <Badge variant="secondary">{tasks.length}</Badge>
       </div>
       <Droppable droppableId={column.id}>

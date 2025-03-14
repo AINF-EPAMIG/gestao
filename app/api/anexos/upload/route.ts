@@ -3,12 +3,29 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { ResultSetHeader } from "mysql2"
+import { uploadFileToDrive } from "@/lib/google-drive"
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    }
+
+    // Verificar se temos o token de acesso
+    if (!session.accessToken) {
+      return NextResponse.json(
+        { error: "Token de acesso do Google não disponível" },
+        { status: 401 }
+      )
+    }
+
+    // Verificar se há erro no token
+    if (session.error) {
+      return NextResponse.json(
+        { error: `Erro na autenticação: ${session.error}` },
+        { status: 401 }
+      );
     }
 
     const formData = await request.formData()
@@ -30,8 +47,16 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        // Gerar nome único para o arquivo
-        const fileName = `${Date.now()}-${file.name}`
+        // Converter o arquivo para buffer
+        const fileBuffer = Buffer.from(await file.arrayBuffer())
+        
+        // Upload para o Google Drive usando o token do usuário
+        const driveFile = await uploadFileToDrive(
+          session.accessToken,
+          fileBuffer,
+          file.name,
+          file.type
+        )
 
         // Salvar informações no banco
         const [result] = await db.execute<ResultSetHeader>(
@@ -41,25 +66,31 @@ export async function POST(request: NextRequest) {
             caminho_arquivo,
             tipo_arquivo,
             tamanho_bytes,
-            usuario_email
-          ) VALUES (?, ?, ?, ?, ?, ?)`,
+            usuario_email,
+            google_drive_id,
+            google_drive_link
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             taskId,
             file.name,
-            fileName,
+            driveFile.name,
             file.type,
             file.size,
-            session.user?.email
+            session.user?.email,
+            driveFile.id,
+            driveFile.webViewLink
           ]
         )
 
         savedFiles.push({
           id: result.insertId,
           nome_arquivo: file.name,
-          caminho_arquivo: fileName,
+          caminho_arquivo: driveFile.name,
           tipo_arquivo: file.type,
           tamanho_bytes: file.size,
           usuario_email: session.user?.email,
+          google_drive_id: driveFile.id,
+          google_drive_link: driveFile.webViewLink,
           data_upload: new Date().toISOString()
         })
       } catch (error) {
