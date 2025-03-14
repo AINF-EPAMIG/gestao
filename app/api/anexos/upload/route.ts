@@ -5,14 +5,6 @@ import { db } from "@/lib/db"
 import { ResultSetHeader } from "mysql2"
 import { uploadFileToDrive } from "@/lib/google-drive"
 
-// Configuração para aumentar o limite de tamanho
-export const config = {
-  api: {
-    bodyParser: false, // Desativando o bodyParser padrão para lidar com arquivos grandes
-    responseLimit: '50mb',
-  },
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -36,7 +28,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Processando o formData com limite aumentado
     const formData = await request.formData()
     const taskId = formData.get("taskId")
     const files = formData.getAll("files")
@@ -48,8 +39,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Upload] Iniciando upload de ${files.length} arquivo(s) para a tarefa ${taskId}`)
-
     const savedFiles = []
 
     for (const file of files) {
@@ -58,12 +47,8 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        console.log(`[Upload] Processando arquivo: ${file.name}, tamanho: ${file.size} bytes`)
-        
         // Converter o arquivo para buffer
         const fileBuffer = Buffer.from(await file.arrayBuffer())
-        
-        console.log(`[Upload] Arquivo convertido para buffer, enviando para o Google Drive`)
         
         // Upload para o Google Drive usando o token do usuário
         const driveFile = await uploadFileToDrive(
@@ -72,8 +57,6 @@ export async function POST(request: NextRequest) {
           file.name,
           file.type
         )
-
-        console.log(`[Upload] Arquivo enviado com sucesso para o Google Drive, ID: ${driveFile.id}`)
 
         // Salvar informações no banco
         const [result] = await db.execute<ResultSetHeader>(
@@ -99,8 +82,6 @@ export async function POST(request: NextRequest) {
           ]
         )
 
-        console.log(`[Upload] Informações do arquivo salvas no banco de dados, ID: ${result.insertId}`)
-
         savedFiles.push({
           id: result.insertId,
           nome_arquivo: file.name,
@@ -115,8 +96,7 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error("Erro ao processar arquivo:", {
           fileName: file.name,
-          error: error instanceof Error ? error.message : 'Erro desconhecido',
-          stack: error instanceof Error ? error.stack : undefined
+          error: error instanceof Error ? error.message : 'Erro desconhecido'
         })
         throw error
       }
@@ -132,18 +112,11 @@ export async function POST(request: NextRequest) {
       [now, taskId]
     );
 
-    console.log(`[Upload] Upload concluído com sucesso para ${savedFiles.length} arquivo(s)`)
     return NextResponse.json(savedFiles)
   } catch (error) {
-    console.error("Erro ao fazer upload:", {
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined
-    })
+    console.error("Erro ao fazer upload:", error)
     return NextResponse.json(
-      { 
-        error: "Erro ao fazer upload",
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: "Erro ao fazer upload" },
       { status: 500 }
     )
   }

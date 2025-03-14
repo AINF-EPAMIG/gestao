@@ -16,6 +16,7 @@ import { FileUpload } from "./file-upload"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
 import { Label } from "@/components/ui/label"
+import { needsProcessing, processLargeFile } from "@/lib/file-utils"
 
 interface Projeto {
   id: number
@@ -234,12 +235,30 @@ export function CreateTaskModal() {
     }
   }, [])
 
-  const handleFileSelect = (files: File[]) => {
-    const newCachedFiles = files.map(file => ({
-      file,
-      id: Math.random().toString(36).substring(7) // ID temporário único
-    }))
-    setCachedFiles(prev => [...prev, ...newCachedFiles])
+  const handleFileSelect = async (files: File[]) => {
+    try {
+      let processedFiles = [...files];
+      
+      // Verifica se algum arquivo precisa ser processado
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (needsProcessing(file)) {
+          // Processa o arquivo grande
+          const result = await processLargeFile(file);
+          // Substitui o arquivo original pelos processados
+          processedFiles = processedFiles.filter(f => f !== file).concat(result.files);
+        }
+      }
+      
+      const newCachedFiles = processedFiles.map(file => ({
+        file,
+        id: Math.random().toString(36).substring(7) // ID temporário único
+      }))
+      setCachedFiles(prev => [...prev, ...newCachedFiles])
+    } catch (error) {
+      console.error("Erro ao processar arquivos:", error);
+      alert("Erro ao processar arquivos grandes. Tente novamente.");
+    }
   }
 
   const handleRemoveFile = (id: string) => {

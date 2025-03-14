@@ -2,9 +2,9 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, FileUp, Loader2, AlertTriangle } from "lucide-react"
+import { Upload, X, FileUp, Loader2, FileArchive, SplitSquareVertical } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
-import { Progress } from "@/components/ui/progress"
+import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE } from "@/lib/file-utils"
 
 interface FileUploadProps {
   taskId?: number
@@ -16,10 +16,13 @@ interface FileUploadProps {
   totalAnexos?: number
 }
 
-// Tamanho máximo do arquivo em bytes (50MB)
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
-// Tamanho do chunk em bytes (5MB)
-const CHUNK_SIZE = 5 * 1024 * 1024;
+// Função para formatar o tamanho do arquivo
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' bytes';
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  else return (bytes / 1073741824).toFixed(1) + ' GB';
+}
 
 export function FileUpload({ 
   taskId, 
@@ -33,14 +36,13 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false)
   const [localFiles, setLocalFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [processing, setProcessing] = useState(false)
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null)
-    setUploadProgress(0)
-    
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files)
       
@@ -58,260 +60,121 @@ export function FileUpload({
         return
       }
 
-      // Verifica o tamanho do arquivo
-      const file = selectedFiles[0]
-      if (file.size > MAX_FILE_SIZE) {
-        setError(`O arquivo é muito grande. O tamanho máximo permitido é ${formatFileSize(MAX_FILE_SIZE)}.`)
-        e.target.value = "" // Limpa a seleção
-        return
-      }
-
-      if (onFileSelect) {
-        onFileSelect(selectedFiles)
-      } else {
-        setLocalFiles(selectedFiles)
-      }
-    }
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
-
-  // Função para fazer upload em chunks
-  const uploadFileInChunks = async (file: File, taskId: string) => {
-    const fileSize = file.size;
-    const fileName = file.name;
-    const fileType = file.type;
-    const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
-    
-    console.log(`[ChunkUpload] Iniciando upload em chunks para ${fileName}`, {
-      fileSize,
-      totalChunks,
-      chunkSize: CHUNK_SIZE,
-      taskId
-    });
-    
-    // Criar um ID de sessão único para este upload
-    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-    
-    try {
-      // Preparar os dados para iniciar a sessão
-      const initData = {
-        fileName,
-        fileType,
-        fileSize,
-        totalChunks,
-        taskId,
-        sessionId
-      };
+      const file = selectedFiles[0];
       
-      console.log("[ChunkUpload] Enviando dados para iniciar sessão:", initData);
-      
-      // Iniciar a sessão de upload
-      const initResponse = await fetch("/api/anexos/upload-init", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(initData),
-      });
-      
-      console.log("[ChunkUpload] Resposta da inicialização:", {
-        status: initResponse.status,
-        statusText: initResponse.statusText
-      });
-      
-      if (!initResponse.ok) {
-        const errorData = await initResponse.json();
-        console.error("[ChunkUpload] Erro ao iniciar upload:", errorData);
-        throw new Error(errorData.error || errorData.details || "Erro ao iniciar upload em chunks");
-      }
-      
-      const initResult = await initResponse.json();
-      console.log("[ChunkUpload] Sessão iniciada com sucesso:", initResult);
-      
-      // Enviar cada chunk
-      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-        const start = chunkIndex * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, fileSize);
-        const chunk = file.slice(start, end);
-        
-        const formData = new FormData();
-        formData.append("chunk", chunk);
-        formData.append("sessionId", sessionId);
-        formData.append("chunkIndex", chunkIndex.toString());
-        formData.append("totalChunks", totalChunks.toString());
-        
-        console.log(`[ChunkUpload] Enviando chunk ${chunkIndex + 1}/${totalChunks}`);
-        
-        const chunkResponse = await fetch("/api/anexos/upload-chunk", {
-          method: "POST",
-          body: formData,
-        });
-        
-        console.log(`[ChunkUpload] Resposta do envio do chunk ${chunkIndex + 1}:`, {
-          status: chunkResponse.status,
-          statusText: chunkResponse.statusText
-        });
-        
-        if (!chunkResponse.ok) {
-          const errorData = await chunkResponse.json();
-          console.error(`[ChunkUpload] Erro ao enviar chunk ${chunkIndex + 1}:`, errorData);
-          throw new Error(errorData.error || errorData.details || `Erro ao enviar chunk ${chunkIndex + 1}/${totalChunks}`);
+      // Verifica se o arquivo precisa ser processado (compactado/dividido)
+      if (needsProcessing(file)) {
+        try {
+          setProcessing(true);
+          setProcessingStatus(`Processando arquivo grande (${formatFileSize(file.size)})...`);
+          
+          // Processa o arquivo grande
+          const result = await processLargeFile(file);
+          
+          if (result.isSplit) {
+            setProcessingStatus(`Arquivo foi compactado e dividido em ${result.files.length} partes`);
+          } else if (result.isCompressed) {
+            setProcessingStatus(`Arquivo foi compactado (${formatFileSize(result.files[0].size)})`);
+          }
+          
+          // Atualiza os arquivos locais com os processados
+          if (onFileSelect) {
+            onFileSelect(result.files);
+          } else {
+            setLocalFiles(result.files);
+          }
+        } catch (error) {
+          console.error("Erro ao processar arquivo:", error);
+          setError("Erro ao processar arquivo grande. Tente novamente.");
+          e.target.value = ""; // Limpa a seleção
+        } finally {
+          setProcessing(false);
         }
-        
-        // Atualizar o progresso
-        const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-        setUploadProgress(progress);
-        
-        console.log(`[ChunkUpload] Chunk ${chunkIndex + 1}/${totalChunks} enviado com sucesso (${progress}%)`);
+      } else {
+        // Arquivo não precisa ser processado, usa normalmente
+        if (onFileSelect) {
+          onFileSelect(selectedFiles);
+        } else {
+          setLocalFiles(selectedFiles);
+        }
       }
-      
-      // Preparar dados para finalizar o upload
-      const completeData = {
-        sessionId,
-        fileName,
-        fileType,
-        fileSize,
-        taskId
-      };
-      
-      console.log("[ChunkUpload] Enviando solicitação para finalizar upload:", completeData);
-      
-      // Finalizar o upload
-      const completeResponse = await fetch("/api/anexos/upload-complete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(completeData),
-      });
-      
-      console.log("[ChunkUpload] Resposta da finalização:", {
-        status: completeResponse.status,
-        statusText: completeResponse.statusText
-      });
-      
-      if (!completeResponse.ok) {
-        const errorData = await completeResponse.json();
-        console.error("[ChunkUpload] Erro ao finalizar upload:", errorData);
-        throw new Error(errorData.error || errorData.details || "Erro ao finalizar upload em chunks");
-      }
-      
-      const result = await completeResponse.json();
-      console.log(`[ChunkUpload] Upload em chunks concluído com sucesso:`, result);
-      
-      return result;
-    } catch (error) {
-      console.error("[ChunkUpload] Erro durante upload em chunks:", error);
-      throw error;
     }
-  };
+  }
 
   const handleUpload = async () => {
     if (localFiles.length === 0 || !taskId) return
 
     setUploading(true)
-    setUploadProgress(0)
-    
-    const file = localFiles[0];
-    console.log("[FileUpload] Iniciando upload de arquivo", {
-      fileName: file.name,
-      fileSize: file.size,
+    console.log("[FileUpload] Iniciando upload de arquivos", {
+      numberOfFiles: localFiles.length,
       taskId
     })
 
+    const formData = new FormData()
+    formData.append("taskId", taskId.toString())
+    
+    localFiles.forEach(file => {
+      console.log("[FileUpload] Adicionando arquivo ao FormData:", {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      })
+      formData.append("files", file)
+    })
+
     try {
-      let result;
+      console.log("[FileUpload] Enviando requisição para o servidor")
+      const response = await fetch("/api/anexos/upload", {
+        method: "POST",
+        body: formData
+      })
+
+      const responseData = await response.json()
       
-      // Verificar se o arquivo é grande o suficiente para usar upload em chunks
-      if (file.size > CHUNK_SIZE) {
-        console.log(`[FileUpload] Arquivo grande (${formatFileSize(file.size)}), usando upload em chunks`);
-        result = await uploadFileInChunks(file, taskId.toString());
-      } else {
-        // Para arquivos pequenos, usar o método tradicional
-        console.log(`[FileUpload] Arquivo pequeno (${formatFileSize(file.size)}), usando upload normal`);
-        setUploadProgress(10);
-        
-        const formData = new FormData();
-        formData.append("taskId", taskId.toString());
-        formData.append("files", file);
-        
-        // Simula progresso durante o upload
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => {
-            const newProgress = prev + 5;
-            return newProgress < 90 ? newProgress : prev;
-          });
-        }, 1000);
-        
-        const response = await fetch("/api/anexos/upload", {
-          method: "POST",
-          body: formData
-        });
-        
-        clearInterval(progressInterval);
-        setUploadProgress(95);
-        
-        const responseData = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(responseData.error || responseData.details || "Erro ao fazer upload do arquivo");
-        }
-        
-        setUploadProgress(100);
-        result = responseData;
+      if (!response.ok) {
+        console.error("[FileUpload] Erro na resposta do servidor:", {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData,
+          details: responseData.details || 'Sem detalhes adicionais'
+        })
+        throw new Error(responseData.error || "Erro ao fazer upload dos arquivos")
       }
 
-      console.log("[FileUpload] Upload concluído com sucesso:", result);
-      setLocalFiles([]);
+      console.log("[FileUpload] Upload concluído com sucesso:", responseData)
+
+      setLocalFiles([])
+      setProcessingStatus(null)
       
       // Limpa o input de arquivo para permitir selecionar o mesmo arquivo novamente
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = ""
       }
       
       // Atualiza o timestamp da tarefa no store
-      updateTaskTimestamp(taskId);
+      updateTaskTimestamp(taskId)
       
       if (onUploadComplete) {
-        onUploadComplete();
+        onUploadComplete()
       }
-      
-      // Reseta o progresso após um tempo
-      setTimeout(() => {
-        setUploadProgress(0);
-      }, 2000);
-      
     } catch (error) {
       console.error("[FileUpload] Erro durante o upload:", {
         error: error instanceof Error ? {
           message: error.message,
           stack: error.stack,
           name: error.name
-        } : error
-      });
-      
-      setUploadProgress(0);
-      
-      // Mensagem de erro mais detalhada
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "Erro ao fazer upload do arquivo. Verifique o tamanho do arquivo e tente novamente.";
-      
-      alert(errorMessage);
+        } : error,
+        type: typeof error
+      })
+      alert(error instanceof Error ? error.message : "Erro ao fazer upload dos arquivos")
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
   }
 
   const handleRemoveFile = (index: number) => {
     setLocalFiles(localFiles.filter((_, i) => i !== index))
+    setProcessingStatus(null)
     
     // Limpa o input de arquivo para permitir selecionar o mesmo arquivo novamente
     if (fileInputRef.current) {
@@ -332,35 +195,31 @@ export function FileUpload({
             onChange={handleFileSelect}
             className="hidden"
             id="file-upload"
-            disabled={uploading}
+            disabled={uploading || processing}
             // Adicionando key para forçar a recriação do componente
             key={`file-input-${localFiles.length}`}
           />
           <label
             htmlFor="file-upload"
-            className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
+            className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${(uploading || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
           >
             <Upload className="h-5 w-5" />
-            Selecionar Arquivo {MAX_FILE_SIZE ? `(máx. ${formatFileSize(MAX_FILE_SIZE)})` : ''}
+            {processing ? 'Processando...' : 'Selecionar Arquivo'}
           </label>
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-500 mt-2">
-              <AlertTriangle className="h-4 w-4" />
-              <p>{error}</p>
-            </div>
+            <p className="text-sm text-red-500 mt-2">{error}</p>
           )}
-          
-          {uploadProgress > 0 && (
-            <div className="mt-2 space-y-1">
-              <Progress value={uploadProgress} className="h-2" />
-              <p className="text-xs text-gray-500 text-right">{uploadProgress}%</p>
-            </div>
+          {processingStatus && (
+            <p className="text-sm text-blue-500 mt-2">{processingStatus}</p>
           )}
+          <p className="text-xs text-gray-500 mt-1">
+            Arquivos maiores que {formatFileSize(MAX_UPLOAD_SIZE)} serão automaticamente compactados ou divididos.
+          </p>
         </div>
         {showUploadButton && localFiles.length > 0 && (
           <Button
             onClick={handleUpload}
-            disabled={uploading}
+            disabled={uploading || processing}
             className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
           >
             {uploading ? (
@@ -388,9 +247,11 @@ export function FileUpload({
               key={id}
               className="flex items-center justify-between py-2 px-3 bg-white rounded-md shadow-sm"
             >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+              <div className="flex items-center gap-2 flex-1 truncate">
+                {file.name.endsWith('.zip') && <FileArchive className="h-4 w-4 text-blue-500" />}
+                {file.name.includes('.part') && <SplitSquareVertical className="h-4 w-4 text-orange-500" />}
+                <span className="text-sm truncate">{file.name}</span>
+                <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
               </div>
               <Button
                 variant="ghost"
