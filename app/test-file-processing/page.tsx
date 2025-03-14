@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE, MAX_CHUNK_SIZE } from "@/lib/file-utils"
+import { AlertTriangle } from "lucide-react"
 
 // Definindo uma interface para o resultado
 interface ProcessingResult {
@@ -38,8 +39,35 @@ export default function TestFileProcessingPage() {
   const [processing, setProcessing] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [processedFiles, setProcessedFiles] = useState<File[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const handleFileSelect = (files: File[]) => {
+    setError(null)
+    
+    if (files.length === 0) return
+    
+    // Verifica se o arquivo é um arquivo compactado
+    const file = files[0]
+    const compressedFormats = [
+      'application/zip', 
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/vnd.rar',
+      'application/x-7z-compressed',
+      'application/gzip',
+      'application/x-tar'
+    ]
+    
+    // Verifica pelo tipo MIME ou pela extensão do arquivo
+    const isCompressedFile = 
+      compressedFormats.includes(file.type) || 
+      /\.(zip|rar|7z|tar|gz|tgz)$/i.test(file.name)
+    
+    if (isCompressedFile) {
+      setError("Não é permitido enviar arquivos compactados (ZIP, RAR, etc.) que podem conter múltiplos arquivos. Por favor, envie os arquivos individualmente.")
+      return
+    }
+    
     setSelectedFiles(files)
     setProcessedFiles([])
     setResult(null)
@@ -165,6 +193,15 @@ export default function TestFileProcessingPage() {
               hover:file:bg-blue-100"
           />
         </div>
+        
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 rounded-md border border-red-200">
+            <p className="text-sm text-red-600 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </p>
+          </div>
+        )}
         
         {selectedFiles.length > 0 && (
           <div className="mb-4 p-4 bg-gray-50 rounded-md">

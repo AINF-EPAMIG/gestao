@@ -237,6 +237,29 @@ export function CreateTaskModal() {
 
   const handleFileSelect = async (files: File[]) => {
     try {
+      // Verifica se algum arquivo é um arquivo compactado
+      const compressedFormats = [
+        'application/zip', 
+        'application/x-zip-compressed',
+        'application/x-rar-compressed',
+        'application/vnd.rar',
+        'application/x-7z-compressed',
+        'application/gzip',
+        'application/x-tar'
+      ];
+      
+      // Verifica cada arquivo
+      for (const file of files) {
+        // Verifica pelo tipo MIME ou pela extensão do arquivo
+        const isCompressedFile = 
+          compressedFormats.includes(file.type) || 
+          /\.(zip|rar|7z|tar|gz|tgz)$/i.test(file.name);
+        
+        if (isCompressedFile) {
+          throw new Error("Não é permitido enviar arquivos compactados (ZIP, RAR, etc.) que podem conter múltiplos arquivos. Por favor, envie os arquivos individualmente.");
+        }
+      }
+      
       let processedFiles = [...files];
       
       // Verifica se algum arquivo precisa ser processado
@@ -257,7 +280,7 @@ export function CreateTaskModal() {
       setCachedFiles(prev => [...prev, ...newCachedFiles])
     } catch (error) {
       console.error("Erro ao processar arquivos:", error);
-      alert("Erro ao processar arquivos grandes. Tente novamente.");
+      alert(error instanceof Error ? error.message : "Erro ao processar arquivos grandes. Tente novamente.");
     }
   }
 

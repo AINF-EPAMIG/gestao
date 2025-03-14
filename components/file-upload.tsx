@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, FileUp, Loader2, FileArchive, SplitSquareVertical } from "lucide-react"
+import { Upload, X, FileUp, Loader2, FileArchive, SplitSquareVertical, AlertTriangle } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
 import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE } from "@/lib/file-utils"
 
@@ -53,6 +53,30 @@ export function FileUpload({
         return
       }
 
+      const file = selectedFiles[0];
+      
+      // Verifica se o arquivo é um arquivo compactado
+      const compressedFormats = [
+        'application/zip', 
+        'application/x-zip-compressed',
+        'application/x-rar-compressed',
+        'application/vnd.rar',
+        'application/x-7z-compressed',
+        'application/gzip',
+        'application/x-tar'
+      ];
+      
+      // Verifica pelo tipo MIME ou pela extensão do arquivo
+      const isCompressedFile = 
+        compressedFormats.includes(file.type) || 
+        /\.(zip|rar|7z|tar|gz|tgz)$/i.test(file.name);
+      
+      if (isCompressedFile) {
+        setError("Não é permitido enviar arquivos compactados (ZIP, RAR, etc.) que podem conter múltiplos arquivos. Por favor, envie os arquivos individualmente.")
+        e.target.value = "" // Limpa a seleção
+        return
+      }
+
       // Verifica se já atingiu o limite de 10 arquivos
       if (totalAnexos >= 10) {
         setError("Limite máximo de 10 arquivos por tarefa atingido")
@@ -60,8 +84,6 @@ export function FileUpload({
         return
       }
 
-      const file = selectedFiles[0];
-      
       // Verifica se o arquivo precisa ser processado (compactado/dividido)
       if (needsProcessing(file)) {
         try {
@@ -207,7 +229,10 @@ export function FileUpload({
             {processing ? 'Processando...' : 'Selecionar Arquivo'}
           </label>
           {error && (
-            <p className="text-sm text-red-500 mt-2">{error}</p>
+            <p className="text-sm text-red-500 mt-2 flex items-start gap-1">
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </p>
           )}
           {processingStatus && (
             <p className="text-sm text-blue-500 mt-2">{processingStatus}</p>

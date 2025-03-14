@@ -15,11 +15,22 @@ Implementamos um sistema de processamento automático de arquivos grandes que:
 3. Se o arquivo compactado ainda for grande demais, divide-o em partes menores (1MB cada)
 4. Envia os arquivos processados para o servidor
 
+## Restrições de Upload
+
+Para garantir o funcionamento adequado do sistema e evitar o envio de múltiplos arquivos de uma vez, as seguintes restrições foram implementadas:
+
+1. **Limite de um arquivo por vez**: Só é permitido selecionar e enviar um arquivo por vez
+2. **Bloqueio de arquivos compactados**: Arquivos ZIP, RAR, 7Z e outros formatos compactados são bloqueados, pois podem conter múltiplos arquivos
+3. **Limite de 10 anexos por tarefa**: Cada tarefa pode ter no máximo 10 arquivos anexados
+
 ## Como funciona
 
 ### Fluxo de processamento
 
-1. Quando um usuário seleciona um arquivo para upload, o sistema verifica seu tamanho
+1. Quando um usuário seleciona um arquivo para upload, o sistema verifica:
+   - Se é apenas um arquivo
+   - Se não é um arquivo compactado (ZIP, RAR, etc.)
+   - Se não excede o limite de anexos por tarefa
 2. Se o arquivo for maior que o limite (10MB), ele é processado automaticamente:
    - Primeiro, o arquivo é compactado usando JSZip
    - Se o arquivo compactado ainda for maior que o limite, ele é dividido em partes menores
@@ -36,6 +47,7 @@ Implementamos um sistema de processamento automático de arquivos grandes que:
 
 - **Tamanho máximo para upload direto**: 10MB
 - **Tamanho máximo para cada parte**: 1MB
+- **Formatos de arquivo compactado bloqueados**: ZIP, RAR, 7Z, TAR, GZ, TGZ
 
 ## Testes
 
@@ -50,6 +62,7 @@ Foi criada uma página de teste em `/test-file-processing` que permite:
 
 - Arquivos divididos são enviados como partes separadas e não são automaticamente reunidos no download
 - A compactação funciona melhor para certos tipos de arquivos (texto, documentos) do que para outros (imagens, vídeos)
+- Arquivos compactados não podem ser enviados, mesmo que contenham apenas um arquivo
 
 ## Dependências
 
