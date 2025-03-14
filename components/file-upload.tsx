@@ -208,64 +208,78 @@ export function FileUpload({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple={false}
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-upload"
-            disabled={uploading || processing}
-            // Adicionando key para forçar a recriação do componente
-            key={`file-input-${localFiles.length}`}
-          />
-          <label
-            htmlFor="file-upload"
-            className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${(uploading || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
-          >
-            <Upload className="h-5 w-5" />
-            {processing ? 'Processando...' : 'Selecionar Arquivo'}
-          </label>
+      {/* Área de seleção de arquivo e botão de upload */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple={false}
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-upload"
+              disabled={uploading || processing}
+              // Adicionando key para forçar a recriação do componente
+              key={`file-input-${localFiles.length}`}
+            />
+            <label
+              htmlFor="file-upload"
+              className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${(uploading || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
+            >
+              <Upload className="h-5 w-5" />
+              {processing ? 'Processando...' : 'Selecionar Arquivo'}
+            </label>
+          </div>
+          
+          {showUploadButton && localFiles.length > 0 && (
+            <Button
+              onClick={handleUpload}
+              disabled={uploading || processing}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 whitespace-nowrap h-[46px]"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <FileUp className="h-4 w-4" />
+                  {`Enviar ${localFiles.length} ${localFiles.length === 1 ? 'arquivo' : 'arquivos'}`}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+        
+        {/* Área de mensagens e informações */}
+        <div className="space-y-2">
           {error && (
-            <p className="text-sm text-red-500 mt-2 flex items-start gap-1">
+            <p className="text-sm text-red-500 flex items-start gap-1">
               <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </p>
           )}
+          
           {processingStatus && (
-            <p className="text-sm text-blue-500 mt-2">{processingStatus}</p>
+            <p className="text-sm text-blue-500">{processingStatus}</p>
           )}
-          <p className="text-xs text-gray-500 mt-1">
+          
+          <p className="text-xs text-gray-500">
             Arquivos maiores que {formatFileSize(MAX_UPLOAD_SIZE)} serão automaticamente compactados ou divididos.
           </p>
         </div>
-        {showUploadButton && localFiles.length > 0 && (
-          <Button
-            onClick={handleUpload}
-            disabled={uploading || processing}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              <>
-                <FileUp className="h-4 w-4" />
-                {`Enviar ${localFiles.length} ${localFiles.length === 1 ? 'arquivo' : 'arquivos'}`}
-              </>
-            )}
-          </Button>
-        )}
       </div>
 
+      {/* Lista de arquivos selecionados */}
       {filesToShow.length > 0 && (
         <div className="space-y-2 bg-gray-50 rounded-lg p-3">
-          <div className="text-sm font-medium text-gray-700 mb-2">
-            Arquivos selecionados:
+          <div className="text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+            <span>Arquivos selecionados:</span>
+            <span className="text-xs text-gray-500">
+              {filesToShow.length} {filesToShow.length === 1 ? 'arquivo' : 'arquivos'}
+            </span>
           </div>
           {filesToShow.map(({ id, file }) => (
             <div
@@ -273,10 +287,20 @@ export function FileUpload({
               className="flex items-center justify-between py-2 px-3 bg-white rounded-md shadow-sm"
             >
               <div className="flex items-center gap-2 flex-1 truncate">
-                {file.name.endsWith('.zip') && <FileArchive className="h-4 w-4 text-blue-500" />}
-                {file.name.includes('.part') && <SplitSquareVertical className="h-4 w-4 text-orange-500" />}
+                {file.name.endsWith('.zip') && (
+                  <div className="flex items-center gap-1">
+                    <FileArchive className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs text-blue-500 whitespace-nowrap">(Compactado)</span>
+                  </div>
+                )}
+                {file.name.includes('.part') && (
+                  <div className="flex items-center gap-1">
+                    <SplitSquareVertical className="h-4 w-4 text-orange-500" />
+                    <span className="text-xs text-orange-500 whitespace-nowrap">(Parte)</span>
+                  </div>
+                )}
                 <span className="text-sm truncate">{file.name}</span>
-                <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">({formatFileSize(file.size)})</span>
               </div>
               <Button
                 variant="ghost"

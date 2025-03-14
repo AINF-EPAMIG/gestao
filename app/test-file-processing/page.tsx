@@ -181,30 +181,54 @@ export default function TestFileProcessingPage() {
       
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Selecionar Arquivo</h2>
-        <div className="mb-4">
-          <input 
-            type="file" 
-            onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-md file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100"
-          />
+        
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <input 
+                type="file" 
+                onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleProcessFile} 
+                disabled={selectedFiles.length === 0 || processing}
+                className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap h-[42px]"
+              >
+                {processing ? "Processando..." : "Processar Arquivo"}
+              </Button>
+              
+              <Button 
+                onClick={handleTestUpload} 
+                disabled={selectedFiles.length === 0 || processing}
+                variant="outline"
+                className="whitespace-nowrap h-[42px]"
+              >
+                Testar Upload
+              </Button>
+            </div>
+          </div>
+          
+          {error && (
+            <div className="p-4 bg-red-50 rounded-md border border-red-200">
+              <p className="text-sm text-red-600 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </p>
+            </div>
+          )}
         </div>
         
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 rounded-md border border-red-200">
-            <p className="text-sm text-red-600 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
-            </p>
-          </div>
-        )}
-        
         {selectedFiles.length > 0 && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-md">
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
             <p className="font-medium">Arquivo selecionado:</p>
             <p>{selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})</p>
             <p className="text-sm text-gray-500">Tipo: {selectedFiles[0].type || "Desconhecido"}</p>
@@ -215,24 +239,6 @@ export default function TestFileProcessingPage() {
             </p>
           </div>
         )}
-        
-        <div className="flex flex-wrap gap-3">
-          <Button 
-            onClick={handleProcessFile} 
-            disabled={selectedFiles.length === 0 || processing}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {processing ? "Processando..." : "Processar Arquivo"}
-          </Button>
-          
-          <Button 
-            onClick={handleTestUpload} 
-            disabled={selectedFiles.length === 0 || processing}
-            variant="outline"
-          >
-            Testar Upload
-          </Button>
-        </div>
       </div>
       
       {processedFiles.length > 0 && (

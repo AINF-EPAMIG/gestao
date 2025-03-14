@@ -1164,6 +1164,15 @@ export function CreateTaskModal() {
                         showUploadButton={false}
                         totalAnexos={cachedFiles.length}
                       />
+                      
+                      {cachedFiles.length > 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+                          <p className="text-sm text-blue-700 flex items-start gap-2">
+                            <span className="flex-shrink-0">ℹ️</span>
+                            <span>Os arquivos serão enviados automaticamente quando a tarefa for criada.</span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                 </div>
