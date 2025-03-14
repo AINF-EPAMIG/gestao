@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Upload, X, FileUp, Loader2, FileArchive, AlertTriangle } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
-import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE } from "@/lib/file-utils"
+import { needsProcessing, processLargeFile } from "@/lib/file-utils"
 
 interface FileUploadProps {
   taskId?: number
@@ -264,7 +264,7 @@ export function FileUpload({
           )}
           
           <p className="text-xs text-gray-500">
-            Arquivos maiores que {formatFileSize(MAX_UPLOAD_SIZE)} serão automaticamente compactados.
+            Alguns arquivos podem ser automaticamente compactados.
           </p>
         </div>
       </div>

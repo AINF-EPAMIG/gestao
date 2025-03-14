@@ -3,6 +3,9 @@ import JSZip from 'jszip';
 // Tamanho máximo para upload direto (em bytes) - 10MB
 export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 
+// Tamanho máximo para arquivos compactados (em bytes) - 30MB
+export const MAX_COMPRESSED_SIZE = 30 * 1024 * 1024;
+
 /**
  * Verifica se um arquivo precisa ser processado (compactado)
  */
@@ -56,8 +59,8 @@ export async function processLargeFile(file: File): Promise<{
     // Compacta o arquivo
     const compressedFile = await compressFile(file);
     
-    // Se o arquivo compactado for menor que o limite, retorna ele
-    if (compressedFile.size <= MAX_UPLOAD_SIZE) {
+    // Se o arquivo compactado for menor que o limite para arquivos compactados, retorna ele
+    if (compressedFile.size <= MAX_COMPRESSED_SIZE) {
       return {
         files: [compressedFile],
         isCompressed: true,
@@ -66,7 +69,7 @@ export async function processLargeFile(file: File): Promise<{
     }
     
     // Se ainda estiver acima do limite, retorna um erro
-    throw new Error(`Mesmo após a compactação, o arquivo ainda é muito grande (${formatFileSize(compressedFile.size)}). O tamanho máximo permitido é ${formatFileSize(MAX_UPLOAD_SIZE)}.`);
+    throw new Error(`Mesmo após a compactação, o arquivo ainda é muito grande (${formatFileSize(compressedFile.size)}). O tamanho máximo permitido para arquivos compactados é ${formatFileSize(MAX_COMPRESSED_SIZE)}.`);
   } catch (error) {
     console.error('Erro ao processar arquivo grande:', error);
     throw error; // Propaga o erro para ser tratado pelo componente
