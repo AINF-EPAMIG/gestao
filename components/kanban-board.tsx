@@ -25,16 +25,16 @@ const statusMap = {
 } as const;
 
 const statusColors = {
-  "Não iniciada": "border-l-orange-500",
+  "Não iniciada": "border-l-red-500",
   "Em desenvolvimento": "border-l-blue-500",
-  "Em testes": "border-l-amber-500",
+  "Em testes": "border-l-yellow-400",
   "Concluída": "border-l-emerald-500",
 } as const;
 
 const statusTitleColors = {
-  "Não iniciada": "text-orange-700 bg-orange-50 px-2 py-1 rounded",
+  "Não iniciada": "text-red-700 bg-red-50 px-2 py-1 rounded",
   "Em desenvolvimento": "text-blue-700 bg-blue-50 px-2 py-1 rounded",
-  "Em testes": "text-amber-700 bg-amber-50 px-2 py-1 rounded",
+  "Em testes": "text-yellow-700 bg-yellow-50 px-2 py-1 rounded",
   "Concluída": "text-emerald-700 bg-emerald-50 px-2 py-1 rounded",
 } as const;
 

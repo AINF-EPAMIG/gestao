@@ -25,9 +25,9 @@ interface ResponsavelRM {
 
 const STATUS_COLORS = {
   Desenvolvimento: "bg-blue-500",
-  "Não iniciada": "bg-orange-500",
+  "Não iniciada": "bg-red-500",
   Concluída: "bg-emerald-500",
-  "Em testes": "bg-amber-500",
+  "Em testes": "bg-yellow-400",
 } as const
 
 function formatStatusName(statusId: number): string {

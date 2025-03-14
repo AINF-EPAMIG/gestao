@@ -6,9 +6,9 @@ import { Loader2 } from "lucide-react"
 
 const COLORS = {
   "Em desenvolvimento": "#3b82f6",
-  "Não iniciada": "#f97316",
+  "Não iniciada": "#ef4444",
   Concluída: "#10b981",
-  "Em testes": "#fbbf24",
+  "Em testes": "#facc15",
 }
 
 const RADIAN = Math.PI / 180

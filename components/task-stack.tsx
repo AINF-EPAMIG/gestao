@@ -15,9 +15,9 @@ interface TaskStackProps {
 }
 
 const statusColors = {
-  "Não iniciada": "border-l-orange-500",
+  "Não iniciada": "border-l-red-500",
   "Em desenvolvimento": "border-l-blue-500",
-  "Em testes": "border-l-amber-500",
+  "Em testes": "border-l-yellow-400",
   "Concluída": "border-l-emerald-500",
 } as const;
 

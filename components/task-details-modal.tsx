@@ -612,8 +612,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             : getStatusName(task.status_id) === "Em desenvolvimento"
                             ? "bg-blue-500"
                             : getStatusName(task.status_id) === "Em testes"
-                            ? "bg-amber-500"
-                            : "bg-orange-500"
+                            ? "bg-yellow-400"
+                            : "bg-red-500"
                         }
                       >
                         {getStatusName(task.status_id)}
