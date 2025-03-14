@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { MAX_UPLOAD_SIZE, MAX_CHUNK_SIZE } from "@/lib/file-utils";
+import { MAX_UPLOAD_SIZE } from "@/lib/file-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,8 +30,6 @@ export async function POST(request: NextRequest) {
       needsProcessing: file.size > MAX_UPLOAD_SIZE,
       maxUploadSize: MAX_UPLOAD_SIZE,
       maxUploadSizeFormatted: formatFileSize(MAX_UPLOAD_SIZE),
-      maxChunkSize: MAX_CHUNK_SIZE,
-      maxChunkSizeFormatted: formatFileSize(MAX_CHUNK_SIZE),
     };
 
     return NextResponse.json({

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, X, FileUp, Loader2, FileArchive, SplitSquareVertical, AlertTriangle } from "lucide-react"
+import { Upload, X, FileUp, Loader2, FileArchive, AlertTriangle } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
 import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE } from "@/lib/file-utils"
 
@@ -84,7 +84,7 @@ export function FileUpload({
         return
       }
 
-      // Verifica se o arquivo precisa ser processado (compactado/dividido)
+      // Verifica se o arquivo precisa ser processado (compactado)
       if (needsProcessing(file)) {
         try {
           setProcessing(true);
@@ -93,11 +93,8 @@ export function FileUpload({
           // Processa o arquivo grande
           const result = await processLargeFile(file);
           
-          if (result.isSplit) {
-            setProcessingStatus(`Arquivo foi compactado e dividido em ${result.files.length} partes`);
-          } else if (result.isCompressed) {
-            setProcessingStatus(`Arquivo foi compactado (${formatFileSize(result.files[0].size)})`);
-          }
+          // Agora só temos a opção de compactação
+          setProcessingStatus(`Arquivo foi compactado (${formatFileSize(result.files[0].size)})`);
           
           // Atualiza os arquivos locais com os processados
           if (onFileSelect) {
@@ -107,7 +104,7 @@ export function FileUpload({
           }
         } catch (error) {
           console.error("Erro ao processar arquivo:", error);
-          setError("Erro ao processar arquivo grande. Tente novamente.");
+          setError(error instanceof Error ? error.message : "Erro ao processar arquivo grande. Tente novamente.");
           e.target.value = ""; // Limpa a seleção
         } finally {
           setProcessing(false);
@@ -267,7 +264,7 @@ export function FileUpload({
           )}
           
           <p className="text-xs text-gray-500">
-            Arquivos maiores que {formatFileSize(MAX_UPLOAD_SIZE)} serão automaticamente compactados ou divididos.
+            Arquivos maiores que {formatFileSize(MAX_UPLOAD_SIZE)} serão automaticamente compactados.
           </p>
         </div>
       </div>
@@ -291,12 +288,6 @@ export function FileUpload({
                   <div className="flex items-center gap-1">
                     <FileArchive className="h-4 w-4 text-blue-500" />
                     <span className="text-xs text-blue-500 whitespace-nowrap">(Compactado)</span>
-                  </div>
-                )}
-                {file.name.includes('.part') && (
-                  <div className="flex items-center gap-1">
-                    <SplitSquareVertical className="h-4 w-4 text-orange-500" />
-                    <span className="text-xs text-orange-500 whitespace-nowrap">(Parte)</span>
                   </div>
                 )}
                 <span className="text-sm truncate">{file.name}</span>

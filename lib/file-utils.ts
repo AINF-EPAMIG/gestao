@@ -3,11 +3,8 @@ import JSZip from 'jszip';
 // Tamanho máximo para upload direto (em bytes) - 10MB
 export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 
-// Tamanho máximo para cada parte de arquivo dividido (em bytes) - 1MB
-export const MAX_CHUNK_SIZE = 1 * 1024 * 1024;
-
 /**
- * Verifica se um arquivo precisa ser processado (compactado ou dividido)
+ * Verifica se um arquivo precisa ser processado (compactado)
  */
 export function needsProcessing(file: File): boolean {
   return file.size > MAX_UPLOAD_SIZE;
@@ -47,39 +44,8 @@ export async function compressFile(file: File): Promise<File> {
 }
 
 /**
- * Divide um arquivo em partes menores
- */
-export async function splitFile(file: File): Promise<File[]> {
-  try {
-    const fileBuffer = await file.arrayBuffer();
-    const totalChunks = Math.ceil(fileBuffer.byteLength / MAX_CHUNK_SIZE);
-    const chunks: File[] = [];
-    
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * MAX_CHUNK_SIZE;
-      const end = Math.min(start + MAX_CHUNK_SIZE, fileBuffer.byteLength);
-      const chunk = fileBuffer.slice(start, end);
-      
-      // Cria um arquivo para cada parte
-      const chunkFile = new File(
-        [chunk], 
-        `${file.name}.part${i + 1}of${totalChunks}`, 
-        { type: file.type }
-      );
-      
-      chunks.push(chunkFile);
-    }
-    
-    return chunks;
-  } catch (error) {
-    console.error('Erro ao dividir arquivo:', error);
-    throw new Error('Falha ao dividir o arquivo');
-  }
-}
-
-/**
- * Processa um arquivo grande, tentando primeiro compactar
- * Se ainda estiver acima do limite, divide em partes
+ * Processa um arquivo grande, apenas compactando-o
+ * Se o arquivo compactado ainda for maior que o limite, retorna um erro
  */
 export async function processLargeFile(file: File): Promise<{
   files: File[],
@@ -87,7 +53,7 @@ export async function processLargeFile(file: File): Promise<{
   isSplit: boolean
 }> {
   try {
-    // Primeiro tenta compactar
+    // Compacta o arquivo
     const compressedFile = await compressFile(file);
     
     // Se o arquivo compactado for menor que o limite, retorna ele
@@ -99,16 +65,18 @@ export async function processLargeFile(file: File): Promise<{
       };
     }
     
-    // Se ainda estiver acima do limite, divide o arquivo compactado
-    const splitFiles = await splitFile(compressedFile);
-    
-    return {
-      files: splitFiles,
-      isCompressed: true,
-      isSplit: true
-    };
+    // Se ainda estiver acima do limite, retorna um erro
+    throw new Error(`Mesmo após a compactação, o arquivo ainda é muito grande (${formatFileSize(compressedFile.size)}). O tamanho máximo permitido é ${formatFileSize(MAX_UPLOAD_SIZE)}.`);
   } catch (error) {
     console.error('Erro ao processar arquivo grande:', error);
-    throw new Error('Falha ao processar o arquivo grande');
+    throw error; // Propaga o erro para ser tratado pelo componente
   }
+}
+
+// Função auxiliar para formatar o tamanho do arquivo
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' bytes';
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  else return (bytes / 1073741824).toFixed(1) + ' GB';
 } 

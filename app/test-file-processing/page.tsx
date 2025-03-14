@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE, MAX_CHUNK_SIZE } from "@/lib/file-utils"
+import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE } from "@/lib/file-utils"
 import { AlertTriangle } from "lucide-react"
 
 // Definindo uma interface para o resultado
@@ -82,29 +82,34 @@ export default function TestFileProcessingPage() {
       
       // Verifica se o arquivo precisa ser processado
       if (needsProcessing(file)) {
-        const result = await processLargeFile(file)
-        setProcessedFiles(result.files)
-        setResult({
-          originalFile: {
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            sizeFormatted: formatFileSize(file.size)
-          },
-          processedFiles: result.files.map(f => ({
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            sizeFormatted: formatFileSize(f.size)
-          })),
-          isCompressed: result.isCompressed,
-          isSplit: result.isSplit,
-          compressionRatio: result.isCompressed ? 
-            (file.size / (result.isSplit ? 
-              result.files.reduce((acc, f) => acc + f.size, 0) : 
-              result.files[0].size)).toFixed(2) : 
-            "N/A"
-        })
+        try {
+          const result = await processLargeFile(file)
+          setProcessedFiles(result.files)
+          setResult({
+            originalFile: {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              sizeFormatted: formatFileSize(file.size)
+            },
+            processedFiles: result.files.map(f => ({
+              name: f.name,
+              size: f.size,
+              type: f.type,
+              sizeFormatted: formatFileSize(f.size)
+            })),
+            isCompressed: result.isCompressed,
+            isSplit: result.isSplit,
+            compressionRatio: result.isCompressed ? 
+              (file.size / result.files[0].size).toFixed(2) : 
+              "N/A"
+          })
+        } catch (error) {
+          setResult({
+            error: error instanceof Error ? error.message : "Erro ao processar arquivo",
+            details: "O arquivo não pôde ser processado adequadamente."
+          })
+        }
       } else {
         setResult({
           message: "O arquivo não precisa ser processado (tamanho menor que o limite)",
@@ -167,14 +172,10 @@ export default function TestFileProcessingPage() {
       
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Configurações</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <div className="p-4 border rounded-md">
             <p className="font-medium">Tamanho máximo para upload direto:</p>
             <p className="text-lg">{formatFileSize(MAX_UPLOAD_SIZE)}</p>
-          </div>
-          <div className="p-4 border rounded-md">
-            <p className="font-medium">Tamanho máximo de cada parte:</p>
-            <p className="text-lg">{formatFileSize(MAX_CHUNK_SIZE)}</p>
           </div>
         </div>
       </div>
@@ -234,7 +235,7 @@ export default function TestFileProcessingPage() {
             <p className="text-sm text-gray-500">Tipo: {selectedFiles[0].type || "Desconhecido"}</p>
             <p className="text-sm text-gray-500">
               Status: {selectedFiles[0].size > MAX_UPLOAD_SIZE ? 
-                "Precisa ser processado (compactado/dividido)" : 
+                "Precisa ser compactado" : 
                 "Não precisa ser processado"}
             </p>
           </div>

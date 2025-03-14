@@ -266,10 +266,15 @@ export function CreateTaskModal() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (needsProcessing(file)) {
-          // Processa o arquivo grande
-          const result = await processLargeFile(file);
-          // Substitui o arquivo original pelos processados
-          processedFiles = processedFiles.filter(f => f !== file).concat(result.files);
+          try {
+            // Processa o arquivo grande (apenas compactação)
+            const result = await processLargeFile(file);
+            // Substitui o arquivo original pelo compactado
+            processedFiles = processedFiles.filter(f => f !== file).concat(result.files);
+          } catch (error) {
+            // Se houver erro na compactação, propaga o erro
+            throw error;
+          }
         }
       }
       
