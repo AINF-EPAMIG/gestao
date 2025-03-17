@@ -112,17 +112,15 @@ export function CreateTaskModal() {
             if (isUserChefeResult || admin) {
               const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
               if (responsaveisData) {
-                // Filtrar para remover o responsável sem email
-                const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
-                setResponsaveis(responsaveisFiltrados);
+                // Usar todos os responsáveis sem filtrar
+                setResponsaveis(responsaveisData);
               }
             } else {
               // Para usuários comuns, buscar todos os responsáveis do setor e auto atribuir
               const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
               if (responsaveisData) {
-                // Filtrar para remover o responsável sem email
-                const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
-                setResponsaveis(responsaveisFiltrados);
+                // Usar todos os responsáveis sem filtrar
+                setResponsaveis(responsaveisData);
 
                 // Pré-seleciona o próprio usuário como responsável apenas para usuários comuns
                 if (session?.user?.email) {
@@ -133,12 +131,12 @@ export function CreateTaskModal() {
                   };
                   
                   // Verifica se o usuário já não está na lista antes de adicionar
-                  if (!responsaveisFiltrados.some(r => r.EMAIL === userResponsavel.EMAIL)) {
+                  if (!responsaveisData.some(r => r.EMAIL === userResponsavel.EMAIL)) {
                     setResponsaveis(prev => [userResponsavel, ...prev]);
                     setSelectedResponsaveis([userResponsavel]);
                   } else {
                     // Se o usuário já estiver na lista, apenas seleciona ele
-                    setSelectedResponsaveis([responsaveisFiltrados.find(r => r.EMAIL === userResponsavel.EMAIL)!]);
+                    setSelectedResponsaveis([responsaveisData.find(r => r.EMAIL === userResponsavel.EMAIL)!]);
                   }
                 }
               }
@@ -173,9 +171,8 @@ export function CreateTaskModal() {
         try {
           const responsaveisData = await getResponsaveisBySetor(selectedSetor);
           if (responsaveisData) {
-            // Filtrar para remover o responsável sem email
-            const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
-            setResponsaveis(responsaveisFiltrados);
+            // Usar todos os responsáveis sem filtrar
+            setResponsaveis(responsaveisData);
           }
         } catch (error) {
           console.error('Erro ao carregar responsáveis:', error);

@@ -17,6 +17,7 @@ import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } f
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { usePolling } from "./polling-wrapper"
 
 interface TaskResponsavel {
   id: number;
@@ -76,6 +77,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [isFading, setIsFading] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  // Estado local para armazenar a tarefa em edição
+  const [localTask, setLocalTask] = useState<Task>(task)
   const [titulo, setTitulo] = useState(task.titulo)
   const [descricao, setDescricao] = useState(task.descricao || "")
   const [prioridade, setPrioridade] = useState(task.prioridade_id.toString())
@@ -94,6 +97,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [comentarioEditando, setComentarioEditando] = useState<number | null>(null)
   const [textoEditando, setTextoEditando] = useState("")
+  // Acesso ao contexto de polling
+  const { pausePolling, resumePolling } = usePolling()
   // Definindo o limite máximo de caracteres
   const MAX_TITLE_LENGTH = 40
   const MAX_DESCRIPTION_LENGTH = 500
@@ -163,9 +168,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             // Buscar responsáveis do setor
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
             if (responsaveisData) {
-              // Filtrar para remover o responsável sem email
-              const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
-              setResponsaveis(responsaveisFiltrados);
+              // Usar todos os responsáveis sem filtrar
+              setResponsaveis(responsaveisData);
             }
           }
         } catch (error) {
@@ -179,9 +183,39 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
   }, [session?.user?.email, task.responsaveis, open]);
 
-  // Inicializar responsáveis selecionados apenas quando o modal for aberto ou a tarefa mudar
+  // Controlar o polling com base no estado de edição
   useEffect(() => {
-    if (open && task.responsaveis) {
+    if (isEditing) {
+      // Pausar o polling quando entrar no modo de edição
+      pausePolling();
+    } else {
+      // Retomar o polling quando sair do modo de edição
+      resumePolling();
+    }
+    
+    // Garantir que o polling seja retomado quando o componente for desmontado
+    return () => {
+      resumePolling();
+    };
+  }, [isEditing, pausePolling, resumePolling]);
+
+  // Atualizar o estado local da tarefa apenas quando o modal for aberto ou quando a tarefa mudar e não estiver em modo de edição
+  useEffect(() => {
+    if (open && !isEditing) {
+      setLocalTask(task);
+      setTitulo(task.titulo);
+      setDescricao(task.descricao || "");
+      setPrioridade(task.prioridade_id.toString());
+      setEstimativaHoras(task.estimativa_horas || "");
+      setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
+      setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
+      setProjetoId(task.projeto_id?.toString() || "");
+    }
+  }, [open, task, isEditing]);
+
+  // Inicializar responsáveis selecionados apenas quando o modal for aberto ou a tarefa mudar e não estiver em modo de edição
+  useEffect(() => {
+    if (open && task.responsaveis && !isEditing) {
       setSelectedResponsaveis(
         task.responsaveis.map(r => ({
           EMAIL: r.email,
@@ -190,7 +224,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
         })) || []
       );
     }
-  }, [open, task.id, task.responsaveis]);
+  }, [open, task.id, task.responsaveis, isEditing]);
 
   useEffect(() => {
     // Carregar projetos do banco
@@ -222,9 +256,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           if (userInfo?.SECAO) {
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
             if (responsaveisData) {
-              // Filtrar para remover o responsável sem email
-              const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
-              setResponsaveis(responsaveisFiltrados);
+              // Usar todos os responsáveis sem filtrar
+              setResponsaveis(responsaveisData);
             }
           }
         } catch (error) {
@@ -364,6 +397,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       setIsSaving(false);
       setIsFading(false);
       setShowLoading(false);
+      // Retomar o polling após salvar
+      resumePolling();
     }
   };
 
@@ -499,7 +534,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Quando o modal for fechado, garantir que o polling seja retomado
+      if (!newOpen && isEditing) {
+        setIsEditing(false);
+        resumePolling();
+      }
+      onOpenChange(newOpen);
+    }}>
       <DialogContent className={cn(
         "sm:max-w-[600px] h-[85vh] p-0 flex flex-col overflow-hidden",
         (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
@@ -519,7 +561,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    // Ao entrar no modo de edição, garantimos que estamos usando os dados locais
+                    setLocalTask(task);
+                    setIsEditing(true);
+                  }}
                   className="h-9 w-9 p-0"
                 >
                   <Edit2 className="h-[18px] w-[18px] text-gray-500" />
@@ -572,7 +618,27 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    // Restaurar os dados originais da tarefa
+                    setLocalTask(task);
+                    setTitulo(task.titulo);
+                    setDescricao(task.descricao || "");
+                    setPrioridade(task.prioridade_id.toString());
+                    setEstimativaHoras(task.estimativa_horas || "");
+                    setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
+                    setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
+                    setProjetoId(task.projeto_id?.toString() || "");
+                    setSelectedResponsaveis(
+                      task.responsaveis?.map(r => ({
+                        EMAIL: r.email,
+                        NOME: r.nome || r.email.split('@')[0],
+                        CARGO: r.cargo
+                      })) || []
+                    );
+                    // Retomar o polling
+                    resumePolling();
+                  }}
                   disabled={isSaving}
                   className="h-9 w-9 p-0"
                 >
@@ -730,7 +796,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           </>
                         ) : (
                           <div className="text-sm mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
-                            {task.descricao || "-"}
+                            {localTask.descricao || "-"}
                           </div>
                         )}
                       </div>
@@ -748,7 +814,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             className="h-8"
                           />
                         ) : (
-                          <div className="text-sm">{formatDate(task.data_inicio)}</div>
+                          <div className="text-sm">{formatDate(localTask.data_inicio)}</div>
                         )}
                       </div>
 
@@ -762,7 +828,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             className="h-8"
                           />
                         ) : (
-                          <div className="text-sm">{formatDate(task.data_fim)}</div>
+                          <div className="text-sm">{formatDate(localTask.data_fim)}</div>
                         )}
                       </div>
 
@@ -789,7 +855,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             </p>
                           </div>
                         ) : (
-                          <div className="text-sm">{formatEstimativa(task.estimativa_horas)}</div>
+                          <div className="text-sm">{formatEstimativa(localTask.estimativa_horas)}</div>
                         )}
                       </div>
                     </div>
