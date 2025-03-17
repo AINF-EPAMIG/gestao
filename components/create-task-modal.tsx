@@ -54,11 +54,12 @@ export function CreateTaskModal() {
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState("")
+  const [estimativaHoras, setEstimativaHoras] = useState("8")
+  const [modoPersonalizado, setModoPersonalizado] = useState(false)
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const [isChefe, setIsChefe] = useState<boolean>(false)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
-  const [setores, setSetores] = useState<Setor[]>([])
   const [selectedSetor, setSelectedSetor] = useState<string>("")
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
@@ -66,9 +67,6 @@ export function CreateTaskModal() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
-  const [setorInput, setSetorInput] = useState("")
-  const [showSetorSuggestions, setShowSetorSuggestions] = useState(false)
-  const setorRef = useRef<HTMLInputElement>(null)
   const responsavelRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("detalhes")
   const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
@@ -87,6 +85,7 @@ export function CreateTaskModal() {
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loadingTasks, setLoadingTasks] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedReleaseTask, setSelectedReleaseTask] = useState<Task | null>(null)
 
   useEffect(() => {
@@ -107,7 +106,6 @@ export function CreateTaskModal() {
             // Apenas define o setor se não for admin
             if (!admin) {
               setSelectedSetor(userInfo.SECAO);
-              setSetorInput(userInfo.SECAO);
             }
 
             // Se for chefe ou admin, buscar subordinados
@@ -152,7 +150,7 @@ export function CreateTaskModal() {
                 const setoresResponse = await fetch('/api/setor');
                 if (setoresResponse.ok) {
                   const setoresData = await setoresResponse.json();
-                  setSetores(setoresData);
+                  setResponsaveis(setoresData);
                 }
               } catch (error) {
                 console.error('Erro ao carregar dados:', error);
@@ -358,7 +356,8 @@ export function CreateTaskModal() {
           userEmail: session?.user?.email,
           setorSigla: selectedSetor,
           data_criacao: new Date().toISOString(),
-          id_release: idRelease || null
+          id_release: idRelease || null,
+          estimativa_horas: estimativaHoras || null
         }),
       })
 
@@ -402,18 +401,39 @@ export function CreateTaskModal() {
   }
 
   const handleFinish = () => {
-    setOpen(false)
-    // Resetar campos
     setTitulo("")
     setDescricao("")
     setProjetoId("")
+    setProjetoInput("")
     setPrioridade("2")
+    setDataInicio(new Date().toISOString().split('T')[0])
     setDataFim("")
-    setSelectedResponsaveis([])
+    setEstimativaHoras("8")
+    setModoPersonalizado(false)
+    
+    // Manter apenas o usuário logado como responsável e remover os demais
+    if (session?.user?.email) {
+      // Usar função de callback para acessar o estado atual
+      setSelectedResponsaveis(prevResponsaveis => {
+        if (prevResponsaveis.length > 0) {
+          // Filtrar para manter apenas o usuário logado
+          const usuarioLogado = prevResponsaveis.find(r => r.EMAIL === session.user.email);
+          if (usuarioLogado) {
+            return [usuarioLogado];
+          }
+        }
+        return [];
+      });
+    } else {
+      setSelectedResponsaveis([]);
+    }
+    
     setActiveTab("detalhes")
     setCachedFiles([])
     setIdRelease(null)
-    setSelectedReleaseTask(null)
+    setResponsavelInput("")
+    setShowSuggestions(false)
+    setShowResponsavelSuggestions(false)
   }
 
   const handleProjetoSelect = (projeto: Projeto) => {
@@ -439,23 +459,21 @@ export function CreateTaskModal() {
     setShowResponsavelSuggestions(false);
   }
 
-  const removeResponsavel = (email: string) => {
-    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSetorSelect = async (setor: Setor) => {
     setSelectedSetor(setor.sigla)
-    setSetorInput(setor.sigla + (setor.nome ? ` ${setor.nome}` : ''))
-    setShowSetorSuggestions(false)
-
     try {
       const responsaveisData = await getResponsaveisBySetor(setor.sigla);
       if (responsaveisData) {
         setResponsaveis(responsaveisData);
       }
     } catch (error) {
-      console.error('Erro ao carregar responsáveis:', error);
+      console.error("Erro ao buscar responsáveis por setor:", error);
     }
+  };
+
+  const removeResponsavel = (email: string) => {
+    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
 
   const handleCreateProjeto = async (e: React.FormEvent) => {
@@ -663,6 +681,94 @@ export function CreateTaskModal() {
     filterTasks(searchTerm)
   }, [searchTerm, filterTasks])
 
+  // Garantir que o usuário logado seja pré-atribuído quando o modal for aberto
+  useEffect(() => {
+    if (open && session?.user?.email) {
+      // Buscar informações do usuário e pré-atribuir como responsável
+      const preencherUsuarioLogado = async () => {
+        try {
+          if (session.user.email) {
+            const userInfo = await getUserInfoFromRM(session.user.email);
+            if (userInfo) {
+              const userResponsavel: Responsavel = {
+                EMAIL: session.user.email,
+                NOME: userInfo.NOME_COMPLETO || '',
+                CARGO: userInfo.CARGO || ''
+              };
+              
+              // Usar função de callback para acessar o estado atual
+              setSelectedResponsaveis(prevResponsaveis => {
+                // Verificar se o usuário já não está na lista antes de adicionar
+                if (prevResponsaveis.length === 0 || !prevResponsaveis.some(r => r.EMAIL === userResponsavel.EMAIL)) {
+                  return [userResponsavel];
+                }
+                return prevResponsaveis;
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao pré-atribuir usuário logado:', error);
+        }
+      };
+      
+      preencherUsuarioLogado();
+    }
+  // Remover selectedResponsaveis das dependências
+  }, [open, session?.user?.email]);
+
+  // Resetar estados quando o modal é fechado
+  useEffect(() => {
+    if (!open) {
+      // Limpar campos quando o modal for fechado
+      setTitulo("")
+      setDescricao("")
+      setProjetoId("")
+      setProjetoInput("")
+      setPrioridade("2")
+      setDataInicio(new Date().toISOString().split('T')[0])
+      setDataFim("")
+      setEstimativaHoras("8")
+      setModoPersonalizado(false)
+      
+      // Manter apenas o usuário logado como responsável e remover os demais
+      if (session?.user?.email) {
+        // Usar função de callback para acessar o estado atual
+        setSelectedResponsaveis(prevResponsaveis => {
+          if (prevResponsaveis.length > 0) {
+            // Filtrar para manter apenas o usuário logado
+            const usuarioLogado = prevResponsaveis.find(r => r.EMAIL === session.user.email);
+            if (usuarioLogado) {
+              return [usuarioLogado];
+            }
+          }
+          return [];
+        });
+      } else {
+        setSelectedResponsaveis([]);
+      }
+      
+      setActiveTab("detalhes")
+      setCachedFiles([])
+      setIdRelease(null)
+      setSelectedReleaseTask(null)
+      setResponsavelInput("")
+      setShowSuggestions(false)
+      setShowResponsavelSuggestions(false)
+    }
+  // Remover selectedResponsaveis das dependências
+  }, [open, session?.user?.email]);
+
+  // Define a estimativa com um valor predefinido
+  const definirEstimativa = (valor: number) => {
+    // Se o valor já está selecionado, desmarca (limpa o valor)
+    if (Number(estimativaHoras) === valor) {
+      setEstimativaHoras("");
+    } else {
+      setEstimativaHoras(valor.toString());
+    }
+    setModoPersonalizado(false);
+  };
+
   return (
     <>
       <div className="flex gap-2">
@@ -863,8 +969,8 @@ export function CreateTaskModal() {
               Nova Tarefa
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] sm:h-auto p-6">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[600px] sm:h-auto p-5 max-h-[90vh]">
+            <DialogHeader className="pb-2">
               <DialogTitle>Criar Nova Tarefa</DialogTitle>
             </DialogHeader>
 
@@ -876,102 +982,41 @@ export function CreateTaskModal() {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="max-h-[70vh] overflow-y-auto">
+              <div className="max-h-[70vh] overflow-y-auto pr-1">
                 <div className="p-1">
-                  <TabsContent value="detalhes" className="space-y-2 py-2">
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium">Título *</label>
-                        <Input
-                          required
-                          value={titulo}
-                          onChange={(e) => setTitulo(e.target.value)}
-                          placeholder="Digite o título da tarefa"
-                          className="h-8"
-                          maxLength={40}
-                        />
-                        <div className="flex justify-end mt-1">
-                          <span className={`text-xs ${titulo.length > 32 ? 'text-red-500' : 'text-gray-500'}`}>
-                            {titulo.length}/40
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="text-sm font-medium">Descrição</label>
-                        <Textarea
-                          value={descricao}
-                          onChange={(e) => setDescricao(e.target.value)}
-                          placeholder="Digite a descrição da tarefa"
-                          className="h-20"
-                          maxLength={500}
-                        />
-                        <div className="flex justify-end mt-1">
-                          <span className={`text-xs ${descricao.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
-                            {descricao.length}/500
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="col-span-2">
-                        <label className="text-sm text-gray-500">Responsáveis *</label>
-                        <div className="space-y-2">
-                          <div className="relative">
-                            <Input
-                              value={responsavelInput}
-                              onChange={(e) => {
-                                setResponsavelInput(e.target.value);
-                                setShowResponsavelSuggestions(true);
-                              }}
-                              onFocus={() => setShowResponsavelSuggestions(true)}
-                              placeholder="Digite o nome do responsável"
-                              className="h-9"
-                            />
-                            {showResponsavelSuggestions && responsavelInput && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                {responsaveis
-                                  .filter(r => {
-                                    const nameMatches = !responsavelInput || 
-                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                    return nameMatches && notAlreadySelected;
-                                  })
-                                  .map(responsavel => (
-                                    <div
-                                      key={responsavel.EMAIL}
-                                      className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0"
-                                      onClick={() => handleResponsavelSelect(responsavel)}
-                                    >
-                                      <div className="flex flex-col">
-                                        <div className="font-medium">
-                                          {responsavel.NOME}
-                                        </div>
-                                        <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
+                  <TabsContent value="detalhes" className="space-y-1 py-1">
+                    <form onSubmit={handleSubmit} className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium">Título *</label>
+                          <Input
+                            required
+                            value={titulo}
+                            onChange={(e) => setTitulo(e.target.value)}
+                            placeholder="Digite o título da tarefa"
+                            className="h-8"
+                            maxLength={40}
+                          />
+                          <div className="flex justify-end mt-0.5">
+                            <span className={`text-xs ${titulo.length > 32 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {titulo.length}/40
+                            </span>
                           </div>
-                          
-                          {/* Lista de responsáveis selecionados */}
-                          <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-gray-50 rounded-md overflow-y-auto max-h-[120px] scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                            {selectedResponsaveis.map((responsavel) => (
-                              <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border shadow-sm">
-                                <span className="text-sm font-medium">
-                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
-                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            ))}
+                        </div>
+                        
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium">Descrição</label>
+                          <Textarea
+                            value={descricao}
+                            onChange={(e) => setDescricao(e.target.value)}
+                            placeholder="Digite a descrição da tarefa"
+                            className="h-14 min-h-[56px]"
+                            maxLength={500}
+                          />
+                          <div className="flex justify-end mt-0.5">
+                            <span className={`text-xs ${descricao.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {descricao.length}/500
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -993,16 +1038,16 @@ export function CreateTaskModal() {
                               }}
                               onFocus={() => setShowSuggestions(true)}
                               placeholder="Digite o nome do projeto"
-                              className="w-full"
+                              className="h-8"
                             />
                             {showSuggestions && projetoInput && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[150px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                                 {projetos
                                   .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
                                   .map(projeto => (
                                     <div
                                       key={projeto.id}
-                                      className="px-4 py-3 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
+                                      className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
                                       onClick={() => handleProjetoSelect(projeto)}
                                     >
                                       <div className="flex items-center justify-between">
@@ -1021,54 +1066,9 @@ export function CreateTaskModal() {
                         </div>
 
                         <div>
-                          <label className="text-sm font-medium">ID Release</label>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex gap-2">
-                              <div className="relative flex-1">
-                                <Input
-                                  value={idRelease || ''}
-                                  placeholder="Selecione um ID de release"
-                                  className="flex-1 bg-gray-50 pr-8"
-                                  readOnly
-                                />
-                                {idRelease && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                                    onClick={() => {
-                                      setIdRelease(null)
-                                      setSelectedReleaseTask(null)
-                                    }}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                onClick={() => setOpenReleaseModal(true)}
-                                className="shrink-0"
-                              >
-                                Selecionar
-                              </Button>
-                            </div>
-                            {selectedReleaseTask && (
-                              <div className="text-sm text-gray-500 truncate">
-                                {selectedReleaseTask.titulo}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
                           <label className="text-sm font-medium">Prioridade</label>
                           <Select value={prioridade} onValueChange={setPrioridade}>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-8">
                               <SelectValue placeholder="Selecione a prioridade" />
                             </SelectTrigger>
                             <SelectContent position="item-aligned" side="bottom" align="start">
@@ -1078,59 +1078,17 @@ export function CreateTaskModal() {
                             </SelectContent>
                           </Select>
                         </div>
-
-                        <div>
-                          <label className="text-sm font-medium">Setor</label>
-                          {isAdmin ? (
-                            <div className="relative">
-                              <Input
-                                ref={setorRef}
-                                value={setorInput}
-                                onChange={(e) => {
-                                  setSetorInput(e.target.value)
-                                  setShowSetorSuggestions(true)
-                                }}
-                                onFocus={() => setShowSetorSuggestions(true)}
-                                placeholder="Selecione o setor"
-                                className="w-full"
-                              />
-                              {showSetorSuggestions && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                                  {setores
-                                    .filter(s => 
-                                      !setorInput ||
-                                      s.sigla.toLowerCase().includes(setorInput.toLowerCase()) ||
-                                      (s.nome && s.nome.toLowerCase().includes(setorInput.toLowerCase()))
-                                    )
-                                    .map(setor => (
-                                      <div
-                                        key={setor.id}
-                                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                                        onClick={() => handleSetorSelect(setor)}
-                                      >
-                                        {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <Input
-                              value={setorInput}
-                              disabled
-                              className="bg-gray-50"
-                            />
-                          )}
-                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-sm font-medium">Data de Início</label>
+                          <label className="text-sm font-medium">Data de Início *</label>
                           <Input
                             type="date"
                             value={dataInicio}
                             onChange={(e) => setDataInicio(e.target.value)}
+                            required
+                            className="h-8"
                           />
                         </div>
 
@@ -1140,11 +1098,159 @@ export function CreateTaskModal() {
                             type="date"
                             value={dataFim}
                             onChange={(e) => setDataFim(e.target.value)}
+                            className="h-8"
                           />
                         </div>
                       </div>
 
-                      <DialogFooter>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Estimativa de Horas</label>
+                          <div className="space-y-1">
+                            <div className="grid grid-cols-5 gap-1">
+                              {[0.5, 1, 2, 8].map((valor) => (
+                                <Button
+                                  key={valor}
+                                  type="button"
+                                  variant={Number(estimativaHoras) === valor ? "default" : "outline"}
+                                  size="sm"
+                                  className={`h-7 text-xs ${Number(estimativaHoras) === valor ? "bg-emerald-800 hover:bg-emerald-700 text-white" : ""}`}
+                                  onClick={() => definirEstimativa(valor)}
+                                >
+                                  {valor < 1 ? `${valor * 60}min` : valor === 1 ? "1h" : `${valor}h`}
+                                </Button>
+                              ))}
+                              <Button
+                                type="button"
+                                variant={modoPersonalizado ? "default" : "outline"}
+                                size="sm"
+                                className={`h-7 text-xs ${modoPersonalizado ? "bg-emerald-800 hover:bg-emerald-700 text-white" : ""}`}
+                                onClick={() => setModoPersonalizado(!modoPersonalizado)}
+                              >
+                                Outro
+                              </Button>
+                            </div>
+                            
+                            {modoPersonalizado && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <div className="flex-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={estimativaHoras}
+                                    onChange={(e) => setEstimativaHoras(e.target.value)}
+                                    placeholder=""
+                                    className="h-7"
+                                  />
+                                </div>
+                                <span className="text-xs">h</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">ID Release</label>
+                          <div className="flex gap-1">
+                            <div className="relative flex-1">
+                              <Input
+                                value={idRelease || ''}
+                                placeholder="Selecione um ID"
+                                className="flex-1 bg-gray-50 pr-8 h-8"
+                                readOnly
+                              />
+                              {idRelease && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                  onClick={() => {
+                                    setIdRelease(null)
+                                    setSelectedReleaseTask(null)
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setOpenReleaseModal(true)}
+                              className="shrink-0 h-8"
+                            >
+                              Selecionar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium">Responsáveis *</label>
+                        <div className="space-y-1">
+                          <div className="relative">
+                            <Input
+                              value={responsavelInput}
+                              onChange={(e) => {
+                                setResponsavelInput(e.target.value);
+                                setShowResponsavelSuggestions(true);
+                              }}
+                              onFocus={() => setShowResponsavelSuggestions(true)}
+                              placeholder="Digite o nome do responsável"
+                              className="h-8"
+                            />
+                            {showResponsavelSuggestions && responsavelInput && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                                {responsaveis
+                                  .filter(r => {
+                                    const nameMatches = !responsavelInput || 
+                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                    return nameMatches && notAlreadySelected;
+                                  })
+                                  .map(responsavel => (
+                                    <div
+                                      key={responsavel.EMAIL}
+                                      className="px-3 py-1.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
+                                      onClick={() => handleResponsavelSelect(responsavel)}
+                                    >
+                                      <div className="flex flex-col">
+                                        <div className="font-medium">
+                                          {responsavel.NOME}
+                                        </div>
+                                        <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Lista de responsáveis selecionados */}
+                          <div className="flex flex-wrap gap-1 min-h-[36px] p-1.5 bg-gray-50 rounded-md overflow-y-auto max-h-[70px] scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                            {selectedResponsaveis.map((responsavel) => (
+                              <div key={responsavel.EMAIL} className="flex items-center gap-1 bg-white rounded-md px-2 py-0.5 border shadow-sm">
+                                <span className="text-sm font-medium">
+                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
+                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <DialogFooter className="pt-1">
                         <Button 
                           type="submit" 
                           className="w-full bg-emerald-800 text-white hover:bg-emerald-700"

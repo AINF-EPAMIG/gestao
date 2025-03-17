@@ -43,6 +43,7 @@ interface TaskStore {
   setTasks: (tasks: Task[]) => void
   updateTaskPosition: (taskId: number, newStatusId: number, newIndex: number, updateTimestamp?: boolean) => void
   updateTaskTimestamp: (taskId: number) => void
+  updateTaskDataFim: (taskId: number, dataFim: string) => void
   syncPendingChanges: () => Promise<void>
   pendingChanges: PendingChange[]
   getTasksByStatus: (statusId: number) => Task[]
@@ -257,6 +258,34 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     });
   },
   
+  updateTaskDataFim: (taskId, dataFim) => {
+    set((state) => {
+      const tasks = [...state.tasks];
+      const taskToUpdate = tasks.find(t => t.id === taskId);
+      
+      if (!taskToUpdate) return state;
+      
+      // Atualiza a data de fim
+      taskToUpdate.data_fim = dataFim;
+      
+      // Chama a API para atualizar a data de fim no banco de dados
+      fetch('/api/atividades/update-data-fim', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          data_fim: dataFim
+        }),
+      }).catch(error => {
+        console.error('Erro ao atualizar data de fim:', error);
+      });
+      
+      return {
+        tasks
+      };
+    });
+  },
+  
   syncPendingChanges: async () => {
     const { pendingChanges, optimisticUpdates } = get();
     
@@ -386,7 +415,26 @@ export function getPriorityName(priorityId: number): Priority {
 
 export function formatHours(hours: string | number | null): string {
   if (!hours) return "Sem estimativa";
-  return `${Number(hours)}h`;
+  
+  const hoursNum = Number(hours);
+  
+  // Se for um número inteiro, mantém o formato atual
+  if (Number.isInteger(hoursNum)) {
+    return `${hoursNum}h`;
+  }
+  
+  // Extrai horas (parte inteira) e minutos (parte decimal convertida)
+  const horasParte = Math.floor(hoursNum);
+  const minutosParte = Math.round((hoursNum - horasParte) * 60);
+  
+  // Formata a saída com base nos valores
+  if (horasParte === 0) {
+    return `${minutosParte}min`;
+  } else if (minutosParte === 0) {
+    return `${horasParte}h`;
+  } else {
+    return `${horasParte}h ${minutosParte}min`;
+  }
 }
 
 // Hook personalizado para usar o polling com o store

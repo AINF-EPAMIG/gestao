@@ -518,7 +518,8 @@ export async function POST(request: NextRequest) {
       data_fim, 
       userEmail,
       data_criacao,
-      id_release 
+      id_release,
+      estimativa_horas
     } = data;
 
     // Obter informações do usuário
@@ -559,7 +560,7 @@ export async function POST(request: NextRequest) {
         data_fim,
         status_id,
         prioridade_id,
-        0, // estimativa_horas default
+        estimativa_horas || 0, // Usar o valor fornecido ou 0 como padrão
         setorSigla || null,
         data_criacao,
         id_release

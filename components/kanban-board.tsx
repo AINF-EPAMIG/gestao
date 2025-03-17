@@ -8,7 +8,13 @@ import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getResponsavelName } from "@/lib/utils"
 import { TaskDetailsModal } from "@/components/task-details-modal"
-import { Loader2 } from "lucide-react"
+import { Loader2, Clock, Users } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -88,7 +94,7 @@ const TaskCard = memo(function TaskCard({
     }
   }, [task.status_id, task.ultima_atualizacao])
 
-  const formatDateTime = (dateTime: string | null) => {
+  const formatDateTimeCompact = (dateTime: string | null) => {
     if (!dateTime) return null;
     
     const date = new Date(dateTime);
@@ -113,22 +119,21 @@ const TaskCard = memo(function TaskCard({
                    date.getUTCFullYear() === ontem.getFullYear();
     
     if (ehHoje) {
-      return `Atualizado Hoje às ${hora}`;
+      return `Hoje ${hora}`;
     }
     
     if (ehOntem) {
-      return `Atualizado Ontem às ${hora}`;
+      return `Ontem ${hora}`;
     }
     
-    // Caso contrário, retorna a data completa
+    // Caso contrário, retorna a data abreviada
     const dataFormatada = date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
       timeZone: 'UTC'
     });
     
-    return `Atualizado Em ${dataFormatada} às ${hora}`;
+    return `${dataFormatada} ${hora}`;
   };
 
   return (
@@ -166,6 +171,23 @@ const TaskCard = memo(function TaskCard({
         <p className="text-sm text-gray-500 line-clamp-2" title={task.descricao}>
           {task.descricao}
         </p>
+        {/* Estimativa de horas - sempre na mesma posição */}
+        {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
+          <div className="flex items-center">
+            <span className={cn(
+              "text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1",
+              getStatusName(task.status_id) === "Não iniciada" ? "bg-red-50 text-red-700" :
+              getStatusName(task.status_id) === "Em desenvolvimento" ? "bg-blue-50 text-blue-700" :
+              getStatusName(task.status_id) === "Em testes" ? "bg-yellow-50 text-yellow-700" :
+              "bg-emerald-50 text-emerald-700"
+            )}>
+              <Clock className="w-3 h-3" />
+              {formatHours(task.estimativa_horas)}
+            </span>
+          </div>
+        )}
+        
+        {/* Rodapé do card com responsáveis e data de atualização */}
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
@@ -175,25 +197,26 @@ const TaskCard = memo(function TaskCard({
               {!(task.responsaveis ?? []).length && <MemoizedAvatar />}
             </div>
             {(task.responsaveis ?? []).length === 1 && (
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">
-                  {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
-                </span>
-                {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
-                  <span className="text-xs text-gray-500">
-                    {formatHours(task.estimativa_horas)}
-                  </span>
-                )}
-              </div>
+              <span className="text-sm font-medium">
+                {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
+              </span>
             )}
             {(task.responsaveis ?? []).length > 1 && (
-              <div className="flex flex-col">
-                {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
-                  <span className="text-xs text-gray-500">
-                    {formatHours(task.estimativa_horas)}
-                  </span>
-                )}
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm font-medium flex items-center gap-1 cursor-help">
+                      <Users className="w-3 h-3" />
+                      {task.responsaveis?.length} responsáveis
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           {task.ultima_atualizacao && (
@@ -203,8 +226,11 @@ const TaskCard = memo(function TaskCard({
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
               ) : (
-                <span className="text-xs text-gray-500">
-                  {formatDateTime(task.ultima_atualizacao)}
+                <span className="text-xs text-gray-500 flex items-center">
+                  <span className="font-medium">Últ.:</span>
+                  <span className="ml-1">
+                    {formatDateTimeCompact(task.ultima_atualizacao)}
+                  </span>
                 </span>
               )}
             </div>
@@ -271,6 +297,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ tasks }: KanbanBoardProps) {
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
+  const updateTaskDataFim = useTaskStore((state) => state.updateTaskDataFim)
   const [localTasks, setLocalTasks] = useState<Task[]>([])
 
   // Atualiza o estado local quando as tarefas mudam
@@ -296,6 +323,17 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
     // Encontra a tarefa que está sendo movida
     const taskToMove = updatedTasks.find(t => t.id === taskId);
     if (!taskToMove) return;
+    
+    // Verifica se a tarefa está sendo movida para o status "Concluída" e se a data_fim está vazia
+    const movingToCompleted = destination.droppableId === "Concluída" && source.droppableId !== "Concluída";
+    if (movingToCompleted && !taskToMove.data_fim) {
+      // Define a data atual como data de fim
+      const dataAtual = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+      taskToMove.data_fim = dataAtual;
+      
+      // Usa a função do store para atualizar a data de fim
+      updateTaskDataFim(taskId, dataAtual);
+    }
     
     // Se estiver movendo dentro do mesmo status, apenas reordena
     if (source.droppableId === destination.droppableId) {
@@ -365,7 +403,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
       
       setLocalTasks(updatedTasks);
     }
-  }, [updateTaskPosition, localTasks]);
+  }, [updateTaskPosition, updateTaskDataFim, localTasks]);
 
   const columnTasks = useMemo(() => {
     return columns.reduce((acc, column) => {
