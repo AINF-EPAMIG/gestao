@@ -167,15 +167,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
               const responsaveisFiltrados = responsaveisData.filter(r => r.NOME !== 'PEDRO HENRIQUE SILVA SOUZA');
               setResponsaveis(responsaveisFiltrados);
             }
-
-            // Converter responsáveis atuais
-            setSelectedResponsaveis(
-              task.responsaveis?.map(r => ({
-                EMAIL: r.email,
-                NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
-                CARGO: r.cargo
-              })) || []
-            );
           }
         } catch (error) {
           console.error('Erro ao verificar papel do usuário:', error);
@@ -187,6 +178,20 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       checkUserRole();
     }
   }, [session?.user?.email, task.responsaveis, open]);
+
+  // Inicializar responsáveis selecionados apenas quando o modal for aberto ou a tarefa mudar
+  useEffect(() => {
+    if (open && task.responsaveis) {
+      // Converter responsáveis atuais
+      setSelectedResponsaveis(
+        task.responsaveis?.map(r => ({
+          EMAIL: r.email,
+          NOME: r.nome || r.email.split('@')[0].replace('.', ' '),
+          CARGO: r.cargo
+        })) || []
+      );
+    }
+  }, [open, task.id]);
 
   useEffect(() => {
     // Carregar projetos do banco
@@ -272,14 +277,16 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
     if (!selectedResponsaveis.find(r => r.EMAIL === responsavel.EMAIL)) {
-      setSelectedResponsaveis([...selectedResponsaveis, responsavel]);
+      setSelectedResponsaveis(prevResponsaveis => [...prevResponsaveis, responsavel]);
+      console.log('Responsável adicionado:', responsavel.NOME);
     }
     setResponsavelInput("");
-    setShowResponsavelSuggestions(false);
+    // Não esconder as sugestões imediatamente para permitir múltiplas seleções
+    // setShowResponsavelSuggestions(false);
   }
 
   const removeResponsavel = (email: string) => {
-    setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
+    setSelectedResponsaveis(prevResponsaveis => prevResponsaveis.filter(r => r.EMAIL !== email));
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -554,7 +561,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                 <Button 
                   size="sm" 
                   onClick={handleSubmit}
-                  disabled={isSaving}
+                  disabled={isSaving || selectedResponsaveis.length === 0}
                   className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
                 >
                   {isSaving ? (
@@ -789,10 +796,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             setShowResponsavelSuggestions(true);
                           }}
                           onFocus={() => setShowResponsavelSuggestions(true)}
+                          onBlur={() => {
+                            // Atraso para permitir que o clique na sugestão seja processado
+                            setTimeout(() => setShowResponsavelSuggestions(false), 200);
+                          }}
                           placeholder="Digite o nome do responsável"
                           className="h-8"
                         />
-                        {showResponsavelSuggestions && responsavelInput && (
+                        {showResponsavelSuggestions && (
                           <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[240px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                             {responsaveis
                               .filter(r => {
@@ -805,7 +816,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                                 <div
                                   key={responsavel.EMAIL}
                                   className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0"
-                                  onClick={() => handleResponsavelSelect(responsavel)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleResponsavelSelect(responsavel);
+                                  }}
                                 >
                                   <div className="flex flex-col">
                                     <div className="font-medium">
@@ -837,6 +852,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             </Button>
                           </div>
                         ))}
+                        {selectedResponsaveis.length === 0 && (
+                          <div className="text-sm text-red-500 py-1 px-2">
+                            É necessário pelo menos um responsável
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
