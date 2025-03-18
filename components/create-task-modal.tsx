@@ -384,6 +384,10 @@ export function CreateTaskModal() {
         });
         window.dispatchEvent(taskUpdatedEvent);
         
+        // Fechar o modal após a criação bem-sucedida
+        setOpen(false);
+        
+        // Limpar o formulário
         handleFinish()
       } else {
         const error = await response.json()
@@ -780,7 +784,7 @@ export function CreateTaskModal() {
               Projetos
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] sm:h-auto p-5 max-h-[95vh]">
             <DialogHeader>
               <DialogTitle>Gerenciar Projetos</DialogTitle>
             </DialogHeader>
@@ -966,7 +970,7 @@ export function CreateTaskModal() {
               Nova Tarefa
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] sm:h-auto p-5 max-h-[90vh]">
+          <DialogContent className="sm:max-w-[600px] sm:h-auto p-5 max-h-[95vh]">
             <DialogHeader className="pb-2">
               <DialogTitle>Criar Nova Tarefa</DialogTitle>
             </DialogHeader>
@@ -979,11 +983,11 @@ export function CreateTaskModal() {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="max-h-[70vh] overflow-y-auto pr-1">
+              <div className="max-h-[75vh] overflow-y-auto pr-1">
                 <div className="p-1">
-                  <TabsContent value="detalhes" className="space-y-1 py-1">
-                    <form onSubmit={handleSubmit} className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
+                  <TabsContent value="detalhes" className="space-y-4 py-1">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                           <label className="text-sm font-medium">Título *</label>
                           <Input
@@ -991,7 +995,7 @@ export function CreateTaskModal() {
                             value={titulo}
                             onChange={(e) => setTitulo(e.target.value)}
                             placeholder="Digite o título da tarefa"
-                            className="h-8"
+                            className="h-8 mt-1"
                             maxLength={40}
                           />
                           <div className="flex justify-end mt-0.5">
@@ -1007,7 +1011,7 @@ export function CreateTaskModal() {
                             value={descricao}
                             onChange={(e) => setDescricao(e.target.value)}
                             placeholder="Digite a descrição da tarefa"
-                            className="h-14 min-h-[56px]"
+                            className="h-14 min-h-[56px] mt-1"
                             maxLength={500}
                           />
                           <div className="flex justify-end mt-0.5">
@@ -1018,10 +1022,10 @@ export function CreateTaskModal() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium">Projeto *</label>
-                          <div className="relative">
+                          <div className="relative mt-1">
                             <Input
                               ref={inputRef}
                               value={projetoInput}
@@ -1065,7 +1069,7 @@ export function CreateTaskModal() {
                         <div>
                           <label className="text-sm font-medium">Prioridade</label>
                           <Select value={prioridade} onValueChange={setPrioridade}>
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-8 mt-1">
                               <SelectValue placeholder="Selecione a prioridade" />
                             </SelectTrigger>
                             <SelectContent position="item-aligned" side="bottom" align="start">
@@ -1077,7 +1081,7 @@ export function CreateTaskModal() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium">Data de Início *</label>
                           <Input
@@ -1085,7 +1089,7 @@ export function CreateTaskModal() {
                             value={dataInicio}
                             onChange={(e) => setDataInicio(e.target.value)}
                             required
-                            className="h-8"
+                            className="h-8 mt-1"
                           />
                         </div>
 
@@ -1095,15 +1099,15 @@ export function CreateTaskModal() {
                             type="date"
                             value={dataFim}
                             onChange={(e) => setDataFim(e.target.value)}
-                            className="h-8"
+                            className="h-8 mt-1"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium">Estimativa de Horas</label>
-                          <div className="space-y-1">
+                          <div className="space-y-1 mt-1">
                             <div className="grid grid-cols-5 gap-1">
                               {[0.5, 1, 2, 8].map((valor) => (
                                 <Button
@@ -1149,7 +1153,7 @@ export function CreateTaskModal() {
 
                         <div>
                           <label className="text-sm font-medium">ID Release</label>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 mt-1">
                             <div className="relative flex-1">
                               <Input
                                 value={idRelease || ''}
@@ -1184,9 +1188,9 @@ export function CreateTaskModal() {
                         </div>
                       </div>
 
-                      <div className="col-span-2">
+                      <div className="col-span-2 mt-2">
                         <label className="text-sm font-medium">Responsáveis *</label>
-                        <div className="space-y-1">
+                        <div className="space-y-1 mt-1">
                           <div className="relative">
                             <Input
                               value={responsavelInput}
@@ -1253,11 +1257,17 @@ export function CreateTaskModal() {
                           className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
                           disabled={isSubmitting || !titulo.trim() || selectedResponsaveis.length === 0 || !projetoId}
                         >
-                          {isSubmitting ? "Criando..." : 
-                           !titulo.trim() ? "Digite o título da tarefa" :
-                           selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" :
-                           !projetoId ? "Selecione um projeto" : 
-                           "Criar Tarefa"}
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Criando...
+                            </>
+                          ) : (
+                            !titulo.trim() ? "Digite o título da tarefa" :
+                            selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" :
+                            !projetoId ? "Selecione um projeto" : 
+                            "Criar Tarefa"
+                          )}
                         </Button>
                       </DialogFooter>
                     </form>
