@@ -64,7 +64,6 @@ export function CreateTaskModal() {
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
   const [idRelease, setIdRelease] = useState<string | null>(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const responsavelRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("detalhes")
@@ -437,14 +436,12 @@ export function CreateTaskModal() {
     setCachedFiles([])
     setIdRelease(null)
     setResponsavelInput("")
-    setShowSuggestions(false)
     setShowResponsavelSuggestions(false)
   }
 
   const handleProjetoSelect = (projeto: Projeto) => {
     setProjetoId(projeto.id.toString())
     setProjetoInput(projeto.nome)
-    setShowSuggestions(false)
     setOpenProjetoModal(false)
   }
 
@@ -786,7 +783,6 @@ export function CreateTaskModal() {
       setIdRelease(null)
       setSelectedReleaseTask(null)
       setResponsavelInput("")
-      setShowSuggestions(false)
       setShowResponsavelSuggestions(false)
     }
   // Remover selectedResponsaveis das dependências
