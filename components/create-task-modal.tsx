@@ -64,7 +64,6 @@ export function CreateTaskModal() {
   const setTasks = useTaskStore((state) => state.setTasks)
   const [projetoInput, setProjetoInput] = useState("")
   const [idRelease, setIdRelease] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const responsavelRef = useRef<HTMLDivElement>(null)
@@ -87,6 +86,11 @@ export function CreateTaskModal() {
   const [loadingTasks, setLoadingTasks] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedReleaseTask, setSelectedReleaseTask] = useState<Task | null>(null)
+  
+  // Novo estado para o modal de seleção de projeto
+  const [openProjetoModal, setOpenProjetoModal] = useState(false)
+  const [projetosSearchTerm, setProjetosSearchTerm] = useState("")
+  const [filteredProjetos, setFilteredProjetos] = useState<Projeto[]>([])
 
   useEffect(() => {
     // Verificar se o usuário é chefe ou admin e pré-selecionar o próprio usuário
@@ -441,6 +445,7 @@ export function CreateTaskModal() {
     setProjetoId(projeto.id.toString())
     setProjetoInput(projeto.nome)
     setShowSuggestions(false)
+    setOpenProjetoModal(false)
   }
 
   const handleResponsavelSelect = (responsavel: Responsavel) => {
@@ -681,6 +686,34 @@ export function CreateTaskModal() {
   useEffect(() => {
     filterTasks(searchTerm)
   }, [searchTerm, filterTasks])
+
+  // Função para filtrar projetos com base no termo de busca
+  const filterProjetos = useCallback((term: string) => {
+    if (!term.trim()) {
+      setFilteredProjetos(projetos)
+      return
+    }
+    
+    const lowerTerm = term.toLowerCase()
+    const filtered = projetos.filter(projeto => 
+      projeto.nome.toLowerCase().includes(lowerTerm)
+    )
+    
+    setFilteredProjetos(filtered)
+  }, [projetos])
+
+  // Efeito para filtrar projetos quando o termo de busca muda
+  useEffect(() => {
+    filterProjetos(projetosSearchTerm)
+  }, [projetosSearchTerm, filterProjetos])
+
+  // Efeito para inicializar projetos filtrados quando o modal de projetos é aberto
+  useEffect(() => {
+    if (openProjetoModal) {
+      setProjetosSearchTerm("")
+      setFilteredProjetos(projetos)
+    }
+  }, [openProjetoModal, projetos])
 
   // Garantir que o usuário logado seja pré-atribuído quando o modal for aberto
   useEffect(() => {
@@ -1025,44 +1058,37 @@ export function CreateTaskModal() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium">Projeto *</label>
-                          <div className="relative mt-1">
-                            <Input
-                              ref={inputRef}
-                              value={projetoInput}
-                              onChange={(e) => {
-                                const newValue = e.target.value;
-                                setProjetoInput(newValue);
-                                if (!newValue.trim()) {
-                                  setProjetoId("");
-                                }
-                                setShowSuggestions(true);
-                              }}
-                              onFocus={() => setShowSuggestions(true)}
-                              placeholder="Digite o nome do projeto"
-                              className="h-8"
-                            />
-                            {showSuggestions && projetoInput && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[150px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                {projetos
-                                  .filter(p => p.nome.toLowerCase().includes(projetoInput.toLowerCase()))
-                                  .map(projeto => (
-                                    <div
-                                      key={projeto.id}
-                                      className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b last:border-0 transition-colors"
-                                      onClick={() => handleProjetoSelect(projeto)}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{projeto.nome}</span>
-                                        {projeto.taskCount !== undefined && (
-                                          <Badge variant="outline" className="ml-2">
-                                            {projeto.taskCount} {projeto.taskCount === 1 ? 'tarefa' : 'tarefas'}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            )}
+                          <div className="flex gap-1 mt-1">
+                            <div className="relative flex-1">
+                              <Input
+                                value={projetoInput}
+                                placeholder="Selecione um projeto"
+                                className="flex-1 bg-gray-50 pr-8 h-8"
+                                readOnly
+                              />
+                              {projetoId && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                  onClick={() => {
+                                    setProjetoId("")
+                                    setProjetoInput("")
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setOpenProjetoModal(true)}
+                              className="shrink-0 h-8"
+                            >
+                              Selecionar
+                            </Button>
                           </div>
                         </div>
 
@@ -1401,6 +1427,89 @@ export function CreateTaskModal() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenReleaseModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de seleção de Projeto */}
+      <Dialog open={openProjetoModal} onOpenChange={setOpenProjetoModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Selecionar Projeto</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center border rounded-md mb-4">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Buscar projeto..."
+                value={projetosSearchTerm}
+                onChange={(e) => setProjetosSearchTerm(e.target.value)}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+              {projetosSearchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={() => setProjetosSearchTerm('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-muted-foreground">
+                {filteredProjetos.length > 0 ? `${filteredProjetos.length} projetos encontrados` : ''}
+                <span className="text-xs text-gray-400 block mt-0.5">Novos projetos são criados apenas pela chefia imediata</span>
+              </div>
+            </div>
+            
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              {filteredProjetos.length > 0 ? (
+                <div className="divide-y">
+                  {filteredProjetos.map((projeto) => (
+                    <div
+                      key={projeto.id}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                        projetoId === projeto.id.toString() ? 'bg-primary/10' : ''
+                      }`}
+                      onClick={() => handleProjetoSelect(projeto)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">{projeto.nome}</div>
+                        {projeto.taskCount !== undefined && (
+                          <div className="text-sm text-gray-500">
+                            {projeto.taskCount} {projeto.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant={projetoId === projeto.id.toString() ? "default" : "ghost"} 
+                        size="sm"
+                        className="ml-2 shrink-0"
+                      >
+                        {projetoId === projeto.id.toString() ? "Selecionado" : "Selecionar"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 mb-4">
+                    {projetosSearchTerm ? 'Nenhum projeto encontrado para esta busca' : 'Nenhum projeto encontrado'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenProjetoModal(false)}>
               Cancelar
             </Button>
           </DialogFooter>
