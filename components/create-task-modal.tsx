@@ -1058,7 +1058,7 @@ export function CreateTaskModal() {
                             <div className="relative flex-1">
                               <Input
                                 value={projetoInput}
-                                placeholder="Selecione um projeto"
+                                placeholder="Selecione"
                                 className="flex-1 bg-gray-50 pr-8 h-8"
                                 readOnly
                               />
@@ -1179,7 +1179,7 @@ export function CreateTaskModal() {
                             <div className="relative flex-1">
                               <Input
                                 value={idRelease || ''}
-                                placeholder="Selecione um ID"
+                                placeholder="Selecione"
                                 className="flex-1 bg-gray-50 pr-8 h-8"
                                 readOnly
                               />
