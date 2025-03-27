@@ -533,6 +533,58 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
   };
 
+  // Adicionar essa função para renderizar texto com links clicáveis
+  const renderTextWithLinks = (text: string) => {
+    // Expressão regular mais completa para identificar URLs
+    const urlRegex = /(https?:\/\/[^\s\)\"\']+|www\.[^\s\)\"\']+\.[^\s\)\"\']+)/gi;
+    
+    // Se não houver URLs, retornar o texto original
+    if (!text.match(urlRegex)) {
+      return text;
+    }
+    
+    // Dividir o texto em partes e criar elementos para cada parte
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    // Iterar sobre todas as correspondências de URLs no texto
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Adicionar o texto antes da URL
+      if (match.index > lastIndex) {
+        parts.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex, match.index)}</span>);
+      }
+      
+      // Adicionar a URL como um link
+      let url = match[0];
+      // Adicionar http:// se a URL não começar com protocolo
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      
+      parts.push(
+        <a 
+          key={`link-${match.index}`} 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline break-all"
+        >
+          {match[0]}
+        </a>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Adicionar o texto restante após a última URL
+    if (lastIndex < text.length) {
+      parts.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex)}</span>);
+    }
+    
+    return parts;
+  };
+
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       // Quando o modal for fechado, garantir que o polling seja retomado
@@ -1028,8 +1080,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                               </div>
                             ) : (
                               <div className="max-w-full overflow-hidden">
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap break-all break-words hyphens-auto overflow-hidden text-ellipsis">
-                                  {comment.comentario}
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal] [hyphens:auto] [text-wrap:pretty] overflow-hidden text-ellipsis">
+                                  {renderTextWithLinks(comment.comentario)}
                                 </p>
                               </div>
                             )}
