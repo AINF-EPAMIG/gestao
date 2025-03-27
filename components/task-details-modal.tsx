@@ -102,7 +102,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   // Definindo o limite máximo de caracteres
   const MAX_TITLE_LENGTH = 40
   const MAX_DESCRIPTION_LENGTH = 500
-  const MAX_COMMENT_LENGTH = 100
+  const MAX_COMMENT_LENGTH = 200
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
