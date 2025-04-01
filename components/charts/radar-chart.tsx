@@ -65,6 +65,10 @@ export function RadarChart() {
     const assigneeCounts = tasks.reduce(
       (acc, task) => {
         (task.responsaveis ?? []).forEach(responsavel => {
+          if (responsavel.email === "andrezza.fernandes@epamig.br") {
+            return;
+          }
+          
           const name = responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ');
           const email = responsavel.email;
           acc[email] = {
