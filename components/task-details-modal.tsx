@@ -287,10 +287,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       }
     };
 
-    if (open) {
+    if (open && !isEditing) {
       fetchComentarios();
     }
-  }, [task.id, open]);
+  }, [task.id, open, isEditing]);
 
   useEffect(() => {
     if (open) {
@@ -1034,143 +1034,145 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   )}
 
                   {/* Linha divisória - só aparece quando há comentários */}
-                  {comentarios.length > 0 && <Separator className="my-3" />}
+                  {comentarios.length > 0 && !isEditing && <Separator className="my-3" />}
 
                   {/* Seção de Comentários */}
-                  <div className={cn(
-                    "space-y-2",
-                    comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : "" // Muito mais espaço quando não há comentários
-                  )}>
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">Comentários</h4>
-                    </div>
+                  {!isEditing && (
+                    <div className={cn(
+                      "space-y-2",
+                      comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : "" // Muito mais espaço quando não há comentários
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">Comentários</h4>
+                      </div>
 
-                    {/* Lista de Comentários */}
-                    <div className="space-y-1.5 min-h-[40px] max-h-[250px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                      {comentarios.length > 0 ? (
-                        comentarios.map((comment) => (
-                          <div key={comment.id} className="bg-gray-50 p-2 rounded-lg space-y-1.5 w-full overflow-hidden">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="w-6 h-6">
-                                  <AvatarImage email={comment.usuario_email} />
-                                  <AvatarFallback>
-                                    {comment.usuario_email[0].toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium">
-                                  {comment.usuario_nome || comment.usuario_email.split('@')[0]}
-                                </span>
+                      {/* Lista de Comentários */}
+                      <div className="space-y-1.5 min-h-[40px] max-h-[250px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                        {comentarios.length > 0 ? (
+                          comentarios.map((comment) => (
+                            <div key={comment.id} className="bg-gray-50 p-2 rounded-lg space-y-1.5 w-full overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarImage email={comment.usuario_email} />
+                                    <AvatarFallback>
+                                      {comment.usuario_email[0].toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm font-medium">
+                                    {comment.usuario_nome || comment.usuario_email.split('@')[0]}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => {
+                                        setComentarioEditando(comment.id);
+                                        setTextoEditando(comment.comentario);
+                                      }}
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  <span className="text-xs text-gray-500">
+                                    {comment.data_edicao 
+                                      ? `Editado em ${formatDateTime(comment.data_edicao)}`
+                                      : formatDateTime(comment.data_criacao)
+                                    }
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => {
-                                      setComentarioEditando(comment.id);
-                                      setTextoEditando(comment.comentario);
-                                    }}
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                )}
-                                <span className="text-xs text-gray-500">
-                                  {comment.data_edicao 
-                                    ? `Editado em ${formatDateTime(comment.data_edicao)}`
-                                    : formatDateTime(comment.data_criacao)
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                            {comentarioEditando === comment.id ? (
-                              <div className="flex gap-2">
-                                <div className="flex flex-col w-full">
-                                  <Textarea
-                                    value={textoEditando}
-                                    onChange={(e) => setTextoEditando(e.target.value)}
-                                    className="h-14 resize-none"
-                                    maxLength={MAX_COMMENT_LENGTH}
-                                  />
-                                  <div className="flex justify-end">
-                                    <span className={`text-xs ${textoEditando.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                                      {textoEditando.length}/{MAX_COMMENT_LENGTH}
-                                    </span>
+                              {comentarioEditando === comment.id ? (
+                                <div className="flex gap-2">
+                                  <div className="flex flex-col w-full">
+                                    <Textarea
+                                      value={textoEditando}
+                                      onChange={(e) => setTextoEditando(e.target.value)}
+                                      className="h-14 resize-none"
+                                      maxLength={MAX_COMMENT_LENGTH}
+                                    />
+                                    <div className="flex justify-end">
+                                      <span className={`text-xs ${textoEditando.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                        {textoEditando.length}/{MAX_COMMENT_LENGTH}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => handleEditComment(comment.id, textoEditando)}
+                                      disabled={textoEditando.length > MAX_COMMENT_LENGTH}
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        setComentarioEditando(null);
+                                        setTextoEditando("");
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                  <Button
-                                    type="button"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleEditComment(comment.id, textoEditando)}
-                                    disabled={textoEditando.length > MAX_COMMENT_LENGTH}
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => {
-                                      setComentarioEditando(null);
-                                      setTextoEditando("");
-                                    }}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
+                              ) : (
+                                <div className="max-w-full overflow-hidden">
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal] [hyphens:auto] [text-wrap:pretty] overflow-hidden text-ellipsis">
+                                    {renderTextWithLinks(comment.comentario)}
+                                  </p>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="max-w-full overflow-hidden">
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal] [hyphens:auto] [text-wrap:pretty] overflow-hidden text-ellipsis">
-                                  {renderTextWithLinks(comment.comentario)}
-                                </p>
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center justify-center text-sm text-gray-500">
+                            -
                           </div>
-                        ))
-                      ) : (
-                        <div className="flex items-center justify-center text-sm text-gray-500">
-                          -
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Espaço adicional quando há poucos comentários */}
-                    {comentarios.length > 0 && comentarios.length <= 3 && (
-                      <div className="h-6"></div>
-                    )}
-
-                    {/* Campo de Novo Comentário */}
-                    <div className="flex gap-2">
-                      <div className="flex flex-col w-full">
-                        <Textarea
-                          value={comentario}
-                          onChange={(e) => setComentario(e.target.value)}
-                          placeholder="Escreva um comentário..."
-                          className="h-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                          maxLength={MAX_COMMENT_LENGTH}
-                        />
-                        <div className="flex justify-end">
-                          <span className={`text-xs ${comentario.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                            {comentario.length}/{MAX_COMMENT_LENGTH}
-                          </span>
-                        </div>
+                        )}
                       </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        className="self-end"
-                        disabled={!comentario.trim() || !session?.user?.email || comentario.length > MAX_COMMENT_LENGTH}
-                        onClick={handleSendComment}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
+
+                      {/* Espaço adicional quando há poucos comentários */}
+                      {comentarios.length > 0 && comentarios.length <= 3 && (
+                        <div className="h-6"></div>
+                      )}
+
+                      {/* Campo de Novo Comentário */}
+                      <div className="flex gap-2">
+                        <div className="flex flex-col w-full">
+                          <Textarea
+                            value={comentario}
+                            onChange={(e) => setComentario(e.target.value)}
+                            placeholder="Escreva um comentário..."
+                            className="h-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                            maxLength={MAX_COMMENT_LENGTH}
+                          />
+                          <div className="flex justify-end">
+                            <span className={`text-xs ${comentario.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {comentario.length}/{MAX_COMMENT_LENGTH}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="self-end"
+                          disabled={!comentario.trim() || !session?.user?.email || comentario.length > MAX_COMMENT_LENGTH}
+                          onClick={handleSendComment}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Última Atualização e ID Release - Sempre no final */}
