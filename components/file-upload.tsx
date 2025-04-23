@@ -204,7 +204,7 @@ export function FileUpload({
   const filesToShow = onFileSelect ? files : localFiles.map(file => ({ id: file.name, file }))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 -mt-4">
       {/* Área de seleção de arquivo e botão de upload */}
       <div className="flex flex-col gap-4">
         <div className="flex items-start gap-4">

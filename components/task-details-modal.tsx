@@ -106,7 +106,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
-    return new Date(date).toLocaleDateString('pt-BR')
+    const dateObj = new Date(date)
+    return dateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
   }
 
   const formatDateTime = (dateTime: string | undefined | null) => {
@@ -119,7 +120,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'UTC'
     });
   };
 
@@ -596,7 +598,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }}>
       <DialogContent className={cn(
         "sm:max-w-[600px] h-[85vh] p-0 flex flex-col overflow-hidden",
-        (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]"
+        (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]",
+        "[&>button]:hidden" // Oculta o botão de fechar padrão do DialogContent
       )}>
         {showLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-50">
@@ -605,31 +608,21 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             </div>
           </div>
         )}
-        <DialogHeader className="px-6 py-3 border-b shrink-0">
-          <DialogTitle className="flex items-center justify-between">
-            <span>Detalhes da Tarefa</span>
-            {canEdit && !isEditing && (
-              <div className="flex items-center gap-2 mr-4">
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => {
-                    // Ao entrar no modo de edição, garantimos que estamos usando os dados locais
-                    setLocalTask(task);
-                    setIsEditing(true);
-                  }}
-                  className="h-9 w-9 p-0"
-                >
-                  <Edit2 className="h-[18px] w-[18px] text-gray-500" />
-                </Button>
+        
+        <div className="absolute top-3 right-4 flex items-center gap-2 z-10">
+          {!isEditing && (
+            <>
+              <div className="relative">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
-                      size="sm"
+                      type="button"
                       variant="ghost"
-                      className="h-9 w-9 p-0"
+                      className="h-6 w-6 p-0 rounded-full bg-red-500 hover:bg-red-600 hover:scale-110 transition-transform border-0 flex items-center justify-center"
+                      disabled={!canEdit || isEditing}
+                      title="Excluir tarefa"
                     >
-                      <Trash className="h-[18px] w-[18px] text-red-500" />
+                      <Trash className="h-3 w-3 text-white" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -652,61 +645,109 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
-            )}
-            {isEditing && (
-              <div className="flex items-center gap-2 mr-4">
+              
+              <div className="relative">
                 <Button 
-                  size="sm" 
-                  onClick={handleSubmit}
-                  disabled={isSaving || selectedResponsaveis.length === 0}
-                  className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-[18px] w-[18px] animate-spin" />
-                  ) : (
-                    <Check className="h-[18px] w-[18px]" />
-                  )}
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                  type="button"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 rounded-full bg-yellow-400 hover:bg-yellow-500 hover:scale-110 transition-transform border-0 flex items-center justify-center"
                   onClick={() => {
-                    setIsEditing(false);
-                    // Restaurar os dados originais da tarefa
-                    setLocalTask(task);
-                    setTitulo(task.titulo);
-                    setDescricao(task.descricao || "");
-                    setPrioridade(task.prioridade_id.toString());
-                    setEstimativaHoras(task.estimativa_horas || "");
-                    setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
-                    setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
-                    setProjetoId(task.projeto_id?.toString() || "");
-                    setSelectedResponsaveis(
-                      task.responsaveis?.map(r => ({
-                        EMAIL: r.email,
-                        NOME: r.nome || r.email.split('@')[0],
-                        CARGO: r.cargo
-                      })) || []
-                    );
-                    // Retomar o polling
-                    resumePolling();
+                    if (canEdit && !isEditing) {
+                      setLocalTask(task);
+                      setIsEditing(true);
+                    }
                   }}
-                  disabled={isSaving}
-                  className="h-9 w-9 p-0"
+                  disabled={!canEdit || isEditing}
+                  title="Editar tarefa"
                 >
-                  <X className="h-[18px] w-[18px]" />
+                  <Edit2 className="h-3 w-3 text-white" />
                 </Button>
               </div>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+              
+              <div className="relative">
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 rounded-full bg-green-500 hover:bg-green-600 hover:scale-110 transition-transform border-0 flex items-center justify-center"
+                  onClick={() => onOpenChange(false)}
+                  title="Fechar"
+                >
+                  <X className="h-3 w-3 text-white" />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
         
-        <Tabs defaultValue="detalhes" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 px-6 shrink-0 mt-1 mb-1">
-            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-            <TabsTrigger value="anexos">Anexos</TabsTrigger>
-          </TabsList>
-
+        <Tabs defaultValue="detalhes" className="flex flex-col h-full">
+          <DialogHeader className="px-6 py-3 border-b shrink-0">
+            <DialogTitle className="sr-only">Detalhes da Tarefa</DialogTitle>
+            <div className="flex items-center justify-between">
+              <TabsList className="grid w-[200px] grid-cols-2">
+                <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                <TabsTrigger value="anexos">Anexos</TabsTrigger>
+              </TabsList>
+              
+              {canEdit && !isEditing && (
+                <div className="invisible">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-9 w-9 p-0"
+                  >
+                    <Edit2 className="h-[18px] w-[18px] text-gray-500" />
+                  </Button>
+                </div>
+              )}
+              
+              {isEditing && (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    onClick={handleSubmit}
+                    disabled={isSaving || selectedResponsaveis.length === 0}
+                    className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                    ) : (
+                      <Check className="h-[18px] w-[18px]" />
+                    )}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsEditing(false);
+                      // Restaurar os dados originais da tarefa
+                      setLocalTask(task);
+                      setTitulo(task.titulo);
+                      setDescricao(task.descricao || "");
+                      setPrioridade(task.prioridade_id.toString());
+                      setEstimativaHoras(task.estimativa_horas || "");
+                      setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
+                      setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
+                      setProjetoId(task.projeto_id?.toString() || "");
+                      setSelectedResponsaveis(
+                        task.responsaveis?.map(r => ({
+                          EMAIL: r.email,
+                          NOME: r.nome || r.email.split('@')[0],
+                          CARGO: r.cargo
+                        })) || []
+                      );
+                      // Retomar o polling
+                      resumePolling();
+                    }}
+                    disabled={isSaving}
+                    className="h-9 w-9 p-0"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+          
           <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
             <div className="p-4 flex flex-col h-full">
               <TabsContent value="detalhes" className="flex flex-col h-full">
@@ -847,7 +888,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             </div>
                           </>
                         ) : (
-                          <div className="text-sm mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
+                          <div className="text-sm mt-1 whitespace-pre-wrap max-h-[120px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
                             {localTask.descricao || "-"}
                           </div>
                         )}
@@ -992,10 +1033,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     </div>
                   )}
 
-                  <Separator className="my-3" />
+                  {/* Linha divisória - só aparece quando há comentários */}
+                  {comentarios.length > 0 && <Separator className="my-3" />}
 
                   {/* Seção de Comentários */}
-                  <div className="space-y-2">
+                  <div className={cn(
+                    "space-y-2",
+                    comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : "" // Muito mais espaço quando não há comentários
+                  )}>
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium">Comentários</h4>
                     </div>
@@ -1094,6 +1139,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       )}
                     </div>
 
+                    {/* Espaço adicional quando há poucos comentários */}
+                    {comentarios.length > 0 && comentarios.length <= 3 && (
+                      <div className="h-6"></div>
+                    )}
+
                     {/* Campo de Novo Comentário */}
                     <div className="flex gap-2">
                       <div className="flex flex-col w-full">
@@ -1101,7 +1151,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           value={comentario}
                           onChange={(e) => setComentario(e.target.value)}
                           placeholder="Escreva um comentário..."
-                          className="h-12 resize-none"
+                          className="h-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
                           maxLength={MAX_COMMENT_LENGTH}
                         />
                         <div className="flex justify-end">
