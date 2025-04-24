@@ -134,10 +134,11 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       // Remove a tarefa da lista atual
       const remainingTasks = tasks.filter(t => t.id !== taskId);
       
-      // Atualiza posições e última atualização
-      const date = new Date();
-      const now = date.toISOString();
+      // Valor de timestamp para identificação de mudanças recentes
       const timestamp = Date.now();
+      
+      // Marca um timestamp temporário para a UI até receber a atualização do servidor
+      const now = new Date().toISOString();
       
       // Atualiza a tarefa movida
       const updatedTask = {
@@ -231,21 +232,17 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       
       if (!taskToUpdate) return state;
       
-      // Atualiza a data da última atualização (sem ajuste de hora, isso será feito no banco)
-      const date = new Date();
-      const now = date.toISOString();
+      // Marca um timestamp temporário para a UI até receber a atualização do servidor
+      const now = new Date().toISOString();
       
-      // Atualiza a tarefa
+      // Atualiza a tarefa na UI
       taskToUpdate.ultima_atualizacao = now;
       
-      // Chama a API para atualizar a data no banco de dados
+      // Chama a API para atualizar a data no banco de dados usando NOW()
       fetch('/api/atividades/update-timestamp', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId,
-          ultima_atualizacao: now
-        }),
+        body: JSON.stringify({ taskId }),
       }).catch(error => {
         console.error('Erro ao atualizar timestamp:', error);
       });

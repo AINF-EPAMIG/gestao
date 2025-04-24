@@ -53,13 +53,10 @@ export async function POST(request: Request) {
       values: [atividade_id, usuario_email, usuario_nome, comentario]
     }) as InsertResult
 
-    // Atualiza a data da última atualização da tarefa
-    const date = new Date();
-    const now = date.toISOString();
-    
+    // Atualiza a data da última atualização da tarefa usando NOW() do banco de dados
     await executeQuery({
-      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?',
-      values: [now, atividade_id]
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?',
+      values: [atividade_id]
     });
 
     const [novoComentario] = await executeQuery({
@@ -107,13 +104,10 @@ export async function PUT(request: Request) {
       values: [comentario, id]
     })
 
-    // Atualiza a data da última atualização da tarefa
-    const date = new Date();
-    const now = date.toISOString();
-    
+    // Atualiza a data da última atualização da tarefa usando NOW() do banco de dados
     await executeQuery({
-      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?',
-      values: [now, comentarioExistente.atividade_id]
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?',
+      values: [comentarioExistente.atividade_id]
     });
 
     const [comentarioAtualizado] = await executeQuery({

@@ -3,18 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function PUT(request: NextRequest) {
   try {
-    const { taskId, ultima_atualizacao } = await request.json();
+    const { taskId } = await request.json();
 
     console.log('🔵 Atualizando timestamp da tarefa...');
     
-    // Atualiza a data de última atualização da tarefa com ajuste de +3h
+    // Atualiza a data de última atualização da tarefa sem ajustes de hora
     await executeQuery({
       query: `
         UPDATE u711845530_gestao.atividades 
-        SET ultima_atualizacao = DATE_ADD(?, INTERVAL 3 HOUR)
+        SET ultima_atualizacao = NOW()
         WHERE id = ?
       `,
-      values: [ultima_atualizacao, taskId],
+      values: [taskId],
     });
     
     console.log('✅ Timestamp atualizado com sucesso');

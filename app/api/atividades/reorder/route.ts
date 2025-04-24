@@ -34,10 +34,10 @@ export async function PUT(request: NextRequest) {
           UPDATE u711845530_gestao.atividades 
           SET status_id = ?, 
               position = ?,
-              ultima_atualizacao = ?
+              ultima_atualizacao = NOW()
           WHERE id = ?
         `,
-        values: [statusId, position, ultima_atualizacao, taskId],
+        values: [statusId, position, taskId],
       });
     } else {
       await executeQuery({
