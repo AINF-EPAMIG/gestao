@@ -53,9 +53,9 @@ export async function POST(request: Request) {
       values: [atividade_id, usuario_email, usuario_nome, comentario]
     }) as InsertResult
 
-    // Atualiza a data da última atualização da tarefa usando NOW() do banco de dados
+    // Atualiza a data da última atualização da tarefa com ajuste de -3h
     await executeQuery({
-      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?',
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
       values: [atividade_id]
     });
 
@@ -104,9 +104,9 @@ export async function PUT(request: Request) {
       values: [comentario, id]
     })
 
-    // Atualiza a data da última atualização da tarefa usando NOW() do banco de dados
+    // Atualiza a data da última atualização da tarefa com ajuste de -3h
     await executeQuery({
-      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?',
+      query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
       values: [comentarioExistente.atividade_id]
     });
 

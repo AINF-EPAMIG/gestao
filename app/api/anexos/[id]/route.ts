@@ -80,9 +80,9 @@ export async function DELETE(
     );
     console.log("[Delete] Registro excluído do banco com sucesso")
 
-    // Atualiza a data da última atualização da tarefa usando NOW() do banco
+    // Atualiza a data da última atualização da tarefa com ajuste de -3h
     await db.execute(
-      "UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?",
+      "UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?",
       [atividadeId]
     );
     console.log("[Delete] Timestamp da atividade atualizado com sucesso")

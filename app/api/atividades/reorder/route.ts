@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest) {
           UPDATE u711845530_gestao.atividades 
           SET status_id = ?, 
               position = ?,
-              ultima_atualizacao = NOW()
+              ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR)
           WHERE id = ?
         `,
         values: [statusId, position, taskId],

@@ -12,7 +12,7 @@ export async function PUT(request: NextRequest) {
       query: `
         UPDATE u711845530_gestao.atividades 
         SET data_fim = ?,
-            ultima_atualizacao = NOW()
+            ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR)
         WHERE id = ?
       `,
       values: [data_fim, taskId],
