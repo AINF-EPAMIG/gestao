@@ -106,22 +106,29 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
-    const dateObj = new Date(date)
-    return dateObj.toLocaleDateString('pt-BR')
+    const originalDate = new Date(date)
+    
+    // Usar dia, mês e ano direto da data UTC para evitar ajustes
+    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
+    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
+    const ano = originalDate.getUTCFullYear()
+    
+    return `${dia}/${mes}/${ano}`
   }
 
   const formatDateTime = (dateTime: string | undefined | null) => {
     if (!dateTime) return '-';
     
-    const date = new Date(dateTime);
+    const originalDate = new Date(dateTime);
     
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Usar componentes diretos da data UTC para evitar ajustes
+    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
+    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
+    const ano = originalDate.getUTCFullYear()
+    const hora = String(originalDate.getUTCHours()).padStart(2, '0')
+    const minuto = String(originalDate.getUTCMinutes()).padStart(2, '0')
+    
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
   };
 
   const formatEstimativa = (estimativa: string | number | undefined | null) => {
@@ -131,14 +138,17 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const formatDateTimeWithTime = (dateTime: string | undefined | null) => {
     if (!dateTime) return '-';
-    const date = new Date(dateTime);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    
+    const originalDate = new Date(dateTime);
+    
+    // Usar componentes diretos da data UTC para evitar ajustes
+    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
+    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
+    const ano = originalDate.getUTCFullYear()
+    const hora = String(originalDate.getUTCHours()).padStart(2, '0')
+    const minuto = String(originalDate.getUTCMinutes()).padStart(2, '0')
+    
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
   };
 
   useEffect(() => {

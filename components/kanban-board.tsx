@@ -97,16 +97,24 @@ const TaskCard = memo(function TaskCard({
   const formatDateTimeCompact = (dateTime: string | null) => {
     if (!dateTime) return null;
     
-    const date = new Date(dateTime);
+    // Cria uma data a partir da string, mas preserva a hora como está no banco
+    const originalDate = new Date(dateTime);
+    
+    // Cria uma data com o mesmo ano, mês, dia, hora e minuto
+    // mas no fuso horário local, para evitar ajustes automáticos
+    const date = new Date();
+    date.setFullYear(originalDate.getUTCFullYear());
+    date.setMonth(originalDate.getUTCMonth());
+    date.setDate(originalDate.getUTCDate());
+    date.setHours(originalDate.getUTCHours());
+    date.setMinutes(originalDate.getUTCMinutes());
+
     const hoje = new Date();
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
     
-    // Formatação da hora
-    const hora = date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Formatação da hora sem especificar timeZone
+    const hora = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
     // Compara as datas usando o método de comparação por dia
     const ehHoje = date.getDate() === hoje.getDate() && 
@@ -126,10 +134,7 @@ const TaskCard = memo(function TaskCard({
     }
     
     // Caso contrário, retorna a data abreviada
-    const dataFormatada = date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit'
-    });
+    const dataFormatada = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
     
     return `${dataFormatada} ${hora}`;
   };
