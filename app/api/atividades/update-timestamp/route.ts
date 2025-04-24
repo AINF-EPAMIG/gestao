@@ -7,11 +7,11 @@ export async function PUT(request: NextRequest) {
 
     console.log('🔵 Atualizando timestamp da tarefa...');
     
-    // Atualiza a data de última atualização da tarefa
+    // Atualiza a data de última atualização da tarefa com ajuste de +3h
     await executeQuery({
       query: `
         UPDATE u711845530_gestao.atividades 
-        SET ultima_atualizacao = ?
+        SET ultima_atualizacao = DATE_ADD(?, INTERVAL 3 HOUR)
         WHERE id = ?
       `,
       values: [ultima_atualizacao, taskId],
