@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     // Atualiza a data da última atualização da tarefa
     const date = new Date();
-    date.setHours(date.getHours() - 3);
+    date.setHours(date.getHours() + 3);
     const now = date.toISOString();
     
     await executeQuery({
@@ -110,7 +110,7 @@ export async function PUT(request: Request) {
 
     // Atualiza a data da última atualização da tarefa
     const date = new Date();
-    date.setHours(date.getHours() - 3);
+    date.setHours(date.getHours() + 3);
     const now = date.toISOString();
     
     await executeQuery({

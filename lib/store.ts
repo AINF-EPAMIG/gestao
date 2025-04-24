@@ -136,7 +136,7 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       
       // Atualiza posições e última atualização
       const date = new Date();
-      date.setHours(date.getHours() - 3);
+      date.setHours(date.getHours() + 3);
       const now = date.toISOString();
       const timestamp = Date.now();
       
@@ -232,9 +232,9 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       
       if (!taskToUpdate) return state;
       
-      // Atualiza a data da última atualização
+      // Atualiza a data da última atualização com +3 horas
       const date = new Date();
-      date.setHours(date.getHours() - 3);
+      date.setHours(date.getHours() + 3);
       const now = date.toISOString();
       
       // Atualiza a tarefa
