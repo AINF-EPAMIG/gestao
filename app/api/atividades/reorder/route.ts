@@ -22,7 +22,7 @@ interface Responsavel {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { taskId, statusId, position, ultima_atualizacao, isStatusChange, oldStatusId, updateTimestamp } = await request.json();
+    const { taskId, statusId, position, isStatusChange, oldStatusId, updateTimestamp } = await request.json();
 
     console.log('🔵 Reordenando tarefa...');
     
