@@ -105,18 +105,17 @@ const TaskCard = memo(function TaskCard({
     // Formatação da hora
     const hora = date.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
+      minute: '2-digit'
     });
 
     // Compara as datas usando o método de comparação por dia
-    const ehHoje = date.getUTCDate() === hoje.getDate() && 
-                  date.getUTCMonth() === hoje.getMonth() && 
-                  date.getUTCFullYear() === hoje.getFullYear();
+    const ehHoje = date.getDate() === hoje.getDate() && 
+                  date.getMonth() === hoje.getMonth() && 
+                  date.getFullYear() === hoje.getFullYear();
                   
-    const ehOntem = date.getUTCDate() === ontem.getDate() && 
-                   date.getUTCMonth() === ontem.getMonth() && 
-                   date.getUTCFullYear() === ontem.getFullYear();
+    const ehOntem = date.getDate() === ontem.getDate() && 
+                   date.getMonth() === ontem.getMonth() && 
+                   date.getFullYear() === ontem.getFullYear();
     
     if (ehHoje) {
       return `Hoje ${hora}`;
@@ -129,8 +128,7 @@ const TaskCard = memo(function TaskCard({
     // Caso contrário, retorna a data abreviada
     const dataFormatada = date.toLocaleDateString('pt-BR', {
       day: '2-digit',
-      month: '2-digit',
-      timeZone: 'UTC'
+      month: '2-digit'
     });
     
     return `${dataFormatada} ${hora}`;

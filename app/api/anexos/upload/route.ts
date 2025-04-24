@@ -102,14 +102,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Atualiza a data da última atualização da tarefa
-    const date = new Date();
-    date.setHours(date.getHours() - 3);
-    const now = date.toISOString();
-    
+    // Atualiza a data da última atualização da tarefa usando NOW() do banco
     await db.execute(
-      `UPDATE u711845530_gestao.atividades SET ultima_atualizacao = ? WHERE id = ?`,
-      [now, taskId]
+      `UPDATE u711845530_gestao.atividades SET ultima_atualizacao = NOW() WHERE id = ?`,
+      [taskId]
     );
 
     return NextResponse.json(savedFiles)

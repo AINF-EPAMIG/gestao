@@ -107,7 +107,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
     const dateObj = new Date(date)
-    return dateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+    return dateObj.toLocaleDateString('pt-BR')
   }
 
   const formatDateTime = (dateTime: string | undefined | null) => {
@@ -120,8 +120,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
+      minute: '2-digit'
     });
   };
 
@@ -138,8 +137,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
+      minute: '2-digit'
     });
   };
 
