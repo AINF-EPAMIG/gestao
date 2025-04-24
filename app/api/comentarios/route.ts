@@ -49,7 +49,16 @@ export async function POST(request: Request) {
     }
 
     const result = await executeQuery({
-      query: 'INSERT INTO u711845530_gestao.comentarios (atividade_id, usuario_email, usuario_nome, comentario) VALUES (?, ?, ?, ?)',
+      query: `
+        INSERT INTO u711845530_gestao.comentarios (
+          atividade_id, 
+          usuario_email, 
+          usuario_nome, 
+          comentario,
+          data_criacao
+        ) 
+        VALUES (?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL 3 HOUR))
+      `,
       values: [atividade_id, usuario_email, usuario_nome, comentario]
     }) as InsertResult
 
@@ -100,7 +109,7 @@ export async function PUT(request: Request) {
     }
 
     await executeQuery({
-      query: 'UPDATE u711845530_gestao.comentarios SET comentario = ?, data_edicao = NOW() WHERE id = ?',
+      query: 'UPDATE u711845530_gestao.comentarios SET comentario = ?, data_edicao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
       values: [comentario, id]
     })
 
