@@ -158,7 +158,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       
       const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
       const [hourPart] = timePart.split('.');
-      const [hour, minute, second] = hourPart.split(':').map(num => parseInt(num, 10));
+      const [hour, minute] = hourPart.split(':').map(num => parseInt(num, 10));
       
       // Formata diretamente sem passar por objeto Date
       const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
