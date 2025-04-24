@@ -106,29 +106,40 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
-    const originalDate = new Date(date)
     
-    // Usar dia, mês e ano direto da data UTC para evitar ajustes
-    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
-    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
-    const ano = originalDate.getUTCFullYear()
-    
-    return `${dia}/${mes}/${ano}`
+    try {
+      // Para datas simples como "2025-04-24"
+      const parts = date.split('-');
+      if (parts.length !== 3) return date; // Formato não reconhecido
+      
+      const [year, month, day] = parts.map(num => parseInt(num, 10));
+      return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return date; // Em caso de erro, retorna o valor original
+    }
   }
 
   const formatDateTime = (dateTime: string | undefined | null) => {
     if (!dateTime) return '-';
     
-    const originalDate = new Date(dateTime);
-    
-    // Usar componentes diretos da data UTC para evitar ajustes
-    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
-    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
-    const ano = originalDate.getUTCFullYear()
-    const hora = String(originalDate.getUTCHours()).padStart(2, '0')
-    const minuto = String(originalDate.getUTCMinutes()).padStart(2, '0')
-    
-    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+    try {
+      // Analisa a string ISO diretamente
+      const [datePart, timePart] = dateTime.split('T');
+      if (!datePart || !timePart) return dateTime; // Formato não reconhecido, retorna como está
+      
+      const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
+      const [hourPart] = timePart.split('.');
+      const [hour, minute] = hourPart.split(':').map(num => parseInt(num, 10));
+      
+      const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+      const formattedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      return `${formattedDate} ${formattedTime}`;
+    } catch (error) {
+      console.error('Erro ao formatar data/hora:', error);
+      return dateTime || '-'; // Em caso de erro, retorna o valor original
+    }
   };
 
   const formatEstimativa = (estimativa: string | number | undefined | null) => {
@@ -139,16 +150,25 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const formatDateTimeWithTime = (dateTime: string | undefined | null) => {
     if (!dateTime) return '-';
     
-    const originalDate = new Date(dateTime);
-    
-    // Usar componentes diretos da data UTC para evitar ajustes
-    const dia = String(originalDate.getUTCDate()).padStart(2, '0')
-    const mes = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
-    const ano = originalDate.getUTCFullYear()
-    const hora = String(originalDate.getUTCHours()).padStart(2, '0')
-    const minuto = String(originalDate.getUTCMinutes()).padStart(2, '0')
-    
-    return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
+    try {
+      // Analisa a string ISO diretamente para extrair os componentes, evitando conversões automáticas
+      // A string vem no formato "2025-04-24T09:53:01.000Z" ou similar
+      const [datePart, timePart] = dateTime.split('T');
+      if (!datePart || !timePart) return dateTime; // Formato não reconhecido, retorna como está
+      
+      const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
+      const [hourPart] = timePart.split('.');
+      const [hour, minute, second] = hourPart.split(':').map(num => parseInt(num, 10));
+      
+      // Formata diretamente sem passar por objeto Date
+      const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+      const formattedTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      return `${formattedDate} ${formattedTime}`;
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dateTime || '-'; // Em caso de erro, retorna o valor original
+    }
   };
 
   useEffect(() => {

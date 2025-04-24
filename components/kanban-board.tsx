@@ -97,46 +97,53 @@ const TaskCard = memo(function TaskCard({
   const formatDateTimeCompact = (dateTime: string | null) => {
     if (!dateTime) return null;
     
-    // Cria uma data a partir da string, mas preserva a hora como está no banco
-    const originalDate = new Date(dateTime);
-    
-    // Cria uma data com o mesmo ano, mês, dia, hora e minuto
-    // mas no fuso horário local, para evitar ajustes automáticos
-    const date = new Date();
-    date.setFullYear(originalDate.getUTCFullYear());
-    date.setMonth(originalDate.getUTCMonth());
-    date.setDate(originalDate.getUTCDate());
-    date.setHours(originalDate.getUTCHours());
-    date.setMinutes(originalDate.getUTCMinutes());
-
-    const hoje = new Date();
-    const ontem = new Date();
-    ontem.setDate(ontem.getDate() - 1);
-    
-    // Formatação da hora sem especificar timeZone
-    const hora = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-
-    // Compara as datas usando o método de comparação por dia
-    const ehHoje = date.getDate() === hoje.getDate() && 
-                  date.getMonth() === hoje.getMonth() && 
-                  date.getFullYear() === hoje.getFullYear();
+    try {
+      // Analisa a string ISO diretamente para extrair os componentes
+      const [datePart, timePart] = dateTime.split('T');
+      if (!datePart || !timePart) return dateTime; // Formato não reconhecido, retorna como está
+      
+      // Extrai ano, mês, dia, hora e minuto diretamente da string
+      const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
+      const [hourPart] = timePart.split('.');
+      const [hour, minute] = hourPart.split(':').map(num => parseInt(num, 10));
+      
+      // Formata a hora sem conversões
+      const hora = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      // Verifica se é hoje ou ontem
+      const hoje = new Date();
+      const ontem = new Date();
+      ontem.setDate(ontem.getDate() - 1);
+      
+      const dataAtual = new Date();
+      dataAtual.setFullYear(year);
+      dataAtual.setMonth(month - 1); // Mês em JavaScript é 0-indexed
+      dataAtual.setDate(day);
+      
+      const ehHoje = dataAtual.getDate() === hoje.getDate() && 
+                  dataAtual.getMonth() === hoje.getMonth() && 
+                  dataAtual.getFullYear() === hoje.getFullYear();
                   
-    const ehOntem = date.getDate() === ontem.getDate() && 
-                   date.getMonth() === ontem.getMonth() && 
-                   date.getFullYear() === ontem.getFullYear();
-    
-    if (ehHoje) {
-      return `Hoje ${hora}`;
+      const ehOntem = dataAtual.getDate() === ontem.getDate() && 
+                   dataAtual.getMonth() === ontem.getMonth() && 
+                   dataAtual.getFullYear() === ontem.getFullYear();
+      
+      if (ehHoje) {
+        return `Hoje ${hora}`;
+      }
+      
+      if (ehOntem) {
+        return `Ontem ${hora}`;
+      }
+      
+      // Caso contrário, retorna a data abreviada
+      const dataFormatada = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`;
+      
+      return `${dataFormatada} ${hora}`;
+    } catch (error) {
+      console.error('Erro ao formatar data compacta:', error);
+      return dateTime; // Em caso de erro, retorna o valor original
     }
-    
-    if (ehOntem) {
-      return `Ontem ${hora}`;
-    }
-    
-    // Caso contrário, retorna a data abreviada
-    const dataFormatada = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
-    
-    return `${dataFormatada} ${hora}`;
   };
 
   return (
