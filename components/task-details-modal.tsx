@@ -803,12 +803,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         <Badge 
                           className={
                             getStatusName(task.status_id) === "Concluída"
-                              ? "bg-emerald-500"
+                              ? "bg-emerald-500 text-white"
                               : getStatusName(task.status_id) === "Em desenvolvimento"
-                              ? "bg-blue-500"
+                              ? "bg-blue-500 text-white"
                               : getStatusName(task.status_id) === "Em testes"
-                              ? "bg-yellow-400"
-                              : "bg-red-500"
+                              ? "bg-yellow-400 text-white"
+                              : "bg-red-500 text-white"
                           }
                         >
                           {getStatusName(task.status_id)}
@@ -816,10 +816,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         <Badge
                           className={
                             getPriorityName(task.prioridade_id) === "Alta"
-                              ? "bg-red-500"
+                              ? "bg-red-50 text-red-600 border-red-100"
                               : getPriorityName(task.prioridade_id) === "Média"
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
+                              ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                              : "bg-green-50 text-green-600 border-green-100"
                           }
                         >
                           {getPriorityName(task.prioridade_id)}

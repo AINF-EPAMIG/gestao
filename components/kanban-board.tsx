@@ -163,10 +163,10 @@ const TaskCard = memo(function TaskCard({
           <Badge
             className={
               getPriorityName(task.prioridade_id) === "Alta"
-                ? "bg-red-500"
+                ? "bg-red-50 text-red-600 border-red-100"
                 : getPriorityName(task.prioridade_id) === "Média"
-                ? "bg-yellow-500"
-                : "bg-green-500"
+                ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                : "bg-green-50 text-green-600 border-green-100"
             }
           >
             {getPriorityName(task.prioridade_id)}

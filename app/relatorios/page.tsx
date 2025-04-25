@@ -24,10 +24,10 @@ interface ResponsavelRM {
 }
 
 const STATUS_COLORS = {
-  Desenvolvimento: "bg-blue-500",
-  "Não iniciada": "bg-red-500",
-  Concluída: "bg-emerald-500",
-  "Em testes": "bg-yellow-400",
+  Desenvolvimento: "bg-blue-500 text-white",
+  "Não iniciada": "bg-red-500 text-white",
+  Concluída: "bg-emerald-500 text-white",
+  "Em testes": "bg-yellow-400 text-white",
 } as const
 
 function formatStatusName(statusId: number): string {
@@ -153,11 +153,11 @@ export default function PlanilhaPage() {
               </div>
 
               {/* Nova seção de filtros */}
-              <div className="mb-6 grid gap-4 md:grid-cols-5">
-                <div className="space-y-2">
+              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+                <div className="space-y-1">
                   <Label htmlFor="status">Status</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger id="status">
+                    <SelectTrigger id="status" className="h-9">
                       <SelectValue placeholder="Todos os status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -171,10 +171,10 @@ export default function PlanilhaPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="responsavel">Responsável</Label>
                   <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
-                    <SelectTrigger id="responsavel">
+                    <SelectTrigger id="responsavel" className="h-9">
                       <SelectValue placeholder="Todos os responsáveis" />
                     </SelectTrigger>
                     <SelectContent>
@@ -188,10 +188,10 @@ export default function PlanilhaPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="prioridade">Prioridade</Label>
                   <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-                    <SelectTrigger id="prioridade">
+                    <SelectTrigger id="prioridade" className="h-9">
                       <SelectValue placeholder="Todas as prioridades" />
                     </SelectTrigger>
                     <SelectContent>
@@ -205,10 +205,10 @@ export default function PlanilhaPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="projeto">Projeto</Label>
                   <Select value={projetoFilter} onValueChange={setProjetoFilter}>
-                    <SelectTrigger id="projeto">
+                    <SelectTrigger id="projeto" className="h-9">
                       <SelectValue placeholder="Todos os projetos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -224,21 +224,23 @@ export default function PlanilhaPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="dataInicio">Data Início</Label>
                   <Input
                     id="dataInicio"
                     type="date"
+                    className="h-9"
                     value={dataInicioFilter}
                     onChange={(e) => setDataInicioFilter(e.target.value)}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="dataFim">Data Fim</Label>
                   <Input
                     id="dataFim"
                     type="date"
+                    className="h-9"
                     value={dataFimFilter}
                     onChange={(e) => setDataFimFilter(e.target.value)}
                   />
@@ -246,21 +248,21 @@ export default function PlanilhaPage() {
               </div>
 
               {/* Desktop view */}
-              <div className="hidden md:block border rounded-md">
+              <div className="hidden md:block border rounded-md overflow-hidden">
                 <div className="relative w-full overflow-auto">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-white">
-                      <TableRow>
-                        <TableHead className="w-[100px]">ID</TableHead>
-                        <TableHead className="min-w-[200px]">Título</TableHead>
-                        <TableHead className="min-w-[180px]">Responsável</TableHead>
-                        <TableHead className="min-w-[120px]">Status</TableHead>
-                        <TableHead className="min-w-[120px]">Prioridade</TableHead>
-                        <TableHead className="min-w-[150px]">Projeto</TableHead>
-                        <TableHead className="min-w-[100px]">Estimativa</TableHead>
-                        <TableHead className="min-w-[120px]">Data de Início</TableHead>
-                        <TableHead className="min-w-[120px]">Data de Fim</TableHead>
-                        <TableHead className="min-w-[100px]">ID Release</TableHead>
+                    <TableHeader className="sticky top-0 bg-[#00714B] rounded-t-md">
+                      <TableRow className="border-b-0">
+                        <TableHead className="w-[100px] text-white font-medium rounded-tl-md">ID</TableHead>
+                        <TableHead className="min-w-[200px] text-white font-medium">Título</TableHead>
+                        <TableHead className="min-w-[180px] text-white font-medium">Responsável</TableHead>
+                        <TableHead className="min-w-[120px] text-white font-medium">Status</TableHead>
+                        <TableHead className="min-w-[120px] text-white font-medium">Prioridade</TableHead>
+                        <TableHead className="min-w-[150px] text-white font-medium">Projeto</TableHead>
+                        <TableHead className="min-w-[100px] text-white font-medium">Estimativa</TableHead>
+                        <TableHead className="min-w-[120px] text-white font-medium">Data de Início</TableHead>
+                        <TableHead className="min-w-[120px] text-white font-medium">Data de Fim</TableHead>
+                        <TableHead className="min-w-[100px] text-white font-medium rounded-tr-md">ID Release</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -288,10 +290,10 @@ export default function PlanilhaPage() {
                               variant="outline"
                               className={
                                 getPriorityName(task.prioridade_id) === "Alta"
-                                  ? "text-red-500 border-red-200"
+                                  ? "bg-red-50 text-red-600 border-red-100"
                                   : getPriorityName(task.prioridade_id) === "Média"
-                                    ? "text-yellow-600 border-yellow-200"
-                                    : "text-green-500 border-green-200"
+                                    ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                                    : "bg-green-50 text-green-600 border-green-100"
                               }
                             >
                               {getPriorityName(task.prioridade_id)}
@@ -353,10 +355,10 @@ export default function PlanilhaPage() {
                             variant="outline"
                             className={
                               getPriorityName(task.prioridade_id) === "Alta"
-                                ? "text-red-500 border-red-200"
+                                ? "bg-red-50 text-red-600 border-red-100"
                                 : getPriorityName(task.prioridade_id) === "Média"
-                                  ? "text-yellow-600 border-yellow-200"
-                                  : "text-green-500 border-green-200"
+                                  ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                                  : "bg-green-50 text-green-600 border-green-100"
                             }
                           >
                             {getPriorityName(task.prioridade_id)}

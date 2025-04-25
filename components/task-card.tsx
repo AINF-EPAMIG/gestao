@@ -29,9 +29,9 @@ export function TaskCard({
   endDate,
 }: TaskCardProps) {
   const priorityColor = {
-    Alta: "bg-red-500",
-    Média: "bg-yellow-500",
-    Baixa: "bg-green-500",
+    Alta: "bg-red-50 text-red-600 border-red-100",
+    Média: "bg-yellow-50 text-yellow-600 border-yellow-100",
+    Baixa: "bg-green-50 text-green-600 border-green-100",
   }
 
   return (

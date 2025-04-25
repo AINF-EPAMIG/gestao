@@ -58,17 +58,17 @@ export function DataTable({ tasks }: DataTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge>{getStatusName(task.status_id)}</Badge>
+                <Badge className="bg-blue-500 text-white">{getStatusName(task.status_id)}</Badge>
               </TableCell>
               <TableCell>
                 <Badge
                   variant="outline"
                   className={
                     getPriorityName(task.prioridade_id) === "Alta"
-                      ? "border-red-500 text-red-500"
+                      ? "bg-red-50 text-red-600 border-red-100"
                       : getPriorityName(task.prioridade_id) === "Média"
-                      ? "border-yellow-500 text-yellow-500"
-                      : "border-green-500 text-green-500"
+                      ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                      : "bg-green-50 text-green-600 border-green-100"
                   }
                 >
                   {getPriorityName(task.prioridade_id)}

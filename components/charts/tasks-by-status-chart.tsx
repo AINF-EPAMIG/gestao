@@ -89,6 +89,14 @@ export function TasksByStatusChart() {
 
       task.responsaveis.forEach(resp => {
         const email = resp.email
+        
+        // Pular Andrezza Fernandes
+        if (email === "andrezza.fernandes@epamig.br" || 
+            email.toLowerCase().includes("andrezza") || 
+            (resp.nome && resp.nome.toLowerCase().includes("andrezza"))) {
+          return;
+        }
+        
         const nome = resp.nome || email.split('@')[0].replace('.', ' ')
         const primeiroNome = nome.split(' ')[0]
         
