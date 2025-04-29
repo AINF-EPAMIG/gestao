@@ -24,15 +24,19 @@ interface ResponsavelRM {
 }
 
 const STATUS_COLORS = {
-  Desenvolvimento: "bg-blue-500 text-white",
-  "Não iniciada": "bg-red-500 text-white",
-  Concluída: "bg-emerald-500 text-white",
-  "Em testes": "bg-yellow-400 text-white",
+  "Desenv.": "bg-blue-500 text-white",
+  "N. Inic.": "bg-red-500 text-white",
+  "Concl.": "bg-emerald-500 text-white",
+  "Testes": "bg-yellow-400 text-white",
 } as const
 
 function formatStatusName(statusId: number): string {
   const status = getStatusName(statusId)
-  return status === "Em desenvolvimento" ? "Desenvolvimento" : status
+  if (status === "Em desenvolvimento") return "Desenv."
+  if (status === "Não iniciada") return "N. Inic."
+  if (status === "Em testes") return "Testes"
+  if (status === "Concluída") return "Concl."
+  return status
 }
 
 function formatDate(dateString: string | null): string {
@@ -114,54 +118,54 @@ export default function PlanilhaPage() {
         ) : (
           <div className="min-h-screen w-full bg-background">
             {/* Reduced spacer height from h-14 to h-10 */}
-            <div className="h-10 md:hidden" />
-            <div className="p-4 sm:p-6 md:p-10">
+            <div className="h-10 lg:hidden" />
+            <div className="p-2 sm:p-3 md:p-4 lg:p-6 max-w-[100vw] overflow-x-hidden">
               {/* Reduced margin-bottom from mb-6 to mb-4 */}
-              <div className="flex flex-col mb-4">
+              <div className="flex flex-col mb-3">
                 <div className="space-y-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold">Relatórios</h1>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Relatórios</h1>
                 </div>
               </div>
 
               {/* Cards de estatísticas */}
-              <div className="grid gap-4 md:grid-cols-2 mb-6">
+              <div className="grid gap-3 md:grid-cols-2 mb-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 py-2">
                     <CardTitle className="text-sm font-medium">Total de Tarefas</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{totalTasks}</div>
+                  <CardContent className="pt-0">
+                    <div className="text-xl font-bold">{totalTasks}</div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 py-2">
                     <CardTitle className="text-sm font-medium">Tarefas Concluídas</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-emerald-600">{completedTasks}</div>
+                  <CardContent className="pt-0">
+                    <div className="text-xl font-bold text-emerald-600">{completedTasks}</div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Novo gráfico de barras */}
-              <div className="mb-6">
+              {/* Gráfico de barras com responsividade ajustada */}
+              <div className="mb-6 w-full overflow-hidden">
                 <TasksByStatusChart />
                 {/* Mensagem para dispositivos móveis */}
-                <div className="sm:hidden p-4 bg-gray-50 rounded-lg border text-center">
+                <div className="lg:hidden p-4 bg-gray-50 rounded-lg border text-center">
                   <p className="text-sm text-gray-600">O gráfico de análise de tarefas está disponível apenas na versão desktop.</p>
                 </div>
               </div>
 
-              {/* Nova seção de filtros */}
-              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+              {/* Nova seção de filtros - ajustada para telas médias */}
+              <div className="mb-4 grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="status">Status</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger id="status" className="h-9">
-                      <SelectValue placeholder="Todos os status" />
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
                       {uniqueStatus.map((status, index) => (
                         <SelectItem key={`status-${status}-${index}`} value={status}>
                           {status}
@@ -175,10 +179,10 @@ export default function PlanilhaPage() {
                   <Label htmlFor="responsavel">Responsável</Label>
                   <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
                     <SelectTrigger id="responsavel" className="h-9">
-                      <SelectValue placeholder="Todos os responsáveis" />
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
                       {responsaveis.map((resp) => (
                         <SelectItem key={resp.EMAIL} value={resp.EMAIL}>
                           {resp.NOME}
@@ -192,10 +196,10 @@ export default function PlanilhaPage() {
                   <Label htmlFor="prioridade">Prioridade</Label>
                   <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
                     <SelectTrigger id="prioridade" className="h-9">
-                      <SelectValue placeholder="Todas as prioridades" />
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todas as prioridades</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
                       {uniquePrioridades.map((prioridade, index) => (
                         <SelectItem key={`prioridade-${prioridade}-${index}`} value={prioridade}>
                           {prioridade}
@@ -209,10 +213,10 @@ export default function PlanilhaPage() {
                   <Label htmlFor="projeto">Projeto</Label>
                   <Select value={projetoFilter} onValueChange={setProjetoFilter}>
                     <SelectTrigger id="projeto" className="h-9">
-                      <SelectValue placeholder="Todos os projetos" />
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos os projetos</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
                       {uniqueProjetos
                         .filter((projeto): projeto is string => projeto !== undefined)
                         .map((projeto, index) => (
@@ -248,31 +252,31 @@ export default function PlanilhaPage() {
               </div>
 
               {/* Desktop view */}
-              <div className="hidden md:block border rounded-md overflow-hidden">
-                <div className="relative w-full overflow-auto">
-                  <Table>
+              <div className="hidden lg:block border rounded-md overflow-hidden">
+                <div className="relative w-full overflow-x-auto">
+                  <Table className="min-w-full table-fixed">
                     <TableHeader className="sticky top-0 bg-[#00714B] rounded-t-md">
                       <TableRow className="border-b-0">
-                        <TableHead className="w-[100px] text-white font-medium rounded-tl-md">ID</TableHead>
-                        <TableHead className="min-w-[200px] text-white font-medium">Título</TableHead>
-                        <TableHead className="min-w-[180px] text-white font-medium">Responsável</TableHead>
-                        <TableHead className="min-w-[120px] text-white font-medium">Status</TableHead>
-                        <TableHead className="min-w-[120px] text-white font-medium">Prioridade</TableHead>
-                        <TableHead className="min-w-[150px] text-white font-medium">Projeto</TableHead>
-                        <TableHead className="min-w-[100px] text-white font-medium">Estimativa</TableHead>
-                        <TableHead className="min-w-[120px] text-white font-medium">Data de Início</TableHead>
-                        <TableHead className="min-w-[120px] text-white font-medium">Data de Fim</TableHead>
-                        <TableHead className="min-w-[100px] text-white font-medium rounded-tr-md">ID Release</TableHead>
+                        <TableHead className="w-[50px] text-white font-medium rounded-tl-md text-center">ID</TableHead>
+                        <TableHead className="w-[150px] text-white font-medium text-center">Título</TableHead>
+                        <TableHead className="w-[120px] text-white font-medium text-center">Responsável</TableHead>
+                        <TableHead className="w-[90px] text-white font-medium text-center">Status</TableHead>
+                        <TableHead className="w-[90px] text-white font-medium text-center">Prioridade</TableHead>
+                        <TableHead className="w-[100px] text-white font-medium text-center">Projeto</TableHead>
+                        <TableHead className="w-[70px] text-white font-medium text-center">Estimativa</TableHead>
+                        <TableHead className="w-[90px] text-white font-medium text-center">Início</TableHead>
+                        <TableHead className="w-[90px] text-white font-medium text-center">Fim</TableHead>
+                        <TableHead className="w-[70px] text-white font-medium rounded-tr-md text-center">ID Release</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.map((task) => (
                         <TableRow key={task.id}>
-                          <TableCell className="font-medium">{task.id}</TableCell>
-                          <TableCell className="max-w-[300px] truncate">{task.titulo}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">
+                          <TableCell className="font-medium whitespace-nowrap py-2">{task.id}</TableCell>
+                          <TableCell className="max-w-[150px] truncate py-2">{task.titulo}</TableCell>
+                          <TableCell className="max-w-[120px] truncate py-2">
+                            <div className="flex items-center">
+                              <span className="text-xs">
                                 {(task.responsaveis ?? []).length > 0 
                                   ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
                                   : 'Não atribuído'
@@ -280,30 +284,31 @@ export default function PlanilhaPage() {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge className={STATUS_COLORS[formatStatusName(task.status_id) as keyof typeof STATUS_COLORS]}>
+                          <TableCell className="py-2">
+                            <Badge className={`text-xs ${STATUS_COLORS[formatStatusName(task.status_id) as keyof typeof STATUS_COLORS]}`}>
                               {formatStatusName(task.status_id)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2">
                             <Badge
                               variant="outline"
-                              className={
-                                getPriorityName(task.prioridade_id) === "Alta"
+                              className={`text-xs
+                                ${getPriorityName(task.prioridade_id) === "Alta"
                                   ? "bg-red-50 text-red-600 border-red-100"
                                   : getPriorityName(task.prioridade_id) === "Média"
                                     ? "bg-yellow-50 text-yellow-600 border-yellow-100"
                                     : "bg-green-50 text-green-600 border-green-100"
-                              }
+                                }
+                              `}
                             >
                               {getPriorityName(task.prioridade_id)}
                             </Badge>
                           </TableCell>
-                          <TableCell>{task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}</TableCell>
-                          <TableCell>{formatHours(task.estimativa_horas)}</TableCell>
-                          <TableCell>{formatDate(task.data_inicio)}</TableCell>
-                          <TableCell>{formatDate(task.data_fim)}</TableCell>
-                          <TableCell>{task.id_release || "-"}</TableCell>
+                          <TableCell className="max-w-[100px] truncate py-2">{task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}</TableCell>
+                          <TableCell className="py-2">{formatHours(task.estimativa_horas)}</TableCell>
+                          <TableCell className="py-2">{formatDate(task.data_inicio)}</TableCell>
+                          <TableCell className="py-2">{formatDate(task.data_fim)}</TableCell>
+                          <TableCell className="py-2">{task.id_release || "-"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -312,7 +317,7 @@ export default function PlanilhaPage() {
               </div>
 
               {/* Mobile view */}
-              <div className="md:hidden space-y-4">
+              <div className="lg:hidden space-y-4 w-full overflow-hidden">
                 {filteredTasks.map((task) => (
                   <Card key={task.id}>
                     <CardHeader className="pb-2">

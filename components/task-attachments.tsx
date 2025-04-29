@@ -160,7 +160,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
         </div>
 
         {anexos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
             {anexos.map((anexo) => (
               <Card key={anexo.id} className="group hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -179,7 +179,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
                   </div>
                   
                   <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t">
-                    <div className="flex items-center gap-2 mb-2 md:mb-0">
+                    <div className="flex items-center gap-2 mb-2 lg:mb-0">
                       <Avatar className="w-6 h-6">
                         <AvatarImage email={anexo.usuario_email} />
                         <AvatarFallback>

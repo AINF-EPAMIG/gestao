@@ -174,7 +174,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Sidebar */}
-      <div className="md:hidden fixed top-0 left-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full h-14">
+      <div className="lg:hidden fixed top-0 left-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full h-14">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <button className="p-3 m-1 hover:bg-accent rounded-lg transition-colors">
@@ -192,7 +192,7 @@ export function Sidebar() {
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <div className="fixed top-4 bottom-4 left-4 w-64 bg-emerald-800 text-white rounded-2xl shadow-lg">
           <NavContent />
         </div>

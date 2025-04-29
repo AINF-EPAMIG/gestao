@@ -57,17 +57,17 @@ export default function DashboardPage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="min-h-screen w-full bg-background pt-8 md:pt-0">
+          <div className="min-h-screen w-full bg-background pt-8 lg:pt-0">
             <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-6">
-              <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Painel de Controle Kanban</h1>
+              <h1 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6">Painel de Controle Kanban</h1>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
                 <Card className="w-full">
                   <CardHeader>
-                    <CardTitle className="text-lg md:text-xl">Distribuição por Etapa</CardTitle>
+                    <CardTitle className="text-lg lg:text-xl">Distribuição por Etapa</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                    <div className="w-full h-[250px] sm:h-[300px] lg:h-[400px]">
                       <PieChart />
                     </div>
                   </CardContent>
@@ -75,10 +75,10 @@ export default function DashboardPage() {
 
                 <Card className="w-full">
                   <CardHeader>
-                    <CardTitle className="text-lg md:text-xl">Cards Atribuídos por Usuário</CardTitle>
+                    <CardTitle className="text-lg lg:text-xl">Cards Atribuídos por Usuário</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="w-full h-[250px] sm:h-[300px] md:h-[400px]">
+                    <div className="w-full h-[250px] sm:h-[300px] lg:h-[400px]">
                       <RadarChart />
                     </div>
                   </CardContent>
@@ -86,7 +86,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold mb-4">Atividades em Desenvolvimento</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {tasksInDevelopment.map(([email, tasks]) => (
                     <TaskStack key={email} tasks={tasks} responsavelEmail={email} />
                   ))}

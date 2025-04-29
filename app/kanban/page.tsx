@@ -114,28 +114,32 @@ export default function KanbanPage() {
   return (
     <AuthRequired>
       <PollingWrapper>
-        <div className="p-3 sm:p-4 md:p-8 pt-12 md:pt-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold">Kanban</h1>
-            <div className="mt-2 md:mt-0">
+        <div className="p-2 sm:p-3 lg:p-4 xl:p-6 2xl:p-8 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 xl:mb-4 2xl:mb-5">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Kanban</h1>
+            <div className="mt-2 lg:mt-0">
               <CreateTaskModal />
             </div>
           </div>
           
-          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4 sm:mb-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-2 flex-wrap w-full">
-              <div className="flex flex-col gap-1.5 w-full md:w-auto">
-                <label className="text-sm text-gray-500">Filtrar por Responsável</label>
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2 mb-3 sm:mb-4 xl:mb-5 2xl:mb-6">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2 flex-wrap w-full">
+              <div className="lg:flex lg:items-end mb-1 lg:mb-0 lg:mr-1 lg:self-end hidden sm:block">
+                <span className="text-sm lg:text-base font-medium bg-gray-100 px-2 py-1 rounded-md">Filtros:</span>
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Responsável</label>
                 <Select 
                   value={responsavelFilter || "todos"}
                   onValueChange={(value) => setResponsavelFilter(value === "todos" ? null : value)}
                   disabled={isLoading}
                 >
-                  <SelectTrigger className="w-full md:w-[400px]">
+                  <SelectTrigger className="h-8">
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <SelectValue placeholder="Responsável" />
+                      <SelectValue placeholder="Todos" />
                     )}
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
@@ -149,14 +153,14 @@ export default function KanbanPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1.5 w-full md:w-auto">
-                <label className="text-sm text-gray-500">Filtrar por Projeto</label>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Projeto</label>
                 <Select 
                   value={projetoFilter || "todos"}
                   onValueChange={(value) => setProjetoFilter(value === "todos" ? null : value)}
                 >
-                  <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Projeto" />
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todos">Todos</SelectItem>
@@ -172,14 +176,14 @@ export default function KanbanPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1.5 w-full md:w-auto">
-                <label className="text-sm text-gray-500">Filtrar por Status</label>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Status</label>
                 <Select 
                   value={statusFilter || "todos"}
                   onValueChange={(value) => setStatusFilter(value === "todos" ? null : value)}
                 >
-                  <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Status" />
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
                     <SelectItem value="todos">Todos</SelectItem>
@@ -191,17 +195,17 @@ export default function KanbanPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1.5 w-full md:w-auto">
-                <label className="text-sm text-gray-500">Filtrar por Prioridade</label>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Prioridade</label>
                 <Select 
                   value={prioridadeFilter || "todas"}
                   onValueChange={(value) => setPrioridadeFilter(value === "todas" ? null : value)}
                 >
-                  <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Prioridade" />
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todas">Todas</SelectItem>
+                    <SelectItem value="todas">Todos</SelectItem>
                     <SelectItem value="1">Alta</SelectItem>
                     <SelectItem value="2">Média</SelectItem>
                     <SelectItem value="3">Baixa</SelectItem>
@@ -209,17 +213,17 @@ export default function KanbanPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-1.5 w-full md:w-auto">
-                <label className="text-sm text-gray-500">Filtrar por Período</label>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-500">Período</label>
                 <Select 
                   value={periodoFilter}
                   onValueChange={(value: PeriodoFilter) => setPeriodoFilter(value)}
                 >
-                  <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Período" />
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todos">Todos os Períodos</SelectItem>
+                    <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="hoje">Hoje</SelectItem>
                     <SelectItem value="esta_semana">Esta Semana</SelectItem>
                     <SelectItem value="este_mes">Este Mês</SelectItem>
@@ -231,15 +235,17 @@ export default function KanbanPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center min-h-[600px] w-full">
+            <div className="flex items-center justify-center min-h-[500px] w-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="flex items-center justify-center min-h-[600px] w-full">
+            <div className="flex items-center justify-center min-h-[500px] w-full">
               <span className="text-gray-500 text-lg">Nenhuma tarefa encontrada</span>
             </div>
           ) : (
-            <KanbanBoard tasks={filteredTasks} />
+            <div className="overflow-x-auto md:overflow-x-hidden w-full">
+              <KanbanBoard tasks={filteredTasks} />
+            </div>
           )}
         </div>
       </PollingWrapper>

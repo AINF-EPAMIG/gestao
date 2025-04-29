@@ -37,16 +37,9 @@ const statusColors = {
   "Concluída": "border-l-emerald-500",
 } as const;
 
-const statusTitleColors = {
-  "Não iniciada": "text-red-700 bg-red-50 px-2 py-1 rounded",
-  "Em desenvolvimento": "text-blue-700 bg-blue-50 px-2 py-1 rounded",
-  "Em testes": "text-yellow-700 bg-yellow-50 px-2 py-1 rounded",
-  "Concluída": "text-emerald-700 bg-emerald-50 px-2 py-1 rounded",
-} as const;
-
 const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email?: string }) {
   return (
-    <Avatar className="w-8 h-8">
+    <Avatar className="w-7 h-7 sm:w-6 sm:h-6 xl:w-8 xl:h-8 2xl:w-9 2xl:h-9">
       <AvatarImage email={email} />
       <AvatarFallback>
         {email ? email[0].toUpperCase() : '?'}
@@ -153,7 +146,8 @@ const TaskCard = memo(function TaskCard({
         {...provided.draggableProps}
         {...provided.dragHandleProps}
         className={cn(
-          "p-4 space-y-3 border-l-4 cursor-pointer",
+          "p-3 sm:p-2 xl:p-3 2xl:p-4 space-y-2 sm:space-y-1.5 xl:space-y-2 2xl:space-y-3 border-l-4 cursor-pointer",
+          "max-w-full sm:max-w-full md:max-w-full lg:max-w-full xl:max-w-full 2xl:max-w-full w-full",
           snapshot.isDragging && "dragging-card",
           statusColors[getStatusName(task.status_id) as keyof typeof statusColors]
         )}
@@ -161,68 +155,88 @@ const TaskCard = memo(function TaskCard({
       >
         <div className="flex items-center justify-between">
           <Badge
-            className={
+            className={cn(
               getPriorityName(task.prioridade_id) === "Alta"
                 ? "bg-red-50 text-red-600 border-red-100"
                 : getPriorityName(task.prioridade_id) === "Média"
                 ? "bg-yellow-50 text-yellow-600 border-yellow-100"
-                : "bg-green-50 text-green-600 border-green-100"
-            }
+                : "bg-green-50 text-green-600 border-green-100",
+              "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5"
+            )}
           >
             {getPriorityName(task.prioridade_id)}
           </Badge>
-          <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}>
-            {task.projeto_nome 
-              ? (task.projeto_nome.length > 15 ? `${task.projeto_nome.slice(0, 15)}...` : task.projeto_nome)
-              : (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+          <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+            className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5"
+          >
+            <span className="hidden sm:inline xl:hidden 2xl:hidden">
+              {!task.projeto_id ? "P" : `P${task.projeto_id}`}
+            </span>
+            <span className="sm:hidden xl:inline 2xl:inline">
+              {task.projeto_nome 
+                ? (task.projeto_nome.length > 20 ? `${task.projeto_nome.slice(0, 17)}...` : task.projeto_nome)
+                : (!task.projeto_id ? "Projeto" : `Projeto ${task.projeto_id}`)}
+            </span>
           </Badge>
         </div>
-        <h4 className="font-medium truncate" title={task.titulo}>{task.titulo}</h4>
-        <p className="text-sm text-gray-500 line-clamp-2" title={task.descricao}>
+        <h4 className="font-medium truncate text-sm sm:text-xs xl:text-sm 2xl:text-base" title={task.titulo}>{task.titulo}</h4>
+        <p className="text-sm sm:text-xs xl:text-sm 2xl:text-sm text-gray-500 line-clamp-2 sm:line-clamp-1 xl:line-clamp-2 2xl:line-clamp-3 w-full" title={task.descricao}>
           {task.descricao}
         </p>
         {/* Estimativa de horas - sempre na mesma posição */}
         {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
           <div className="flex items-center">
             <span className={cn(
-              "text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1",
+              "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm font-medium px-2 py-0.5 sm:px-1.5 sm:py-0 xl:px-2 xl:py-0.5 2xl:px-2.5 2xl:py-1 rounded-full flex items-center gap-1",
               getStatusName(task.status_id) === "Não iniciada" ? "bg-red-50 text-red-700" :
               getStatusName(task.status_id) === "Em desenvolvimento" ? "bg-blue-50 text-blue-700" :
               getStatusName(task.status_id) === "Em testes" ? "bg-yellow-50 text-yellow-700" :
               "bg-emerald-50 text-emerald-700"
             )}>
-              <Clock className="w-3 h-3" />
+              <Clock className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 2xl:w-3.5 2xl:h-3.5" />
               {formatHours(task.estimativa_horas)}
             </span>
           </div>
         )}
         
         {/* Rodapé do card com responsáveis e data de atualização */}
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <div className="flex -space-x-2">
+        <div className="flex items-center justify-between pt-2 sm:pt-1 xl:pt-2 2xl:pt-3 border-t w-full">
+          <div className="flex items-center gap-1 sm:gap-0.5 xl:gap-1 2xl:gap-2">
+            <div className="flex -space-x-2 sm:-space-x-1 xl:-space-x-2 2xl:-space-x-3">
               {(task.responsaveis ?? []).map(resp => (
                 <MemoizedAvatar key={resp.email} email={resp.email} />
               ))}
               {!(task.responsaveis ?? []).length && <MemoizedAvatar />}
             </div>
+            {/* Texto de responsável único - mostrado em todas as telas */}
             {(task.responsaveis ?? []).length === 1 && (
-              <span className="text-sm font-medium">
-                {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
+              <span className="text-sm sm:text-xs xl:text-sm 2xl:text-sm font-medium truncate max-w-[80px] sm:max-w-[60px] md:max-w-[80px] lg:max-w-[80px] xl:max-w-[100px] 2xl:max-w-[120px]">
+                {(task.responsaveis ?? []).map(r => {
+                  // Pegar apenas o primeiro nome
+                  const fullName = getResponsavelName(r.email);
+                  const firstName = fullName.split(' ')[0];
+                  return firstName;
+                }).join(', ')}
               </span>
             )}
+            {/* Texto de múltiplos responsáveis - agora visível em todas as telas */}
             {(task.responsaveis ?? []).length > 1 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="text-sm font-medium flex items-center gap-1 cursor-help">
-                      <Users className="w-3 h-3" />
-                      {task.responsaveis?.length} responsáveis
+                    <span className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm font-medium flex items-center gap-1 cursor-help">
+                      <Users className="w-2.5 h-2.5 sm:w-2 sm:h-2 xl:w-2.5 xl:h-2.5 2xl:w-3 2xl:h-3" />
+                      {task.responsaveis?.length}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <div className="text-xs">
-                      {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
+                    <div className="text-xs xl:text-sm">
+                      {(task.responsaveis ?? []).map(r => {
+                        // Pegar apenas o primeiro nome para o tooltip também
+                        const fullName = getResponsavelName(r.email);
+                        const firstName = fullName.split(' ')[0];
+                        return firstName;
+                      }).join(', ')}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -233,12 +247,12 @@ const TaskCard = memo(function TaskCard({
             <div className="flex items-center">
               {isLoading ? (
                 <div className="flex items-center text-xs text-gray-500">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 2xl:w-3.5 2xl:h-3.5 animate-spin" />
                 </div>
               ) : (
-                <span className="text-xs text-gray-500 flex items-center">
-                  <span className="font-medium">Últ.:</span>
-                  <span className="ml-1">
+                <span className="text-xs sm:text-[9px] xl:text-xs 2xl:text-sm text-gray-500 flex items-center">
+                  <span className="font-medium hidden sm:hidden xl:hidden 2xl:inline">Últ.:</span>
+                  <span className="ml-0 xl:ml-0 2xl:ml-1">
                     {formatDateTimeCompact(task.ultima_atualizacao)}
                   </span>
                 </span>
@@ -266,17 +280,27 @@ const Column = memo(function Column({
   tasks: Task[];
 }) {
   return (
-    <div key={column.id} className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className={cn("font-medium", statusTitleColors[column.id as keyof typeof statusTitleColors])}>{column.title}</h3>
-        <Badge variant="secondary">{tasks.length}</Badge>
+    <div key={column.id} className="flex flex-col gap-3 sm:gap-2 xl:gap-2 2xl:gap-3 w-full">
+      <div className={cn(
+        "flex items-center justify-center w-full rounded-t-md",
+        column.id === "Não iniciada" ? "bg-red-50" : 
+        column.id === "Em desenvolvimento" ? "bg-blue-50" : 
+        column.id === "Em testes" ? "bg-yellow-50" : 
+        "bg-emerald-50"
+      )}>
+        <h3 className={cn("font-medium text-sm sm:text-xs xl:text-sm 2xl:text-base text-center w-full py-2 sm:py-1.5 xl:py-2 2xl:py-2.5",
+          column.id === "Não iniciada" ? "text-red-700" : 
+          column.id === "Em desenvolvimento" ? "text-blue-700" : 
+          column.id === "Em testes" ? "text-yellow-700" : 
+          "text-emerald-700"
+        )}>{column.title}</h3>
       </div>
       <Droppable droppableId={column.id}>
         {(provided) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="flex flex-col gap-3 min-h-[200px]"
+            className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 min-h-[200px] xl:min-h-[250px] 2xl:min-h-[300px] w-full"
           >
             {tasks.map((task, index) => (
               <Draggable 
@@ -428,14 +452,24 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
   // Se estiver carregando, mostra um estado de loading
   if (tasks.length === 0) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-50">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 min-w-[min-content] w-full">
         {columns.map((column) => (
-          <div key={column.id} className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">{column.title}</h3>
-              <Badge variant="secondary">...</Badge>
+          <div key={column.id} className="flex flex-col gap-3 sm:gap-2 xl:gap-2 2xl:gap-3 w-full">
+            <div className={cn(
+              "flex items-center justify-center w-full rounded-t-md",
+              column.id === "Não iniciada" ? "bg-red-50" : 
+              column.id === "Em desenvolvimento" ? "bg-blue-50" : 
+              column.id === "Em testes" ? "bg-yellow-50" : 
+              "bg-emerald-50"
+            )}>
+              <h3 className={cn("font-medium text-sm sm:text-xs xl:text-sm 2xl:text-base text-center w-full py-2 sm:py-1.5 xl:py-2 2xl:py-2.5",
+                column.id === "Não iniciada" ? "text-red-700" : 
+                column.id === "Em desenvolvimento" ? "text-blue-700" : 
+                column.id === "Em testes" ? "text-yellow-700" : 
+                "text-emerald-700"
+              )}>{column.title}</h3>
             </div>
-            <div className="flex flex-col gap-3 min-h-[200px] animate-pulse bg-gray-100 rounded-lg" />
+            <div className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 min-h-[200px] xl:min-h-[250px] 2xl:min-h-[300px] animate-pulse bg-gray-100 rounded-lg w-full" />
           </div>
         ))}
       </div>
@@ -444,7 +478,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 min-w-[min-content] w-full">
         {columns.map((column) => (
           <Column 
             key={column.id}

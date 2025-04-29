@@ -44,7 +44,7 @@ const CHART_COLORS = {
 // Componente memoizado para o Avatar
 const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email: string }) {
   return (
-    <Avatar className="w-12 h-12 border-2 border-white">
+    <Avatar className="w-10 h-10 border-2 border-white">
       <AvatarImage email={email} />
       <AvatarFallback>
         {email[0].toUpperCase()}
@@ -57,10 +57,10 @@ const MemoizedAvatar = memo(function MemoizedAvatar({ email }: { email: string }
 const CustomXAxisTick = memo(function CustomXAxisTick({ x, y, email, primeiroNome }: CustomTickProps) {
   return (
     <g transform={`translate(${x},${y})`}>
-      <foreignObject x="-45" y="10" width="90" height="80">
+      <foreignObject x="-35" y="10" width="70" height="70">
         <div className="flex flex-col items-center">
           <MemoizedAvatar email={email} />
-          <span className="text-sm mt-2 font-medium text-gray-700">
+          <span className="text-xs mt-1 font-medium text-gray-700">
             {primeiroNome}
           </span>
         </div>
@@ -166,34 +166,34 @@ export function TasksByStatusChart() {
 
   if (isLoading) {
     return (
-      <div className="w-full bg-white p-4 rounded-lg border flex items-center justify-center hidden sm:flex" style={{ height: "400px" }}>
+      <div className="w-full bg-white p-4 rounded-lg border flex items-center justify-center hidden sm:flex" style={{ height: "350px" }}>
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="w-full bg-white p-4 rounded-lg border hidden sm:block">
-      <h3 className="text-lg font-semibold mb-4 text-[#00714B]">Análise de Tarefas por Responsável</h3>
-      <div className="w-full h-[400px]">
-        <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full bg-white p-3 rounded-lg border hidden sm:block">
+      <h3 className="text-lg font-semibold mb-3 text-[#00714B]">Análise de Tarefas por Responsável</h3>
+      <div className="w-full h-[350px] overflow-x-auto md:overflow-x-hidden">
+        <ResponsiveContainer width="100%" height="100%" minWidth={data.length * 80}>
           <BarChart
             data={data}
             margin={{
               top: 20,
-              right: 30,
-              left: 20,
-              bottom: 100
+              right: 20,
+              left: 10,
+              bottom: 90
             }}
-            barGap={4}
-            barCategoryGap="25%"
+            barGap={2}
+            barCategoryGap="20%"
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis 
               dataKey="email" 
               tick={renderCustomAxisTick}
               interval={0}
-              height={100}
+              height={90}
             />
             <YAxis stroke="#64748b" />
             <Tooltip 
@@ -202,9 +202,9 @@ export function TasksByStatusChart() {
             />
             <Legend 
               verticalAlign="top"
-              height={36}
+              height={32}
               wrapperStyle={{
-                paddingBottom: "20px"
+                paddingBottom: "15px"
               }}
             />
             <Bar 

@@ -172,7 +172,7 @@ export default function TestFileProcessingPage() {
       
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Configurações</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="p-4 border rounded-md">
             <p className="font-medium">Tamanho máximo para upload direto:</p>
             <p className="text-lg">{formatFileSize(MAX_UPLOAD_SIZE)}</p>

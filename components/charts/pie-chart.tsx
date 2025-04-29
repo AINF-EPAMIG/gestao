@@ -34,7 +34,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, val
       fill="white"
       textAnchor="middle"
       dominantBaseline="central"
-      className="text-xs md:text-sm font-medium"
+      className="text-xs lg:text-sm font-medium"
     >
       {value}
     </text>
