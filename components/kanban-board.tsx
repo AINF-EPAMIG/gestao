@@ -243,7 +243,7 @@ const TaskCard = memo(function TaskCard({
               </TooltipProvider>
             )}
           </div>
-          {task.ultima_atualizacao && (
+          {task.ultima_atualizacao && (task.responsaveis ?? []).length < 4 && (
             <div className="flex items-center">
               {isLoading ? (
                 <div className="flex items-center text-xs text-gray-500">
