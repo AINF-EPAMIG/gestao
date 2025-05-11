@@ -69,7 +69,9 @@ export function RadarChart() {
             return;
           }
           
-          const name = responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ');
+          let name = responsavel.nome || responsavel.email.split('@')[0].replace('.', ' ');
+          name = name.split(' ')[0];
+          name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
           const email = responsavel.email;
           acc[email] = {
             name,

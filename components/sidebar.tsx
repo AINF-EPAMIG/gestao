@@ -9,7 +9,6 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { Footer } from "./footer"
 import { useSession } from "next-auth/react"
 import { AuthButton } from "@/components/auth-button"
-import { getUserInfoFromRM, isUserAdmin } from "@/lib/rm-service"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useTaskStore } from "@/lib/store"
@@ -20,12 +19,23 @@ interface Setor {
   nome: string;
 }
 
+// Helpers para nova API
+async function getUserInfo(email: string) {
+  const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
+  return res.json();
+}
+async function isUserAdmin() {
+  // Adapte conforme sua lógica de admin, se necessário
+  // Exemplo: checar se o email está em uma lista de admins
+  return false;
+}
+
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { data: session } = useSession()
-  const [userSetor, setUserSetor] = useState<string>("")
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [userSetor, setUserSetor] = useState<string | undefined>(undefined)
+  const [isAdmin, setIsAdmin] = useState<boolean | undefined>(undefined)
   const [setores, setSetores] = useState<Setor[]>([])
   const selectedSetor = useTaskStore((state) => state.selectedSetor)
   const setSelectedSetor = useTaskStore((state) => state.setSelectedSetor)
@@ -34,15 +44,15 @@ export function Sidebar() {
     const fetchUserInfo = async () => {
       if (session?.user?.email) {
         // Verificar se é admin
-        const admin = isUserAdmin(session.user.email);
+        const admin = await isUserAdmin();
         setIsAdmin(admin);
 
         if (!admin) {
           // Se não for admin, buscar setor do usuário
-          const userInfo = await getUserInfoFromRM(session.user.email);
+          const userInfo = await getUserInfo(session.user.email);
           if (userInfo) {
-            setUserSetor(userInfo.SECAO);
-            setSelectedSetor(userInfo.SECAO); // Define o setor do usuário como selecionado
+            setUserSetor(userInfo.secao);
+            setSelectedSetor(userInfo.secao); // Define o setor do usuário como selecionado
           }
         }
       }
@@ -97,7 +107,7 @@ export function Sidebar() {
       <div className="flex-1 pt-4 sm:pt-6">
         <div className="px-3 sm:px-4 mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-xl font-semibold">Painel Gestão</h1>
-          {isAdmin && (
+          {isAdmin === true && (
             <div className="mt-2 flex items-center gap-2">
               <span className="text-sm text-white/80">Setor:</span>
               <DropdownMenu>
@@ -137,7 +147,7 @@ export function Sidebar() {
               </DropdownMenu>
             </div>
           )}
-          {!isAdmin && userSetor && (
+          {isAdmin === false && userSetor && (
             <div className="mt-2 text-sm text-white/80">
               Setor: {userSetor}
             </div>

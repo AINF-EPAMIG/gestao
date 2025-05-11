@@ -15,7 +15,6 @@ import AuthRequired from "@/components/auth-required"
 import { getResponsavelName } from '@/lib/utils'
 import { PollingWrapper } from "@/components/polling-wrapper"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, getResponsaveisBySetor } from "@/lib/rm-service"
 
 interface ResponsavelRM {
   EMAIL: string;
@@ -44,6 +43,16 @@ function formatDate(dateString: string | null): string {
   return new Date(dateString).toLocaleDateString("pt-BR")
 }
 
+// Helpers para nova API
+async function getUserInfo(email: string) {
+  const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
+  return res.json();
+}
+async function getResponsaveisBySetor(secao: string) {
+  const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
+  return res.json();
+}
+
 export default function PlanilhaPage() {
   const { data: session } = useSession()
   const tasks = useTaskStore((state) => state.tasks)
@@ -64,9 +73,9 @@ export default function PlanilhaPage() {
     const fetchResponsaveis = async () => {
       if (session?.user?.email) {
         try {
-          const userInfo = await getUserInfoFromRM(session.user.email)
-          if (userInfo?.SECAO) {
-            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO)
+          const userInfo = await getUserInfo(session.user.email)
+          if (userInfo?.secao) {
+            const responsaveisData = await getResponsaveisBySetor(userInfo.secao)
             setResponsaveis(responsaveisData)
           }
         } catch (error) {

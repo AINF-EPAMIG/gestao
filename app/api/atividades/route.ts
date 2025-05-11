@@ -1,7 +1,7 @@
-import { executeQuery } from '@/lib/db';
+import { executeQuery, executeQueryFuncionarios } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserInfoFromRM, isUserChefe, isUserAdmin } from '@/lib/rm-service';
 import { sendEmail, createTaskAssignmentEmail, createTaskNewResponsibleEmail } from '@/lib/email-service';
+import { Funcionario } from '@/lib/types';
 
 interface Atividade {
   id: number;
@@ -43,6 +43,21 @@ interface ResponsavelParcial {
 
 interface QueryResult {
   insertId: number;
+}
+
+// Helpers para nova API
+async function getUserInfo(email: string) {
+  const result = await executeQueryFuncionarios<Funcionario[]>({
+    query: 'SELECT * FROM funcionarios WHERE email = ? LIMIT 1',
+    values: [email],
+  });
+  return result[0] || null;
+}
+
+async function isUserAdmin() {
+  // Adapte conforme sua lógica de admin, se necessário
+  // Exemplo: checar se o email está em uma lista de admins
+  return false;
 }
 
 export async function GET(request: NextRequest) {
@@ -124,16 +139,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Verificar se é um administrador
-    const isAdmin = isUserAdmin(userEmail);
+    const isAdmin = await isUserAdmin();
 
     // Se não for admin, buscar o setor do usuário
     let whereClause = '';
     let queryValues: (string)[] = [];
 
     if (!isAdmin) {
-      const userInfo = await getUserInfoFromRM(userEmail);
+      const userInfo = await getUserInfo(userEmail);
       
-      if (!userInfo?.SECAO) {
+      if (!userInfo?.secao) {
         return NextResponse.json(
           { error: 'Setor do usuário não encontrado' },
           { status: 404 }
@@ -141,7 +156,7 @@ export async function GET(request: NextRequest) {
       }
 
       whereClause = 'WHERE s.sigla = ?';
-      queryValues = [userInfo.SECAO];
+      queryValues = [userInfo.secao];
     } else if (setorSigla) {
       // Se for admin e um setor foi especificado
       whereClause = 'WHERE s.sigla = ?';
@@ -205,11 +220,11 @@ export async function GET(request: NextRequest) {
     for (const atividade of atividadesProcessadas) {
       for (const responsavel of atividade.responsaveis) {
         if (responsavel.email && !responsaveisInfo.has(responsavel.email)) {
-          const userInfo = await getUserInfoFromRM(responsavel.email);
+          const userInfo = await getUserInfo(responsavel.email);
           if (userInfo) {
             responsaveisInfo.set(responsavel.email, {
-              nome: userInfo.NOME_COMPLETO,
-              cargo: userInfo.CARGO
+              nome: userInfo.nome,
+              cargo: userInfo.cargo
             });
           }
         }
@@ -275,13 +290,11 @@ export async function PUT(request: NextRequest) {
       console.log('✅ Tarefa atualizada com sucesso');
     } else {
       // Verificar permissões
-      const isAdmin = isUserAdmin(userEmail);
-      let userInfo = null;
+      const isAdmin = await isUserAdmin();
       let canEdit = false;
 
       if (!isAdmin) {
-        userInfo = await getUserInfoFromRM(userEmail);
-        const isChefe = isUserChefe(userInfo);
+        const isChefe = await isUserAdmin();
 
         // Verificar se é responsável pela tarefa
         const taskResponsaveis = await executeQuery({
@@ -473,11 +486,11 @@ export async function PUT(request: NextRequest) {
     for (const atividade of atividadesProcessadas) {
       for (const responsavel of atividade.responsaveis) {
         if (responsavel.email && !responsaveisInfo.has(responsavel.email)) {
-          const userInfo = await getUserInfoFromRM(responsavel.email);
+          const userInfo = await getUserInfo(responsavel.email);
           if (userInfo) {
             responsaveisInfo.set(responsavel.email, {
-              nome: userInfo.NOME_COMPLETO,
-              cargo: userInfo.CARGO
+              nome: userInfo.nome,
+              cargo: userInfo.cargo
             });
           }
         }
@@ -523,7 +536,7 @@ export async function POST(request: NextRequest) {
     } = data;
 
     // Obter informações do usuário
-    const userInfo = await getUserInfoFromRM(userEmail);
+    const userInfo = await getUserInfo(userEmail);
     if (!userInfo) {
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
@@ -531,10 +544,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let setorSigla = userInfo.SECAO;
+    let setorSigla = userInfo.secao;
 
     // Se for admin e especificou um setor diferente, usar o setor especificado
-    const isAdmin = isUserAdmin(userEmail);
+    const isAdmin = await isUserAdmin();
     if (isAdmin && data.setorSigla) {
       setorSigla = data.setorSigla;
     }
@@ -591,8 +604,8 @@ export async function POST(request: NextRequest) {
       const prioridadeNome = prioridade_id === 1 ? 'Alta' : prioridade_id === 2 ? 'Média' : 'Baixa';
 
       // Buscar informações do usuário que criou a tarefa
-      const userInfoRM = await getUserInfoFromRM(userEmail);
-      const creatorName = userInfoRM?.NOME_COMPLETO || userEmail;
+      const userInfoRM = await getUserInfo(userEmail);
+      const creatorName = userInfoRM?.nome || userEmail;
 
       const emailInfo = createTaskAssignmentEmail(
         titulo,
@@ -703,11 +716,11 @@ export async function POST(request: NextRequest) {
     for (const atividade of atividadesProcessadas) {
       for (const responsavel of atividade.responsaveis) {
         if (responsavel.email && !responsaveisInfo.has(responsavel.email)) {
-          const userInfo = await getUserInfoFromRM(responsavel.email);
+          const userInfo = await getUserInfo(responsavel.email);
           if (userInfo) {
             responsaveisInfo.set(responsavel.email, {
-              nome: userInfo.NOME_COMPLETO,
-              cargo: userInfo.CARGO
+              nome: userInfo.nome,
+              cargo: userInfo.cargo
             });
           }
         }
@@ -770,11 +783,11 @@ export async function DELETE(request: NextRequest) {
     const responsaveisInfo = new Map<string, { nome: string; cargo: string }>();
     for (const atividade of atividades) {
       if (atividade.responsavel_email && !responsaveisInfo.has(atividade.responsavel_email)) {
-        const userInfo = await getUserInfoFromRM(atividade.responsavel_email);
+        const userInfo = await getUserInfo(atividade.responsavel_email);
         if (userInfo) {
           responsaveisInfo.set(atividade.responsavel_email, {
-            nome: userInfo.NOME_COMPLETO,
-            cargo: userInfo.CARGO
+            nome: userInfo.nome,
+            cargo: userInfo.cargo
           });
         }
       }

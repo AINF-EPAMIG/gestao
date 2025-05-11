@@ -7,7 +7,6 @@ import AuthRequired from "@/components/auth-required"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, getResponsaveisBySetor, isUserAdmin } from "@/lib/rm-service"
 import { Loader2 } from "lucide-react"
 
 type PeriodoFilter = "todos" | "hoje" | "esta_semana" | "este_mes" | "este_ano"
@@ -16,6 +15,26 @@ interface ResponsavelRM {
   NOME: string;
   EMAIL: string;
   CHEFE: string;
+}
+
+// Helpers para nova API
+async function getUserInfo(email: string) {
+  const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
+  return res.json();
+}
+async function isUserChefe(email: string) {
+  const res = await fetch(`/api/funcionarios?action=isUserChefe&email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  return data.isChefe;
+}
+async function isUserAdmin() {
+  // Adapte conforme sua lógica de admin, se necessário
+  // Exemplo: checar se o email está em uma lista de admins
+  return false;
+}
+async function getResponsaveisBySetor(secao: string) {
+  const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
+  return res.json();
 }
 
 export default function KanbanPage() {
@@ -36,21 +55,23 @@ export default function KanbanPage() {
       if (session?.user?.email) {
         try {
           setIsLoading(true)
-          const userInfo = await getUserInfoFromRM(session.user.email);
+          const userInfo = await getUserInfo(session.user.email);
           
           // Verifica se é admin
-          const isAdmin = isUserAdmin(session.user.email);
+          const isAdmin = await isUserAdmin();
           
           // Verifica se é chefe e configura o filtro inicial
-          const isChefe = isUserChefe(userInfo);
-          if (!isChefe && !isAdmin) {
-            setResponsavelFilter(session.user.email);
+          const isChefe = await isUserChefe(session.user.email);
+          if (isChefe || isAdmin) {
+            setResponsavelFilter(null); // Sempre mostra 'todos' para chefia/admin
+          } else {
+            setResponsavelFilter(session.user.email); // Usuário comum vê só suas tarefas
           }
 
-          // Busca responsáveis do setor selecionado ou do setor do usuário
-          const setorParaBuscar = selectedSetor || userInfo?.SECAO;
-          if (setorParaBuscar) {
-            const responsaveis = await getResponsaveisBySetor(setorParaBuscar);
+          // Busca responsáveis do setor (usando o campo secao do banco)
+          const secaoParaBuscar = selectedSetor || userInfo?.secao;
+          if (secaoParaBuscar) {
+            const responsaveis = await getResponsaveisBySetor(secaoParaBuscar);
             setResponsaveisSetor(responsaveis);
           }
         } catch (error) {

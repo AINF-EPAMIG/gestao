@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } from "@/lib/rm-service"
 import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
@@ -176,7 +175,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       if (session?.user?.email) {
         try {
           // Verificar se é admin
-          const admin = isUserAdmin(session.user.email);
+          const admin = await isUserAdmin();
           setCanEdit(admin);
 
           // Verificar se é responsável
@@ -188,15 +187,15 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           }
 
           // Buscar informações do usuário
-          const userInfo = await getUserInfoFromRM(session.user.email);
+          const userInfo = await getUserInfo(session.user.email);
           if (userInfo) {
-            const isUserChefeResult = isUserChefe(userInfo);
+            const isUserChefeResult = await isUserChefe(session.user.email);
             if (isUserChefeResult) {
               setCanEdit(true);
             }
 
             // Buscar responsáveis do setor
-            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+            const responsaveisData = await getResponsaveisBySetor(userInfo?.secao);
             if (responsaveisData) {
               // Usar todos os responsáveis sem filtrar
               setResponsaveis(responsaveisData);
@@ -282,7 +281,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     const fetchResponsaveis = async () => {
       if (session?.user?.email) {
         try {
-          const userInfo = await getUserInfoFromRM(session.user.email);
+          const userInfo = await getUserInfo(session.user.email);
           if (userInfo?.SECAO) {
             const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
             if (responsaveisData) {
@@ -1227,4 +1226,24 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       </DialogContent>
     </Dialog>
   )
+}
+
+// Helpers para nova API
+async function getUserInfo(email: string) {
+  const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
+  return res.json();
+}
+async function isUserChefe(email: string) {
+  const res = await fetch(`/api/funcionarios?action=isUserChefe&email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  return data.isChefe;
+}
+async function isUserAdmin() {
+  // Adapte conforme sua lógica de admin, se necessário
+  // Exemplo: checar se o email está em uma lista de admins
+  return false;
+}
+async function getResponsaveisBySetor(secao: string) {
+  const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
+  return res.json();
 } 

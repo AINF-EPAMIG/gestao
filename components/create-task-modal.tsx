@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTaskStore, Task } from "@/lib/store"
 import { useSession } from "next-auth/react"
-import { getUserInfoFromRM, isUserChefe, isUserAdmin, getResponsaveisBySetor } from "@/lib/rm-service"
 import { Plus, X, Search, FolderIcon, Edit, Check, Trash } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -97,30 +96,30 @@ export function CreateTaskModal() {
       if (session?.user?.email) {
         try {
           // Verificar se é admin
-          const admin = isUserAdmin(session.user.email);
+          const admin = await isUserAdmin();
           setIsAdmin(admin);
 
           // Buscar informações do usuário
-          const userInfo = await getUserInfoFromRM(session.user.email);
+          const userInfo = await getUserInfo(session.user.email);
           if (userInfo) {
-            const isUserChefeResult = isUserChefe(userInfo);
+            const isUserChefeResult = await isUserChefe(session.user.email);
             setIsChefe(isUserChefeResult);
             
             // Apenas define o setor se não for admin
             if (!admin) {
-              setSelectedSetor(userInfo.SECAO);
+              setSelectedSetor(userInfo.secao);
             }
 
             // Se for chefe ou admin, buscar subordinados
             if (isUserChefeResult || admin) {
-              const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+              const responsaveisData = await getResponsaveisBySetor(userInfo.secao);
               if (responsaveisData) {
                 // Usar todos os responsáveis sem filtrar
                 setResponsaveis(responsaveisData);
               }
             } else {
               // Para usuários comuns, buscar todos os responsáveis do setor e auto atribuir
-              const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+              const responsaveisData = await getResponsaveisBySetor(userInfo.secao);
               if (responsaveisData) {
                 // Usar todos os responsáveis sem filtrar
                 setResponsaveis(responsaveisData);
@@ -134,12 +133,12 @@ export function CreateTaskModal() {
                   };
                   
                   // Verifica se o usuário já não está na lista antes de adicionar
-                  if (!responsaveisData.some(r => r.EMAIL === userResponsavel.EMAIL)) {
+                  if (!responsaveisData.some((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)) {
                     setResponsaveis(prev => [userResponsavel, ...prev]);
                     setSelectedResponsaveis([userResponsavel]);
                   } else {
                     // Se o usuário já estiver na lista, apenas seleciona ele
-                    setSelectedResponsaveis([responsaveisData.find(r => r.EMAIL === userResponsavel.EMAIL)!]);
+                    setSelectedResponsaveis([responsaveisData.find((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)!]);
                   }
                 }
               }
@@ -719,7 +718,7 @@ export function CreateTaskModal() {
       const preencherUsuarioLogado = async () => {
         try {
           if (session.user.email) {
-            const userInfo = await getUserInfoFromRM(session.user.email);
+            const userInfo = await getUserInfo(session.user.email);
             if (userInfo) {
               const userResponsavel: Responsavel = {
                 EMAIL: session.user.email,
@@ -730,7 +729,7 @@ export function CreateTaskModal() {
               // Usar função de callback para acessar o estado atual
               setSelectedResponsaveis(prevResponsaveis => {
                 // Verificar se o usuário já não está na lista antes de adicionar
-                if (prevResponsaveis.length === 0 || !prevResponsaveis.some(r => r.EMAIL === userResponsavel.EMAIL)) {
+                if (prevResponsaveis.length === 0 || !prevResponsaveis.some((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)) {
                   return [userResponsavel];
                 }
                 return prevResponsaveis;
@@ -767,7 +766,7 @@ export function CreateTaskModal() {
         setSelectedResponsaveis(prevResponsaveis => {
           if (prevResponsaveis.length > 0) {
             // Filtrar para manter apenas o usuário logado
-            const usuarioLogado = prevResponsaveis.find(r => r.EMAIL === session.user.email);
+            const usuarioLogado = prevResponsaveis.find((r: Responsavel) => r.EMAIL === session.user.email);
             if (usuarioLogado) {
               return [usuarioLogado];
             }
@@ -798,6 +797,26 @@ export function CreateTaskModal() {
     }
     setModoPersonalizado(false);
   };
+
+  // Helpers para nova API
+  async function getUserInfo(email: string) {
+    const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
+    return res.json();
+  }
+  async function isUserChefe(email: string) {
+    const res = await fetch(`/api/funcionarios?action=isUserChefe&email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    return data.isChefe;
+  }
+  async function isUserAdmin() {
+    // Adapte conforme sua lógica de admin, se necessário
+    // Exemplo: checar se o email está em uma lista de admins
+    return false;
+  }
+  async function getResponsaveisBySetor(secao: string) {
+    const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
+    return res.json();
+  }
 
   return (
     <>
@@ -1230,7 +1249,7 @@ export function CreateTaskModal() {
                                   .filter(r => {
                                     const nameMatches = !responsavelInput || 
                                       ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                    const notAlreadySelected = !selectedResponsaveis.find((sr: Responsavel) => sr.EMAIL === r.EMAIL);
                                     return nameMatches && notAlreadySelected;
                                   })
                                   .map(responsavel => (
