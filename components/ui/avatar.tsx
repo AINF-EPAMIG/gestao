@@ -31,11 +31,24 @@ const AvatarImage = React.forwardRef<
   const [avatarUrl, setAvatarUrl] = React.useState<string | undefined>(props.src);
 
   React.useEffect(() => {
-    if (email) {
-      getUserIcon(email).then(url => {
-        if (url) setAvatarUrl(url);
-      });
+    async function fetchAvatar() {
+      if (!email) return;
+      
+      try {
+        console.log(`AvatarImage: Buscando avatar para o email ${email}`);
+        const url = await getUserIcon(email);
+        console.log(`AvatarImage: URL obtida para ${email}:`, url);
+        if (url) {
+          setAvatarUrl(url);
+        } else {
+          console.warn(`AvatarImage: Nenhuma URL retornada para ${email}`);
+        }
+      } catch (err) {
+        console.error(`AvatarImage: Erro ao buscar avatar para ${email}:`, err);
+      }
     }
+    
+    fetchAvatar();
   }, [email]);
 
   return (

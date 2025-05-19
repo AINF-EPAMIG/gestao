@@ -23,11 +23,13 @@ export interface Task {
   data_fim: string | null
   data_conclusao: string | null
   data_criacao: string
+  data_solicitacao?: string | null
   id_release: string | null
   order?: number
   position: number | null
   ultima_atualizacao: string | null
   setor_sigla?: string
+  origem?: string
 }
 
 interface PendingChange {
@@ -204,17 +206,24 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
         oldStatusId: isStatusChange ? oldStatusId : undefined
       };
       
-      // Chama a API imediatamente
-      fetch('/api/atividades/reorder', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...change,
-          updateTimestamp: isStatusChange || updateTimestamp
-        }),
-      }).catch(error => {
-        console.error('Erro ao sincronizar:', error);
-      });
+      // Só enviar para API se o origin da tarefa não existir ou for diferente de 'chamados_atendimento' e 'criacao_acessos'
+      const origem = taskToMove.origem;
+      const skipApiCall = origem === 'chamados_atendimento' || origem === 'criacao_acessos';
+      
+      // Chama a API apenas se não for um chamado
+      if (!skipApiCall) {
+        // Chama a API imediatamente
+        fetch('/api/atividades/reorder', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...change,
+            updateTimestamp: isStatusChange || updateTimestamp
+          }),
+        }).catch(error => {
+          console.error('Erro ao sincronizar:', error);
+        });
+      }
       
       return {
         tasks: finalTasks,

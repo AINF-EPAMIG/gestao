@@ -3,7 +3,7 @@
 import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableProvided, type DraggableStateSnapshot } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useTaskStore, type Status, type Task, getStatusName, getPriorityName, formatHours } from "@/lib/store"
+import { useTaskStore, type Status, type Task as TaskBase, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { cn, getResponsavelName } from "@/lib/utils"
@@ -15,6 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+type Task = TaskBase & { origem?: string };
 
 const columns: { id: Status; title: string }[] = [
   { id: "Não iniciada", title: "Não iniciada" },
@@ -166,16 +168,16 @@ const TaskCard = memo(function TaskCard({
           >
             {getPriorityName(task.prioridade_id)}
           </Badge>
-          <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+          <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? (task.origem ? 'Seção Indefinida' : 'Projeto Indefinido') : (task.origem ? `Seção` : `Projeto ${task.projeto_id}`))}
             className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5"
           >
             <span className="hidden sm:inline xl:hidden 2xl:hidden">
-              {!task.projeto_id ? "P" : `P${task.projeto_id}`}
+              {!task.projeto_id ? (task.origem ? 'S' : 'P') : (task.origem ? 'S' : `P${task.projeto_id}`)}
             </span>
             <span className="sm:hidden xl:inline 2xl:inline">
-              {task.projeto_nome 
+              {task.projeto_nome
                 ? (task.projeto_nome.length > 20 ? `${task.projeto_nome.slice(0, 17)}...` : task.projeto_nome)
-                : (!task.projeto_id ? "Projeto" : `Projeto ${task.projeto_id}`)}
+                : (!task.projeto_id ? (task.origem ? 'Seção Indefinida' : 'Projeto Indefinido') : (task.origem ? '' : `Projeto ${task.projeto_id}`))}
             </span>
           </Badge>
         </div>
@@ -243,7 +245,8 @@ const TaskCard = memo(function TaskCard({
               </TooltipProvider>
             )}
           </div>
-          {task.ultima_atualizacao && (task.responsaveis ?? []).length < 4 && (
+          {/* Mostrar data de solicitação para chamados e última atualização para o Kanban original */}
+          {((task.origem && task.data_solicitacao) || (!task.origem && task.ultima_atualizacao)) && (task.responsaveis ?? []).length < 4 && (
             <div className="flex items-center">
               {isLoading ? (
                 <div className="flex items-center text-xs text-gray-500">
@@ -251,9 +254,9 @@ const TaskCard = memo(function TaskCard({
                 </div>
               ) : (
                 <span className="text-xs sm:text-[9px] xl:text-xs 2xl:text-sm text-gray-500 flex items-center">
-                  <span className="font-medium hidden sm:hidden xl:hidden 2xl:inline">Últ.:</span>
+                  <span className="font-medium hidden sm:hidden xl:hidden 2xl:inline">{task.origem ? 'Solic.:' : 'Últ.:'}</span>
                   <span className="ml-0 xl:ml-0 2xl:ml-1">
-                    {formatDateTimeCompact(task.ultima_atualizacao)}
+                    {formatDateTimeCompact(task.origem ? (task.data_solicitacao ?? null) : task.ultima_atualizacao)}
                   </span>
                 </span>
               )}
@@ -302,21 +305,24 @@ const Column = memo(function Column({
             {...provided.droppableProps}
             className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 min-h-[200px] xl:min-h-[250px] 2xl:min-h-[300px] w-full"
           >
-            {tasks.map((task, index) => (
-              <Draggable 
-                key={task.id.toString()} 
-                draggableId={task.id.toString()} 
-                index={index}
-              >
-                {(provided, snapshot) => (
-                  <TaskCard 
-                    task={task} 
-                    provided={provided}
-                    snapshot={snapshot}
-                  />
-                )}
-              </Draggable>
-            ))}
+            {tasks.map((task, index) => {
+              const uniqueTaskId = `${task.origem || 'default'}-${task.id}`;
+              return (
+                <Draggable 
+                  key={uniqueTaskId} 
+                  draggableId={uniqueTaskId} 
+                  index={index}
+                >
+                  {(provided, snapshot) => (
+                    <TaskCard 
+                      task={task} 
+                      provided={provided}
+                      snapshot={snapshot}
+                    />
+                  )}
+                </Draggable>
+              );
+            })}
             {provided.placeholder}
           </div>
         )}
@@ -327,12 +333,17 @@ const Column = memo(function Column({
 
 interface KanbanBoardProps {
   tasks: Task[];
+  columnsOverride?: { id: Status; title: string }[];
+  onTaskMove?: (taskId: number, newStatusId: number, position?: number) => void;
+  disableAutoSync?: boolean;
 }
 
-export function KanbanBoard({ tasks }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSync = false }: KanbanBoardProps) {
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
   const updateTaskDataFim = useTaskStore((state) => state.updateTaskDataFim)
   const [localTasks, setLocalTasks] = useState<Task[]>([])
+
+  const columnsToUse = columnsOverride || columns;
 
   // Atualiza o estado local quando as tarefas mudam
   useEffect(() => {
@@ -347,7 +358,8 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
       return;
     }
     
-    const taskId = parseInt(draggableId);
+    // Extrair apenas o ID numérico do draggableId (que agora é prefixado com origem)
+    const taskId = parseInt(draggableId.split('-').pop() || '0');
     const newStatusId = statusMap[destination.droppableId as Status];
     const sourceStatusId = statusMap[source.droppableId as Status];
     
@@ -389,7 +401,9 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         if (task.position !== newPosition) {
           task.position = newPosition;
           // Passa false para indicar que não deve atualizar a data
-          updateTaskPosition(task.id, task.status_id, newPosition, false);
+          if (!disableAutoSync) {
+            updateTaskPosition(task.id, task.status_id, newPosition, false);
+          }
         }
       });
       
@@ -398,7 +412,9 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
     } else {
       // Se estiver mudando de status, atualiza o status e a posição
       // Passa true para indicar que deve atualizar a data (mudança de status)
-      updateTaskPosition(taskId, newStatusId, destination.index, true);
+      if (!disableAutoSync) {
+        updateTaskPosition(taskId, newStatusId, destination.index, true);
+      }
       
       // Atualiza o estado local para refletir a mudança imediatamente
       taskToMove.status_id = newStatusId;
@@ -414,7 +430,9 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         if (task.position !== index) {
           task.position = index;
           // Passa false para indicar que não deve atualizar a data
-          updateTaskPosition(task.id, sourceStatusId, index, false);
+          if (!disableAutoSync) {
+            updateTaskPosition(task.id, sourceStatusId, index, false);
+          }
         }
       });
       
@@ -431,29 +449,35 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         if (task.position !== index) {
           task.position = index;
           // Passa false para indicar que não deve atualizar a data
-          updateTaskPosition(task.id, newStatusId, index, false);
+          if (!disableAutoSync) {
+            updateTaskPosition(task.id, newStatusId, index, false);
+          }
         }
       });
       
       setLocalTasks(updatedTasks);
     }
-  }, [updateTaskPosition, updateTaskDataFim, localTasks]);
+
+    // Se houver uma função de callback onTaskMove, chama-a
+    if (onTaskMove && source.droppableId !== destination.droppableId) {
+      onTaskMove(taskId, newStatusId, destination.index);
+    }
+  }, [updateTaskPosition, updateTaskDataFim, localTasks, onTaskMove, disableAutoSync]);
 
   const columnTasks = useMemo(() => {
-    return columns.reduce((acc, column) => {
-      // Usa as tarefas locais para renderização imediata
+    return columnsToUse.reduce((acc, column) => {
       acc[column.id] = localTasks
         .filter(task => getStatusName(task.status_id) === column.id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       return acc;
     }, {} as Record<Status, Task[]>);
-  }, [localTasks]);
+  }, [localTasks, columnsToUse]);
 
   // Se estiver carregando, mostra um estado de loading
   if (tasks.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 min-w-[min-content] w-full">
-        {columns.map((column) => (
+        {columnsToUse.map((column) => (
           <div key={column.id} className="flex flex-col gap-3 sm:gap-2 xl:gap-2 2xl:gap-3 w-full">
             <div className={cn(
               "flex items-center justify-center w-full rounded-t-md",
@@ -479,7 +503,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 min-w-[min-content] w-full">
-        {columns.map((column) => (
+        {columnsToUse.map((column) => (
           <Column 
             key={column.id}
             column={column}

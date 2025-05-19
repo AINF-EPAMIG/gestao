@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown, Ticket } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -94,6 +94,11 @@ export function Sidebar() {
       href: "/kanban",
       icon: KanbanSquare,
       label: "Kanban",
+    },
+    {
+      href: "/chamados",
+      icon: Ticket,
+      label: "Chamados",
     },
     {
       href: "/relatorios",

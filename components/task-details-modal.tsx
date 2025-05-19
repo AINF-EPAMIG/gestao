@@ -17,6 +17,8 @@ import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { usePolling } from "./polling-wrapper"
+import { usePathname } from "next/navigation"
+import { useChamadosStore } from "@/lib/chamados-store"
 
 interface TaskResponsavel {
   id: number;
@@ -59,7 +61,27 @@ interface Task {
   data_fim: string | null;
   id_release: string | null;
   ultima_atualizacao: string | null;
+  data_solicitacao?: string | null;
   responsaveis?: TaskResponsavel[];
+  origem?: string;
+  chapa_colaborador?: string;
+  nome_colaborador?: string;
+  secao_colaborador?: string;
+  nome_chefia_colaborador?: string;
+  email_chefia_colaborador?: string;
+  sistemas_solicitados?: string;
+  modelo_TOTVS?: string;
+  observacao?: string;
+  nome_solicitante?: string;
+  email_solicitante?: string;
+  status?: string;
+  tecnico_responsavel?: string;
+  data_conclusao?: string | null;
+  secao?: string;
+  nome_chefia_solicitante?: string;
+  email_chefia_solicitante?: string;
+  categoria?: string;
+  prioridade?: string;
 }
 
 interface TaskDetailsModalProps {
@@ -70,6 +92,8 @@ interface TaskDetailsModalProps {
 
 export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalProps) {
   const { data: session } = useSession()
+  const pathname = usePathname()
+  const isChamadosPage = pathname === "/chamados"
   const [isEditing, setIsEditing] = useState(false)
   const [canEdit, setCanEdit] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -357,68 +381,110 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       setIsSaving(true);
       setIsFading(true);
 
-      // Identificar novos responsáveis
-      const responsaveisAtuais = task.responsaveis?.map(r => r.email) || [];
-      const novosResponsaveis = selectedResponsaveis
-        .filter(r => !responsaveisAtuais.includes(r.EMAIL))
-        .map(r => r.EMAIL);
-
-      // Armazenar o projeto_id original para comparação
-      const originalProjetoId = task.projeto_id;
-      const newProjetoId = parseInt(projetoId);
-      const projetoChanged = originalProjetoId !== newProjetoId;
-
-      const requestBody = {
-        id: task.id,
-        titulo,
-        descricao,
-        projeto_id: newProjetoId,
-        responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-        prioridade_id: parseInt(prioridade),
-        estimativa_horas: estimativaHoras,
-        userEmail: session?.user?.email,
-        novosResponsaveis,
-        editorName: session?.user?.name || session?.user?.email
-      };
-
       // Após 1 segundo mostra o loading
       setTimeout(() => setShowLoading(true), 1000);
 
-      const response = await fetch('/api/atividades', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      if (isChamadosPage) {
+        // Para chamados, apenas atualizamos o responsável
+        const response = await fetch('/api/chamados/assign', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chamadoId: task.id,
+            origem: task.origem,
+            userName: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : null,
+          }),
+        });
 
-      // Aguarda 2 segundos para efeito visual
-      await new Promise(resolve => setTimeout(resolve, 2000));
+        // Aguarda 2 segundos para efeito visual
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-      if (response.ok) {
-        const updatedTasks = await response.json();
-        setTasks(updatedTasks);
-        setIsEditing(false);
-        
-        // Disparar evento personalizado para notificar sobre a atualização de tarefas
-        // Só dispara se o projeto foi alterado
-        if (projetoChanged) {
-          console.log('Projeto alterado de', originalProjetoId, 'para', newProjetoId);
-          const taskUpdatedEvent = new CustomEvent('taskUpdated', {
-            detail: { 
-              taskId: task.id, 
-              oldProjetoId: originalProjetoId,
-              newProjetoId: newProjetoId,
-              action: 'edit'
-            }
-          });
-          window.dispatchEvent(taskUpdatedEvent);
+        if (response.ok) {
+          // Atualiza o estado local
+          const updatedTask = {
+            ...localTask,
+            tecnico_responsavel: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : undefined
+          };
+          setLocalTask(updatedTask);
+          setIsEditing(false);
+
+          // Atualiza apenas o chamado específico no store
+          const chamadosStore = useChamadosStore.getState();
+          const currentChamados = chamadosStore.chamados;
+          const updatedChamados = currentChamados.map(chamado => 
+            chamado.id === task.id && chamado.origem === task.origem
+              ? { ...chamado, tecnico_responsavel: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : null }
+              : chamado
+          );
+          chamadosStore.setChamados(updatedChamados);
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Erro ao atualizar responsável');
         }
       } else {
-        const error = await response.json();
-        alert(error.error || 'Erro ao atualizar tarefa');
+        // Para tarefas regulares, mantém o comportamento atual
+        // Identificar novos responsáveis
+        const responsaveisAtuais = task.responsaveis?.map(r => r.email) || [];
+        const novosResponsaveis = selectedResponsaveis
+          .filter(r => !responsaveisAtuais.includes(r.EMAIL))
+          .map(r => r.EMAIL);
+
+        // Armazenar o projeto_id original para comparação
+        const originalProjetoId = task.projeto_id;
+        const newProjetoId = parseInt(projetoId);
+        const projetoChanged = originalProjetoId !== newProjetoId;
+
+        const requestBody = {
+          id: task.id,
+          titulo,
+          descricao,
+          projeto_id: newProjetoId,
+          responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+          prioridade_id: parseInt(prioridade),
+          estimativa_horas: estimativaHoras,
+          userEmail: session?.user?.email,
+          novosResponsaveis,
+          editorName: session?.user?.name || session?.user?.email
+        };
+
+        const response = await fetch('/api/atividades', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        // Aguarda 2 segundos para efeito visual
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        if (response.ok) {
+          const updatedTasks = await response.json();
+          setTasks(updatedTasks);
+          setIsEditing(false);
+          
+          // Disparar evento personalizado para notificar sobre a atualização de tarefas
+          // Só dispara se o projeto foi alterado
+          if (projetoChanged) {
+            console.log('Projeto alterado de', originalProjetoId, 'para', newProjetoId);
+            const taskUpdatedEvent = new CustomEvent('taskUpdated', {
+              detail: { 
+                taskId: task.id, 
+                oldProjetoId: originalProjetoId,
+                newProjetoId: newProjetoId,
+                action: 'edit'
+              }
+            });
+            window.dispatchEvent(taskUpdatedEvent);
+          }
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Erro ao atualizar tarefa');
+        }
       }
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error);
@@ -614,6 +680,41 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     return parts;
   };
 
+  // Função para obter o nome do status baseado na página
+  const getStatusDisplayName = (statusId: number) => {
+    if (isChamadosPage) {
+      switch (statusId) {
+        case 1: return "Em fila"
+        case 2: return "Em atendimento"
+        case 3: return "Em aguardo"
+        case 4: return "Concluído"
+        default: return getStatusName(statusId)
+      }
+    }
+    return getStatusName(statusId)
+  }
+
+  // Função para obter a cor do badge baseado na página
+  const getStatusBadgeClass = (statusId: number) => {
+    if (isChamadosPage) {
+      switch (statusId) {
+        case 1: return "bg-red-500 text-white" // Em fila
+        case 2: return "bg-blue-500 text-white" // Em atendimento
+        case 3: return "bg-yellow-400 text-white" // Em aguardo
+        case 4: return "bg-emerald-500 text-white" // Concluído
+        default: return ""
+      }
+    }
+    // Mantém o comportamento original para outras páginas
+    return getStatusName(statusId) === "Concluída"
+      ? "bg-emerald-500 text-white"
+      : getStatusName(statusId) === "Em desenvolvimento"
+      ? "bg-blue-500 text-white"
+      : getStatusName(statusId) === "Em testes"
+      ? "bg-yellow-400 text-white"
+      : "bg-red-500 text-white"
+  }
+
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       // Quando o modal for fechado, garantir que o polling seja retomado
@@ -636,72 +737,72 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           </div>
         )}
         
-        <div className="absolute top-3 right-4 flex items-center gap-2 z-10">
+        <div className="absolute top-3 right-4 flex items-center gap-1 z-10">
           {!isEditing && (
             <>
-              <div className="relative">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      type="button"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 rounded-full bg-red-500 hover:bg-red-600 hover:scale-110 transition-transform border-0 flex items-center justify-center"
-                      disabled={!canEdit || isEditing}
-                      title="Excluir tarefa"
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
+                    disabled={!canEdit || isEditing}
+                    title="Excluir tarefa"
+                  >
+                    <Trash className="h-3.5 w-3.5 mr-1" />
+                    <span className="text-xs font-medium">Excluir</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete} 
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                      disabled={isDeleting}
                     >
-                      <Trash className="h-3 w-3 text-white" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={handleDelete} 
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? "Excluindo..." : "Excluir"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                      {isDeleting ? "Excluindo..." : "Excluir"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               
-              <div className="relative">
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 rounded-full bg-yellow-400 hover:bg-yellow-500 hover:scale-110 transition-transform border-0 flex items-center justify-center"
-                  onClick={() => {
-                    if (canEdit && !isEditing) {
-                      setLocalTask(task);
-                      setIsEditing(true);
-                    }
-                  }}
-                  disabled={!canEdit || isEditing}
-                  title="Editar tarefa"
-                >
-                  <Edit2 className="h-3 w-3 text-white" />
-                </Button>
-              </div>
+              <Button 
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-200"
+                onClick={() => {
+                  if (canEdit && !isEditing) {
+                    setLocalTask(task);
+                    setIsEditing(true);
+                  }
+                }}
+                disabled={!canEdit || isEditing}
+                title="Editar tarefa"
+              >
+                <Edit2 className="h-3.5 w-3.5 mr-1" />
+                <span className="text-xs font-medium">Editar</span>
+              </Button>
               
-              <div className="relative">
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 rounded-full bg-green-500 hover:bg-green-600 hover:scale-110 transition-transform border-0 flex items-center justify-center"
-                  onClick={() => onOpenChange(false)}
-                  title="Fechar"
-                >
-                  <X className="h-3 w-3 text-white" />
-                </Button>
-              </div>
+              <Button 
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 border border-gray-200"
+                onClick={() => onOpenChange(false)}
+                title="Fechar"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                <span className="text-xs font-medium">Fechar</span>
+              </Button>
             </>
           )}
         </div>
@@ -712,38 +813,33 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             <div className="flex items-center justify-between">
               <TabsList className="grid w-[200px] grid-cols-2">
                 <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-                <TabsTrigger value="anexos">Anexos</TabsTrigger>
+                {!isChamadosPage && (
+                  <TabsTrigger value="anexos">Anexos</TabsTrigger>
+                )}
               </TabsList>
               
-              {canEdit && !isEditing && (
-                <div className="invisible">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-9 w-9 p-0"
-                  >
-                    <Edit2 className="h-[18px] w-[18px] text-gray-500" />
-                  </Button>
-                </div>
-              )}
-              
               {isEditing && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button 
-                    size="sm" 
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2.5 text-green-600 hover:text-green-700 hover:bg-green-50 border border-green-200"
                     onClick={handleSubmit}
                     disabled={isSaving || selectedResponsaveis.length === 0}
-                    className="h-9 w-9 p-0 bg-green-600 hover:bg-green-500 text-white"
                   >
                     {isSaving ? (
-                      <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                     ) : (
-                      <Check className="h-[18px] w-[18px]" />
+                      <Check className="h-3.5 w-3.5 mr-1" />
                     )}
+                    <span className="text-xs font-medium">Salvar</span>
                   </Button>
                   <Button 
-                    size="sm" 
-                    variant="outline" 
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
                     onClick={() => {
                       setIsEditing(false);
                       // Restaurar os dados originais da tarefa
@@ -766,9 +862,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       resumePolling();
                     }}
                     disabled={isSaving}
-                    className="h-9 w-9 p-0"
                   >
-                    <X className="h-[18px] w-[18px]" />
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    <span className="text-xs font-medium">Cancelar</span>
                   </Button>
                 </div>
               )}
@@ -800,17 +896,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge 
-                          className={
-                            getStatusName(task.status_id) === "Concluída"
-                              ? "bg-emerald-500 text-white"
-                              : getStatusName(task.status_id) === "Em desenvolvimento"
-                              ? "bg-blue-500 text-white"
-                              : getStatusName(task.status_id) === "Em testes"
-                              ? "bg-yellow-400 text-white"
-                              : "bg-red-500 text-white"
-                          }
+                          className={getStatusBadgeClass(task.status_id)}
                         >
-                          {getStatusName(task.status_id)}
+                          {getStatusDisplayName(task.status_id)}
                         </Badge>
                         <Badge
                           className={
@@ -920,6 +1008,32 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           </div>
                         )}
                       </div>
+
+                      {/* Campos criacao_acessos - coluna esquerda */}
+                      {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
+                        <>
+                          <div>
+                            <div className="text-sm text-gray-500">Chapa colaborador</div>
+                            <div className="text-sm">{task.chapa_colaborador || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Nome colaborador</div>
+                            <div className="text-sm">{task.nome_colaborador || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Seção colaborador</div>
+                            <div className="text-sm">{task.secao_colaborador || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Nome chefia colaborador</div>
+                            <div className="text-sm">{task.nome_chefia_colaborador || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Email chefia colaborador</div>
+                            <div className="text-sm">{task.email_chefia_colaborador || '-'}</div>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Coluna da direita */}
@@ -978,6 +1092,98 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           <div className="text-sm">{formatEstimativa(localTask.estimativa_horas)}</div>
                         )}
                       </div>
+
+                      {/* Campos criacao_acessos - coluna direita */}
+                      {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
+                        <>
+                          <div>
+                            <div className="text-sm text-gray-500">Sistemas solicitados</div>
+                            <div className="text-sm">{task.sistemas_solicitados || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Modelo TOTVS</div>
+                            <div className="text-sm">{task.modelo_TOTVS || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Observação</div>
+                            <div className="text-sm">{task.observacao || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Nome solicitante</div>
+                            <div className="text-sm">{task.nome_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Email solicitante</div>
+                            <div className="text-sm">{task.email_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Status</div>
+                            <div className="text-sm">{task.status || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Técnico responsável</div>
+                            <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Data conclusão</div>
+                            <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Campos chamados_atendimento - coluna direita */}
+                      {isChamadosPage && task.origem === 'chamados_atendimento' && !isEditing && (
+                        <>
+                          <div>
+                            <div className="text-sm text-gray-500">Nome do solicitante</div>
+                            <div className="text-sm">{task.nome_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Email do solicitante</div>
+                            <div className="text-sm">{task.email_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Seção</div>
+                            <div className="text-sm">{task.secao || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Nome chefia solicitante</div>
+                            <div className="text-sm">{task.nome_chefia_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Email chefia solicitante</div>
+                            <div className="text-sm">{task.email_chefia_solicitante || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Categoria</div>
+                            <div className="text-sm">{task.categoria || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Prioridade</div>
+                            <div className="text-sm">{task.prioridade || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Descrição</div>
+                            <div className="text-sm">{task.descricao || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Data solicitação</div>
+                            <div className="text-sm">{formatDateTime(task.data_solicitacao)}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Status</div>
+                            <div className="text-sm">{task.status || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Técnico responsável</div>
+                            <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Data conclusão</div>
+                            <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1063,11 +1269,11 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   {/* Linha divisória - só aparece quando há comentários */}
                   {comentarios.length > 0 && !isEditing && <Separator className="my-3" />}
 
-                  {/* Seção de Comentários */}
-                  {!isEditing && (
+                  {/* Seção de Comentários - só mostra se não estiver na página de chamados */}
+                  {!isChamadosPage && !isEditing && (
                     <div className={cn(
                       "space-y-2",
-                      comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : "" // Muito mais espaço quando não há comentários
+                      comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : ""
                     )}>
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-medium">Comentários</h4>
@@ -1202,24 +1408,34 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   )}
                 </div>
 
-                {/* Última Atualização e ID Release - Sempre no final */}
+                {/* Última Atualização/Data Solicitação e ID Release - Sempre no final */}
                 <div className="text-xs text-gray-400 text-center space-y-0.5 mt-auto pt-2 border-t">
                   <div>
                     ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
                   </div>
-                  <div>
-                    {task.ultima_atualizacao 
-                      ? `Última atualização: ${formatDateTimeWithTime(task.ultima_atualizacao)}`
-                      : '-'}
-                  </div>
+                  {task.origem ? (
+                    <div>
+                      {task.data_solicitacao 
+                        ? `Data de solicitação: ${formatDateTimeWithTime(task.data_solicitacao)}`
+                        : '-'}
+                    </div>
+                  ) : (
+                    <div>
+                      {task.ultima_atualizacao 
+                        ? `Última atualização: ${formatDateTimeWithTime(task.ultima_atualizacao)}`
+                        : '-'}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
-              <TabsContent value="anexos" className="space-y-3 py-3">
-                <TaskAttachments 
-                  taskId={task.id} 
-                  canEdit={canEdit}
-                />
-              </TabsContent>
+              {!isChamadosPage && (
+                <TabsContent value="anexos" className="space-y-3 py-3">
+                  <TaskAttachments 
+                    taskId={task.id} 
+                    canEdit={canEdit}
+                  />
+                </TabsContent>
+              )}
             </div>
           </div>
         </Tabs>

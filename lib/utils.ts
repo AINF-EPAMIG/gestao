@@ -9,13 +9,51 @@ export function cn(...inputs: ClassValue[]) {
 export async function getUserIcon(email: string | undefined): Promise<string | undefined> {
   if (!email) return undefined;
   
+  console.log('Buscando avatar para:', email);
+  
   try {
     const result = await fetch(`/api/responsaveis/avatar?email=${encodeURIComponent(email)}`);
     const data = await result.json();
+    console.log('Resultado da API de avatar:', data);
     return data.image_url;
   } catch (error) {
     console.error('Erro ao buscar avatar:', error);
     return undefined;
+  }
+}
+
+// Função para testar a recuperação de avatar - pode ser chamada do console do browser para debugar
+export async function testGetUserIcon(email: string): Promise<void> {
+  console.log('Testando avatar para:', email);
+  
+  try {
+    console.log('Fazendo requisição para a API...');
+    const apiUrl = `/api/responsaveis/avatar?email=${encodeURIComponent(email)}`;
+    console.log('URL da API:', apiUrl);
+    
+    const response = await fetch(apiUrl);
+    console.log('Status da resposta:', response.status);
+    
+    const data = await response.json();
+    console.log('Dados retornados:', data);
+    
+    if (data.image_url) {
+      console.log('URL da imagem:', data.image_url);
+      
+      // Testar se a URL é válida
+      const imgResponse = await fetch(data.image_url, { method: 'HEAD' });
+      console.log('Status da resposta da imagem:', imgResponse.status);
+      
+      if (imgResponse.ok) {
+        console.log('✅ A URL da imagem é válida!');
+      } else {
+        console.log('❌ A URL da imagem não é válida!');
+      }
+    } else {
+      console.log('❌ Nenhuma URL de imagem retornada!');
+    }
+  } catch (error) {
+    console.error('Erro ao testar avatar:', error);
   }
 }
 
