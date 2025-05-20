@@ -139,31 +139,24 @@ const ChamadoCard = memo(function ChamadoCard({
     if (!dateString) return null;
     
     try {
-      const [datePart, timePart] = dateString.split('T');
-      if (!datePart || !timePart) return dateString;
-      
-      const [year, month, day] = datePart.split('-').map(num => parseInt(num, 10));
-      const [hourPart] = timePart.split('.');
-      const [hour, minute] = hourPart.split(':').map(num => parseInt(num, 10));
-      
-      const hora = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const date = new Date(dateString);
+      const hora = date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
       
       const hoje = new Date();
       const ontem = new Date();
       ontem.setDate(ontem.getDate() - 1);
       
-      const dataAtual = new Date();
-      dataAtual.setFullYear(year);
-      dataAtual.setMonth(month - 1);
-      dataAtual.setDate(day);
-      
-      const ehHoje = dataAtual.getDate() === hoje.getDate() && 
-                  dataAtual.getMonth() === hoje.getMonth() && 
-                  dataAtual.getFullYear() === hoje.getFullYear();
+      const ehHoje = date.getDate() === hoje.getDate() && 
+                  date.getMonth() === hoje.getMonth() && 
+                  date.getFullYear() === hoje.getFullYear();
                   
-      const ehOntem = dataAtual.getDate() === ontem.getDate() && 
-                   dataAtual.getMonth() === ontem.getMonth() && 
-                   dataAtual.getFullYear() === ontem.getFullYear();
+      const ehOntem = date.getDate() === ontem.getDate() && 
+                   date.getMonth() === ontem.getMonth() && 
+                   date.getFullYear() === ontem.getFullYear();
       
       if (ehHoje) {
         return `Hoje ${hora}`;
@@ -173,7 +166,10 @@ const ChamadoCard = memo(function ChamadoCard({
         return `Ontem ${hora}`;
       }
       
-      const dataFormatada = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}`;
+      const dataFormatada = date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit'
+      });
       return `${dataFormatada} ${hora}`;
     } catch (error) {
       console.error('Erro ao formatar data:', error);
