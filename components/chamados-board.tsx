@@ -35,6 +35,7 @@ export interface Chamado {
   secao_colaborador?: string
   nome_chefia_colaborador?: string
   sistemas_solicitados?: string
+  observacao?: string
   // Campos específicos para chamados_atendimento
   nome_chefia_solicitante?: string
 }

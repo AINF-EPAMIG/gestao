@@ -335,17 +335,26 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
 
             {/* Detalhes do chamado */}
             <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-500 mb-1">Descrição</div>
-                <div className="text-sm whitespace-pre-wrap">
-                  {chamado.origem === 'criacao_acessos'
-                    ? chamado.nome_colaborador
-                    : chamado.descricao}
-                </div>
-              </div>
-
-              {chamado.origem === 'criacao_acessos' && (
+              {chamado.origem === 'criacao_acessos' ? (
                 <>
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Nome do Colaborador</div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {chamado.nome_colaborador || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Observação</div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {chamado.observacao || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Sistemas solicitados</div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {chamado.sistemas_solicitados || '-'}
+                    </div>
+                  </div>
                   <div>
                     <div className="text-sm text-gray-500 mb-1">Seção</div>
                     <div className="text-sm">{chamado.secao_colaborador || '-'}</div>
@@ -354,12 +363,15 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
                     <div className="text-sm text-gray-500 mb-1">Chefia</div>
                     <div className="text-sm">{chamado.nome_chefia_colaborador || '-'}</div>
                   </div>
-                  {chamado.sistemas_solicitados && (
-                    <div>
-                      <div className="text-sm text-gray-500 mb-1">Sistemas solicitados</div>
-                      <div className="text-sm">{chamado.sistemas_solicitados}</div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Descrição</div>
+                    <div className="text-sm whitespace-pre-wrap">
+                      {chamado.descricao}
                     </div>
-                  )}
+                  </div>
                 </>
               )}
             </div>

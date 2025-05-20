@@ -152,14 +152,17 @@ export async function GET() {
           prioridade: acesso.prioridade || 'Média',
           descricao: acesso.sistemas_solicitados || acesso.observacao || '',
           data_solicitacao: acesso.data_solicitacao,
-          status: posInfo?.status || 'Em fila', // Usar o status da tabela kanban_positions
+          status: posInfo?.status || 'Em fila',
           tecnico_responsavel: acesso.tecnico_responsavel,
           data_conclusao: acesso.data_conclusao,
           resposta_conclusao: acesso.resposta_conclusao,
           origem: 'criacao_acessos',
-          position: posInfo?.posicao !== undefined ? posInfo.posicao : 1, // Usar a posição da tabela kanban_positions, começando em 1
+          position: posInfo?.posicao !== undefined ? posInfo.posicao : 1,
           chapa_colaborador: acesso.chapa_colaborador || '',
           nome_colaborador: acesso.nome_colaborador || '',
+          nome_chefia_colaborador: acesso.nome_chefia_colaborador || '',
+          sistemas_solicitados: acesso.sistemas_solicitados || '',
+          observacao: acesso.observacao || ''
         };
       }
     };
