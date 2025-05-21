@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, X, Check, UserPlus } from "lucide-react"
+import { Loader2, X, Check, UserPlus, Trash2 } from "lucide-react"
 import { cn, getResponsavelName } from "@/lib/utils"
 import { type Chamado } from "@/components/chamados-board"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -254,6 +254,32 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
     }
   }
 
+  const handleDelete = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/chamados/delete?id=${chamado.id}&origem=${chamado.origem}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir chamado');
+      }
+
+      // Fecha o modal
+      onOpenChange(false);
+
+      // Atualiza o estado global
+      await fetchChamados();
+    } catch (error) {
+      console.error('Erro ao excluir chamado:', error);
+      setError('Erro ao excluir chamado. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const modalTitle = chamado.origem === 'criacao_acessos' 
     ? `Detalhes da Criação de Acessos - ${chamado.chapa_colaborador || ''}`
     : `Detalhes do Chamado - ${chamado.categoria}`
@@ -298,17 +324,31 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
               </h2>
             </div>
 
-            <Button 
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 border border-gray-200"
-              onClick={() => onOpenChange(false)}
-              title="Fechar"
-            >
-              <X className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs font-medium">Fechar</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                  title="Excluir chamado"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  <span className="text-xs font-medium">Excluir</span>
+                </Button>
+              )}
+              <Button 
+                type="button"
+                variant="ghost"
+                className="h-7 px-2.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 border border-gray-200"
+                onClick={() => onOpenChange(false)}
+                title="Fechar"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                <span className="text-xs font-medium">Fechar</span>
+              </Button>
+            </div>
           </div>
 
           {/* Conteúdo */}
@@ -335,6 +375,7 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
 
             {/* Detalhes do chamado */}
             <div className="space-y-4">
+              {/* Informações adicionais */}
               {chamado.origem === 'criacao_acessos' ? (
                 <>
                   <div>
