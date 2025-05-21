@@ -1098,7 +1098,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                         <>
                           <div>
                             <div className="text-sm text-gray-500">Sistemas solicitados</div>
-                            <div className="text-sm">{task.sistemas_solicitados || '-'}</div>
+                            <div className="text-sm">{(task.sistemas_solicitados || '-').toUpperCase()}</div>
                           </div>
                           <div>
                             <div className="text-sm text-gray-500">Modelo TOTVS</div>

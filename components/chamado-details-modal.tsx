@@ -432,7 +432,7 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
                   <div>
                     <div className="text-sm text-gray-500 mb-1">Sistemas solicitados</div>
                     <div className="text-sm whitespace-pre-wrap">
-                      {chamado.sistemas_solicitados || '-'}
+                      {(chamado.sistemas_solicitados || '-').toUpperCase()}
                     </div>
                   </div>
                   <div>

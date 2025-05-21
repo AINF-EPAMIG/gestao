@@ -72,8 +72,8 @@ async function getChefiaImediata(nome: string) {
   console.log('Debug - Buscando chefia imediata para:', nome);
   
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT chefia FROM funcionarios WHERE nome = ? LIMIT 1',
-    values: [nome],
+    query: 'SELECT chefia FROM funcionarios WHERE nome LIKE ? LIMIT 1',
+    values: [`%${nome}%`],
   });
   
   console.log('Debug - Resultado da busca:', result);
