@@ -67,19 +67,52 @@ function getUserRegistration(user: Funcionario | null): string {
   return user?.chapa || '';
 }
 
-// Busca a chefia imediata de um funcionário pelo nome ou email
-async function getChefiaImediata(searchTerm: string) {
-  console.log('Debug - Buscando chefia imediata para:', searchTerm);
+// Busca a chefia imediata de um funcionário pelo nome
+async function getChefiaImediata(nome: string) {
+  console.log('Debug - Buscando chefia imediata para:', nome);
+  
+  // Divide o nome em partes e remove espaços extras
+  const nomeParts = nome.trim().split(/\s+/);
+  
+  // Cria condições para cada parte do nome
+  const conditions = nomeParts.map(() => 'nome LIKE ?').join(' AND ');
+  const values = nomeParts.map(part => `%${part}%`);
+  
+  const query = `SELECT chefia FROM funcionarios WHERE ${conditions} LIMIT 1`;
+  console.log('Debug - Query:', query, 'Values:', values);
   
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT chefia FROM funcionarios WHERE nome LIKE ? OR email LIKE ? LIMIT 1',
-    values: [`%${searchTerm}%`, `%${searchTerm}%`],
+    query,
+    values,
   });
   
   console.log('Debug - Resultado da busca:', result);
   
   if (!result || result.length === 0 || !result[0].chefia) {
     console.log('Debug - Funcionário não encontrado ou sem chefia');
+    // Se não encontrou com todas as partes, tenta encontrar com o primeiro e último nome
+    if (nomeParts.length > 2) {
+      const primeiroNome = nomeParts[0];
+      const ultimoNome = nomeParts[nomeParts.length - 1];
+      
+      const fallbackQuery = 'SELECT chefia FROM funcionarios WHERE nome LIKE ? AND nome LIKE ? LIMIT 1';
+      const fallbackValues = [`%${primeiroNome}%`, `%${ultimoNome}%`];
+      
+      console.log('Debug - Tentando fallback query:', fallbackQuery, 'Values:', fallbackValues);
+      
+      const fallbackResult = await executeQueryFuncionarios<Funcionario[]>({
+        query: fallbackQuery,
+        values: fallbackValues,
+      });
+      
+      console.log('Debug - Resultado do fallback:', fallbackResult);
+      
+      if (fallbackResult && fallbackResult.length > 0 && fallbackResult[0].chefia) {
+        return {
+          nome: fallbackResult[0].chefia
+        };
+      }
+    }
     return null;
   }
   
