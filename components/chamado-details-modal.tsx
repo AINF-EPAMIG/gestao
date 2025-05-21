@@ -61,16 +61,31 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
   // Buscar chefia imediata do solicitante quando o modal abrir
   useEffect(() => {
     const fetchChefiaImediata = async () => {
-      // Usar o nome do solicitante para buscar a chefia
-      if (chamado?.nome_solicitante) {
+      // Usar o nome ou email do solicitante para buscar a chefia
+      if (chamado?.nome_solicitante || chamado?.email_solicitante) {
         try {
           console.log('Debug - Dados do chamado:', {
             chamado,
             nomeSolicitante: chamado.nome_solicitante,
+            emailSolicitante: chamado.email_solicitante,
             origem: chamado.origem
           });
           
-          const res = await fetch(`/api/funcionarios?action=getChefiaImediata&nome=${encodeURIComponent(chamado.nome_solicitante)}`);
+          // Tentar primeiro pelo nome, se disponível
+          let searchTerm = chamado.nome_solicitante;
+          
+          // Se não encontrar pelo nome ou se o nome não estiver disponível, tentar pelo email
+          if (!searchTerm && chamado.email_solicitante) {
+            searchTerm = chamado.email_solicitante;
+          }
+
+          if (!searchTerm) {
+            console.log('Nenhum termo de busca disponível');
+            setChefiaImediata(null);
+            return;
+          }
+          
+          const res = await fetch(`/api/funcionarios?action=getChefiaImediata&nome=${encodeURIComponent(searchTerm)}`);
           const data = await res.json();
           
           console.log('Debug - Resposta da API de chefia:', {

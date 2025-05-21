@@ -67,13 +67,13 @@ function getUserRegistration(user: Funcionario | null): string {
   return user?.chapa || '';
 }
 
-// Busca a chefia imediata de um funcionário pelo nome
-async function getChefiaImediata(nome: string) {
-  console.log('Debug - Buscando chefia imediata para:', nome);
+// Busca a chefia imediata de um funcionário pelo nome ou email
+async function getChefiaImediata(searchTerm: string) {
+  console.log('Debug - Buscando chefia imediata para:', searchTerm);
   
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT chefia FROM funcionarios WHERE nome LIKE ? LIMIT 1',
-    values: [`%${nome}%`],
+    query: 'SELECT chefia FROM funcionarios WHERE nome LIKE ? OR email LIKE ? LIMIT 1',
+    values: [`%${searchTerm}%`, `%${searchTerm}%`],
   });
   
   console.log('Debug - Resultado da busca:', result);
