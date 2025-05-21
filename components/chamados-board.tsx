@@ -21,6 +21,7 @@ export interface Chamado {
   prioridade: string
   status: Status
   nome_solicitante: string
+  email_solicitante: string
   tecnico_responsavel: string | null
   data_solicitacao: string
   data_conclusao: string | null

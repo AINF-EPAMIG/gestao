@@ -39,6 +39,7 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const responsavelRef = useRef<HTMLDivElement>(null)
   const fetchChamados = useChamadosStore((state) => state.fetchChamados)
+  const [chefiaImediata, setChefiaImediata] = useState<string | null>(null)
 
   // Buscar funcionários do setor quando o modal abrir
   useEffect(() => {
@@ -56,6 +57,44 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
 
     fetchFuncionariosSetor();
   }, [chamado?.secao]);
+  
+  // Buscar chefia imediata do solicitante quando o modal abrir
+  useEffect(() => {
+    const fetchChefiaImediata = async () => {
+      // Usar o nome do solicitante para buscar a chefia
+      if (chamado?.nome_solicitante) {
+        try {
+          console.log('Debug - Dados do chamado:', {
+            chamado,
+            nomeSolicitante: chamado.nome_solicitante,
+            origem: chamado.origem
+          });
+          
+          const res = await fetch(`/api/funcionarios?action=getChefiaImediata&nome=${encodeURIComponent(chamado.nome_solicitante)}`);
+          const data = await res.json();
+          
+          console.log('Debug - Resposta da API de chefia:', {
+            data,
+            status: res.status,
+            ok: res.ok
+          });
+          
+          if (data && data.nome) {
+            console.log(`Chefia imediata encontrada: ${data.nome}`);
+            setChefiaImediata(data.nome);
+          } else {
+            console.log('Nenhuma chefia imediata encontrada');
+            setChefiaImediata(null);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar chefia imediata do solicitante:', error);
+          setChefiaImediata(null);
+        }
+      }
+    };
+  
+    fetchChefiaImediata();
+  }, [chamado?.nome_solicitante]);
 
   // Initialize selectedResponsavel when chamado changes
   useEffect(() => {
@@ -401,7 +440,7 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
                     <div className="text-sm">{chamado.secao_colaborador || '-'}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500 mb-1">Chefia</div>
+                    <div className="text-sm text-gray-500 mb-1">Chefia do Novo Colaborador</div>
                     <div className="text-sm">{chamado.nome_chefia_colaborador || '-'}</div>
                   </div>
                 </>
@@ -594,17 +633,18 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
               )}
             </div>
 
-            {/* Solicitante */}
-            <div>
-              <div className="text-sm text-gray-500 mb-2">Solicitante</div>
-              <div className="text-sm">{chamado.nome_solicitante}</div>
-            </div>
+            {/* Solicitante e Chefia Imediata */}
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm text-gray-500 mb-2">Solicitante</div>
+                <div className="text-sm">{chamado.nome_solicitante}</div>
+              </div>
 
-            {/* Chefia Imediata */}
-            <div>
-              <div className="text-sm text-gray-500 mb-2">Chefia Imediata</div>
-              <div className="text-sm">
-                {chamado.nome_chefia_solicitante || chamado.nome_chefia_colaborador || '-'}
+              <div>
+                <div className="text-sm text-gray-500 mb-2">Chefia Imediata do Solicitante</div>
+                <div className="text-sm">
+                  {chefiaImediata || '-'}
+                </div>
               </div>
             </div>
 

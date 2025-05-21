@@ -67,6 +67,36 @@ function getUserRegistration(user: Funcionario | null): string {
   return user?.chapa || '';
 }
 
+// Busca informações do usuário pelo nome
+async function getUserInfoByName(nome: string) {
+  const result = await executeQueryFuncionarios<Funcionario[]>({
+    query: 'SELECT * FROM funcionarios WHERE nome = ? LIMIT 1',
+    values: [nome],
+  });
+  return result[0] || null;
+}
+
+// Busca a chefia imediata de um funcionário pelo nome
+async function getChefiaImediata(nome: string) {
+  console.log('Debug - Buscando chefia imediata para:', nome);
+  
+  const result = await executeQueryFuncionarios<Funcionario[]>({
+    query: 'SELECT chefia FROM funcionarios WHERE nome = ? LIMIT 1',
+    values: [nome],
+  });
+  
+  console.log('Debug - Resultado da busca:', result);
+  
+  if (!result || result.length === 0 || !result[0].chefia) {
+    console.log('Debug - Funcionário não encontrado ou sem chefia');
+    return null;
+  }
+  
+  return {
+    nome: result[0].chefia
+  };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
@@ -89,6 +119,12 @@ export async function GET(request: NextRequest) {
       if (!secao) return NextResponse.json({ error: 'Seção não informada' }, { status: 400 });
       const responsaveis = await getResponsaveisBySetor(secao);
       return NextResponse.json(responsaveis);
+    }
+    if (action === 'getChefiaImediata') {
+      const nome = searchParams.get('nome');
+      if (!nome) return NextResponse.json({ error: 'Nome não informado' }, { status: 400 });
+      const chefiaImediata = await getChefiaImediata(nome);
+      return NextResponse.json(chefiaImediata);
     }
     // Funções utilitárias
     if (action === 'isUserChefe') {
