@@ -67,15 +67,6 @@ function getUserRegistration(user: Funcionario | null): string {
   return user?.chapa || '';
 }
 
-// Busca informações do usuário pelo nome
-async function getUserInfoByName(nome: string) {
-  const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT * FROM funcionarios WHERE nome = ? LIMIT 1',
-    values: [nome],
-  });
-  return result[0] || null;
-}
-
 // Busca a chefia imediata de um funcionário pelo nome
 async function getChefiaImediata(nome: string) {
   console.log('Debug - Buscando chefia imediata para:', nome);

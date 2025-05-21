@@ -94,7 +94,7 @@ export function ChamadoDetailsModal({ chamado, open, onOpenChange }: ChamadoDeta
     };
   
     fetchChefiaImediata();
-  }, [chamado?.nome_solicitante]);
+  }, [chamado]);
 
   // Initialize selectedResponsavel when chamado changes
   useEffect(() => {
