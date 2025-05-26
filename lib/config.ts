@@ -3,4 +3,5 @@ export const AUTHORIZED_EMAILS = [
   "victor.purri@epamig.br",
   "arthur.souza@epamig.br",
   "bruno.gregorio@epamig.br",
+  "anderson@epamig.br",
 ] 
