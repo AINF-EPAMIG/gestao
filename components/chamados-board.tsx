@@ -5,11 +5,12 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useMemo, useCallback, useState, memo, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
-import { Loader2, Clock } from "lucide-react"
+import { Loader2, Clock, Users } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { ChamadoDetailsModal } from "@/components/chamado-details-modal"
 import { RespostaConclusaoDialog } from "@/components/resposta-conclusao-dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export type Status = "Em fila" | "Em atendimento" | "Em aguardo" | "Concluído"
 
@@ -17,12 +18,14 @@ export interface Chamado {
   id: number
   titulo?: string
   categoria?: string
+  subcategoria?: string
   descricao: string
   prioridade: string
   status: Status
   nome_solicitante: string
   email_solicitante: string
   tecnico_responsavel: string | null
+  tecnicos_responsaveis?: string
   data_solicitacao: string
   data_conclusao: string | null
   resposta_conclusao: string | null
@@ -30,6 +33,9 @@ export interface Chamado {
   position: number
   origem: 'chamados_atendimento' | 'criacao_acessos'
   secao?: string
+  // Campos de anexo
+  anexo?: string
+  anexo_nome?: string
   // Campos específicos para criacao_acessos
   chapa_colaborador?: string
   nome_colaborador?: string
@@ -241,7 +247,7 @@ const ChamadoCard = memo(function ChamadoCard({
         <p className="text-sm sm:text-xs xl:text-sm 2xl:text-sm text-gray-500 line-clamp-2 sm:line-clamp-1 xl:line-clamp-2 2xl:line-clamp-3 w-full">
           {chamado.origem === 'criacao_acessos'
             ? chamado.nome_colaborador
-            : chamado.descricao}
+            : (chamado.titulo || chamado.descricao)}
         </p>
 
         <Separator className="my-1.5 sm:my-1 xl:my-1.5 2xl:my-2" />
@@ -249,21 +255,55 @@ const ChamadoCard = memo(function ChamadoCard({
         <div className="flex items-center justify-between text-xs sm:text-[10px] xl:text-xs 2xl:text-sm text-gray-500">
           <div className="flex items-center gap-1 sm:gap-0.5 xl:gap-1 2xl:gap-2">
             <div className="flex -space-x-2 sm:-space-x-1 xl:-space-x-2 2xl:-space-x-3" onClick={testAvatar}>
-              {chamado.tecnico_responsavel ? (
+              {/* Múltiplos responsáveis */}
+              {chamado.tecnicos_responsaveis ? (
+                chamado.tecnicos_responsaveis.split(',').map((email, index) => (
+                  <MemoizedAvatar key={index} email={email.trim()} />
+                ))
+              ) : chamado.tecnico_responsavel ? (
                 <MemoizedAvatar email={chamado.tecnico_responsavel} />
               ) : (
                 <MemoizedAvatar />
               )}
             </div>
-            {chamado.tecnico_responsavel && (
+            
+            {/* Texto de responsável único - mostrado em todas as telas */}
+            {chamado.tecnicos_responsaveis ? (
+              chamado.tecnicos_responsaveis.split(',').length === 1 && (
+                <span className="text-sm sm:text-xs xl:text-sm 2xl:text-sm font-medium truncate max-w-[80px] sm:max-w-[60px] md:max-w-[80px] lg:max-w-[80px] xl:max-w-[100px] 2xl:max-w-[120px] text-black">
+                  {getFirstName(chamado.tecnicos_responsaveis.split(',')[0].trim())}
+                </span>
+              )
+            ) : chamado.tecnico_responsavel ? (
               <span className="text-sm sm:text-xs xl:text-sm 2xl:text-sm font-medium truncate max-w-[80px] sm:max-w-[60px] md:max-w-[80px] lg:max-w-[80px] xl:max-w-[100px] 2xl:max-w-[120px] text-black">
                 {getFirstName(chamado.tecnico_responsavel)}
               </span>
-            )}
-            {!chamado.tecnico_responsavel && (
+            ) : (
               <span className="text-sm sm:text-xs xl:text-sm 2xl:text-sm text-gray-500">
                 Não atribuído
               </span>
+            )}
+            
+            {/* Texto de múltiplos responsáveis - agora visível em todas as telas */}
+            {chamado.tecnicos_responsaveis && chamado.tecnicos_responsaveis.split(',').length > 1 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm font-medium flex items-center gap-1 cursor-help text-black">
+                      <Users className="w-2.5 h-2.5 sm:w-2 sm:h-2 xl:w-2.5 xl:h-2.5 2xl:w-3 2xl:h-3" />
+                      {chamado.tecnicos_responsaveis.split(',').length}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs xl:text-sm">
+                      {chamado.tecnicos_responsaveis.split(',').map(email => {
+                        const firstName = getFirstName(email.trim());
+                        return firstName;
+                      }).join(', ')}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           <div className="flex items-center gap-1">

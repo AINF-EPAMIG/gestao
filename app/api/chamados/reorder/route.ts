@@ -99,19 +99,56 @@ export async function PUT(request: NextRequest) {
       console.log(`[REORDER API] Criada nova posição: tipo=${tipo_item}, id_ref=${chamadoIdNumber}, status=${statusText}, posicao=${positionNumber}`);
     }
 
-    // 3. Se não tem responsável e temos o nome do usuário, atualizamos isso na tabela original
-    if (userName) {
+    // 3. Atribuição automática de responsável quando há mudança de status
+    if (userName && isStatusChange) {
       const [chamadoRows] = await dbAtendimento.execute<ChamadoRow[]>(
         `SELECT * FROM ${table} WHERE id = ?`,
         [chamadoIdNumber]
       );
 
-      if (chamadoRows.length > 0 && !chamadoRows[0].tecnico_responsavel) {
-        await dbAtendimento.execute<OkPacket>(
-          `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
-          [userName, chamadoIdNumber]
-        );
-        console.log(`[REORDER API] Atribuído técnico responsável: ${userName}`);
+      if (chamadoRows.length > 0) {
+        const chamado = chamadoRows[0];
+        
+        // Verifica se o campo tecnicos_responsaveis existe na tabela
+        const hasMultipleResponsibles = 'tecnicos_responsaveis' in chamado;
+        
+        if (hasMultipleResponsibles) {
+          // Trabalha com múltiplos responsáveis
+          const currentResponsibles = (chamado as ChamadoRow & { tecnicos_responsaveis?: string }).tecnicos_responsaveis || '';
+          const responsiblesList = currentResponsibles 
+            ? currentResponsibles.split(',').map((email: string) => email.trim()).filter(Boolean)
+            : [];
+          
+          // Adiciona o novo responsável se não estiver na lista
+          if (!responsiblesList.includes(userName)) {
+            responsiblesList.push(userName);
+            const newResponsibles = responsiblesList.join(',');
+            
+            await dbAtendimento.execute<OkPacket>(
+              `UPDATE ${table} SET tecnicos_responsaveis = ? WHERE id = ?`,
+              [newResponsibles, chamadoIdNumber]
+            );
+            console.log(`[REORDER API] Adicionado responsável: ${userName} à lista: ${newResponsibles}`);
+          }
+          
+          // Mantém compatibilidade com tecnico_responsavel (primeiro da lista)
+          if (!chamado.tecnico_responsavel && responsiblesList.length > 0) {
+            await dbAtendimento.execute<OkPacket>(
+              `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
+              [responsiblesList[0], chamadoIdNumber]
+            );
+            console.log(`[REORDER API] Definido tecnico_responsavel principal: ${responsiblesList[0]}`);
+          }
+        } else {
+          // Fallback para tabelas sem campo tecnicos_responsaveis
+          if (!chamado.tecnico_responsavel) {
+            await dbAtendimento.execute<OkPacket>(
+              `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
+              [userName, chamadoIdNumber]
+            );
+            console.log(`[REORDER API] Atribuído técnico responsável: ${userName}`);
+          }
+        }
       }
     }
 

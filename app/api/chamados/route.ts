@@ -10,12 +10,16 @@ interface ChamadoAtendimento extends RowDataPacket {
   nome_chefia_solicitante: string;
   email_chefia_solicitante: string;
   categoria: string;
+  subcategoria?: string;
+  titulo?: string;
   prioridade: string;
   descricao: string;
   data_solicitacao: string;
   tecnico_responsavel: string;
+  tecnicos_responsaveis?: string;
   data_conclusao: string | null;
   resposta_conclusao: string | null;
+  anexo?: string;
 }
 
 interface CriacaoAcesso extends RowDataPacket {
@@ -30,10 +34,12 @@ interface CriacaoAcesso extends RowDataPacket {
   observacao: string;
   data_solicitacao: string;
   tecnico_responsavel: string;
+  tecnicos_responsaveis?: string;
   data_conclusao: string | null;
   resposta_conclusao: string | null;
   chapa_colaborador: string;
   nome_colaborador: string;
+  anexo?: string;
 }
 
 interface KanbanPosition extends RowDataPacket {
@@ -52,11 +58,14 @@ interface ChamadoNormalizado {
   nome_chefia_solicitante: string;
   email_chefia_solicitante: string;
   categoria: string;
+  subcategoria?: string;
+  titulo?: string;
   prioridade: string;
   descricao: string;
   data_solicitacao: string;
   status: string;
   tecnico_responsavel: string;
+  tecnicos_responsaveis?: string;
   data_conclusao: string | null;
   resposta_conclusao: string | null;
   origem: string;
@@ -69,6 +78,7 @@ interface ChamadoNormalizado {
   sistemas_solicitados?: string;
   modelo_TOTVS?: string;
   observacao?: string;
+  anexo?: string;
 }
 
 export async function GET() {
@@ -128,11 +138,14 @@ export async function GET() {
           nome_chefia_solicitante: chamado.nome_chefia_solicitante,
           email_chefia_solicitante: chamado.email_chefia_solicitante,
           categoria: chamado.categoria,
+          subcategoria: chamado.subcategoria,
+          titulo: chamado.titulo,
           prioridade: chamado.prioridade,
           descricao: chamado.descricao,
           data_solicitacao: chamado.data_solicitacao,
           status: posInfo?.status || 'Em fila', // Usar o status da tabela kanban_positions
           tecnico_responsavel: chamado.tecnico_responsavel,
+          tecnicos_responsaveis: chamado.tecnicos_responsaveis,
           data_conclusao: chamado.data_conclusao,
           resposta_conclusao: chamado.resposta_conclusao,
           origem: 'chamados_atendimento',
@@ -150,10 +163,11 @@ export async function GET() {
           email_chefia_solicitante: acesso.email_chefia_colaborador,
           categoria: 'Criação de Acesso',
           prioridade: acesso.prioridade || 'Média',
-          descricao: acesso.sistemas_solicitados || acesso.observacao || '',
+          descricao: acesso.observacao || '',
           data_solicitacao: acesso.data_solicitacao,
           status: posInfo?.status || 'Em fila',
           tecnico_responsavel: acesso.tecnico_responsavel,
+          tecnicos_responsaveis: acesso.tecnicos_responsaveis,
           data_conclusao: acesso.data_conclusao,
           resposta_conclusao: acesso.resposta_conclusao,
           origem: 'criacao_acessos',

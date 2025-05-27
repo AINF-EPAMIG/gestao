@@ -81,6 +81,7 @@ interface Task {
   nome_chefia_solicitante?: string;
   email_chefia_solicitante?: string;
   categoria?: string;
+  subcategoria?: string;
   prioridade?: string;
 }
 
@@ -1158,6 +1159,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                             <div className="text-sm text-gray-500">Categoria</div>
                             <div className="text-sm">{task.categoria || '-'}</div>
                           </div>
+                          {task.subcategoria && (
+                            <div>
+                              <div className="text-sm text-gray-500">Subcategoria</div>
+                              <div className="text-sm">{task.subcategoria}</div>
+                            </div>
+                          )}
                           <div>
                             <div className="text-sm text-gray-500">Prioridade</div>
                             <div className="text-sm">{task.prioridade || '-'}</div>

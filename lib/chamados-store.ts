@@ -13,16 +13,20 @@ interface ReorderRequestBody {
   newStatus: string
   origem: string
   newPosition: number
+  userName?: string
 }
 
 interface ChamadoAPI {
   id: number
   categoria: string
+  subcategoria?: string
+  titulo?: string
   descricao: string
   prioridade: string
   status: Status
   nome_solicitante: string
   tecnico_responsavel: string | null
+  tecnicos_responsaveis?: string
   data_solicitacao: string
   data_conclusao: string | null
   resposta_conclusao: string | null
@@ -40,7 +44,7 @@ interface ChamadoAPI {
 interface ChamadosStore {
   chamados: Chamado[]
   setChamados: (chamados: Chamado[]) => void
-  updateChamadoPosition: (chamadoId: number, newStatusId: number, origem: string, newIndex: number) => void
+  updateChamadoPosition: (chamadoId: number, newStatusId: number, origem: string, newIndex: number, userName?: string) => void
   fetchChamados: () => Promise<void>
   isLoading: boolean
   optimisticUpdates: Map<string, OptimisticUpdate>
@@ -126,7 +130,7 @@ export const useChamadosStore = create<ChamadosStore>()((set, get) => ({
     });
   },
   
-  updateChamadoPosition: (chamadoId, newStatusId, origem, newIndex) => {
+  updateChamadoPosition: (chamadoId, newStatusId, origem, newIndex, userName) => {
     set((state) => {
       const nextSequence = state.lastSequence + 1;
       const chamados = [...state.chamados];
@@ -221,7 +225,8 @@ export const useChamadosStore = create<ChamadosStore>()((set, get) => ({
           chamadoId,
           newStatus: newStatusId.toString(),
           origem,
-          newPosition: chamadoToMove.position
+          newPosition: chamadoToMove.position,
+          userName
         } as ReorderRequestBody),
       }).catch(error => {
         console.error('Erro ao atualizar posição do chamado:', error);
@@ -245,13 +250,15 @@ export const useChamadosStore = create<ChamadosStore>()((set, get) => ({
       // Mapeia os dados para o formato esperado
       const normalizedChamados = data.map((chamado: ChamadoAPI) => ({
         id: chamado.id,
-        titulo: chamado.categoria,
+        titulo: chamado.titulo || chamado.categoria, // Usar titulo se existir, senão usar categoria
         categoria: chamado.categoria,
+        subcategoria: chamado.subcategoria,
         descricao: chamado.descricao,
         prioridade: chamado.prioridade,
         status: chamado.status,
         nome_solicitante: chamado.nome_solicitante,
         tecnico_responsavel: chamado.tecnico_responsavel,
+        tecnicos_responsaveis: chamado.tecnicos_responsaveis,
         data_solicitacao: chamado.data_solicitacao,
         data_conclusao: chamado.data_conclusao,
         resposta_conclusao: chamado.resposta_conclusao,

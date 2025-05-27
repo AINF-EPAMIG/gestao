@@ -1,7 +1,7 @@
-
-export const AUTHORIZED_EMAILS = [
-  "victor.purri@epamig.br",
-  "arthur.souza@epamig.br",
-  "bruno.gregorio@epamig.br",
-  "anderson@epamig.br",
-] 
+// Lista de emails autorizados - REMOVIDA: agora qualquer usuário autenticado tem acesso
+// export const AUTHORIZED_EMAILS = [
+//   "victor.purri@epamig.br",
+//   "arthur.souza@epamig.br",
+//   "bruno.gregorio@epamig.br",
+//   "anderson@epamig.br",
+// ] 
