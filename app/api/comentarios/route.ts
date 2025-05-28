@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { executeQuery } from '@/lib/db'
+import { executeQuery, executeQueryAtendimento } from '@/lib/db'
 
 interface Comentario {
   id: number;
@@ -24,8 +24,6 @@ export async function GET(request: Request) {
   const atividade_id = searchParams.get('atividade_id')
   const chamado_id = searchParams.get('chamado_id')
 
-  console.log('GET comentarios - params:', { atividade_id, chamado_id });
-
   if (!atividade_id && !chamado_id) {
     return NextResponse.json({ error: 'ID da atividade ou chamado é obrigatório' }, { status: 400 })
   }
@@ -36,23 +34,27 @@ export async function GET(request: Request) {
 
     if (chamado_id) {
       // Buscar comentários da nova tabela comentarios para chamados
-      query = 'SELECT * FROM u711845530_atendimento.comentarios WHERE tipo_registro = ? AND registro_id = ? ORDER BY data_criacao DESC';
+      query = 'SELECT * FROM comentarios WHERE tipo_registro = ? AND registro_id = ? ORDER BY data_criacao DESC';
       values = ['chamado', parseInt(chamado_id)];
-      console.log('Query para chamados:', query, values);
+      
+      const comentarios = await executeQueryAtendimento({
+        query,
+        values
+      }) as Comentario[]
+
+      return NextResponse.json(comentarios)
     } else if (atividade_id) {
       // Buscar comentários da tabela comentarios para atividades (kanban)
-      query = 'SELECT * FROM u711845530_gestao.comentarios WHERE atividade_id = ? ORDER BY data_criacao DESC';
+      query = 'SELECT * FROM comentarios WHERE atividade_id = ? ORDER BY data_criacao DESC';
       values = [parseInt(atividade_id)];
-      console.log('Query para atividades:', query, values);
+      
+      const comentarios = await executeQuery({
+        query,
+        values
+      }) as Comentario[]
+
+      return NextResponse.json(comentarios)
     }
-
-    const comentarios = await executeQuery({
-      query,
-      values
-    }) as Comentario[]
-
-    console.log('Comentários encontrados:', comentarios.length);
-    return NextResponse.json(comentarios)
   } catch (error) {
     console.error('Erro ao buscar comentários:', error)
     return NextResponse.json({ error: 'Erro ao buscar comentários' }, { status: 500 })
@@ -63,8 +65,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { atividade_id, chamado_id, comentario, usuario_email, usuario_nome } = body
-
-    console.log('POST comentarios - body:', { atividade_id, chamado_id, comentario, usuario_email, usuario_nome });
 
     if (!comentario || (!atividade_id && !chamado_id)) {
       return NextResponse.json(
@@ -77,11 +77,9 @@ export async function POST(request: Request) {
     let novoComentario: Comentario[];
 
     if (chamado_id) {
-      console.log('Inserindo comentário para chamado:', chamado_id);
-      // Inserir na nova tabela comentarios para chamados
-      result = await executeQuery({
+      result = await executeQueryAtendimento({
         query: `
-          INSERT INTO u711845530_atendimento.comentarios (
+          INSERT INTO comentarios (
             tipo_registro,
             registro_id,
             responsavel_comentario,
@@ -93,20 +91,14 @@ export async function POST(request: Request) {
         values: ['chamado', chamado_id, usuario_email || 'sistema', comentario]
       }) as InsertResult
 
-      console.log('Comentário inserido com ID:', result.insertId);
-
-      novoComentario = await executeQuery({
-        query: 'SELECT * FROM u711845530_atendimento.comentarios WHERE id = ?',
+      novoComentario = await executeQueryAtendimento({
+        query: 'SELECT * FROM comentarios WHERE id = ?',
         values: [result.insertId]
       }) as Comentario[]
-
-      console.log('Comentário recuperado:', novoComentario[0]);
     } else {
-      console.log('Inserindo comentário para atividade:', atividade_id);
-      // Inserir na tabela comentarios para atividades (kanban)
       result = await executeQuery({
         query: `
-          INSERT INTO u711845530_gestao.comentarios (
+          INSERT INTO comentarios (
             atividade_id, 
             usuario_email, 
             usuario_nome, 
@@ -118,14 +110,13 @@ export async function POST(request: Request) {
         values: [atividade_id, usuario_email, usuario_nome, comentario]
       }) as InsertResult
 
-      // Atualiza a data da última atualização da tarefa com ajuste de -3h
       await executeQuery({
-        query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
+        query: 'UPDATE atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
         values: [atividade_id]
       });
 
       novoComentario = await executeQuery({
-        query: 'SELECT * FROM u711845530_gestao.comentarios WHERE id = ?',
+        query: 'SELECT * FROM comentarios WHERE id = ?',
         values: [result.insertId]
       }) as Comentario[]
     }
@@ -156,9 +147,8 @@ export async function PUT(request: Request) {
     let comentarioAtualizado: Comentario[];
 
     if (tipo_registro === 'chamado') {
-      // Verifica se o usuário é o autor do comentário na tabela de chamados
-      comentarioExistente = await executeQuery({
-        query: 'SELECT * FROM u711845530_atendimento.comentarios WHERE id = ? AND responsavel_comentario = ?',
+      comentarioExistente = await executeQueryAtendimento({
+        query: 'SELECT * FROM comentarios WHERE id = ? AND responsavel_comentario = ?',
         values: [id, usuario_email]
       }) as Comentario[]
 
@@ -169,19 +159,18 @@ export async function PUT(request: Request) {
         )
       }
 
-      await executeQuery({
-        query: 'UPDATE u711845530_atendimento.comentarios SET comentario = ?, data_edicao = NOW() WHERE id = ?',
+      await executeQueryAtendimento({
+        query: 'UPDATE comentarios SET comentario = ?, data_edicao = NOW() WHERE id = ?',
         values: [comentario, id]
       })
 
-      comentarioAtualizado = await executeQuery({
-        query: 'SELECT * FROM u711845530_atendimento.comentarios WHERE id = ?',
+      comentarioAtualizado = await executeQueryAtendimento({
+        query: 'SELECT * FROM comentarios WHERE id = ?',
         values: [id]
       }) as Comentario[]
     } else {
-      // Verifica se o usuário é o autor do comentário na tabela de atividades
       comentarioExistente = await executeQuery({
-        query: 'SELECT * FROM u711845530_gestao.comentarios WHERE id = ? AND usuario_email = ?',
+        query: 'SELECT * FROM comentarios WHERE id = ? AND usuario_email = ?',
         values: [id, usuario_email]
       }) as Comentario[]
 
@@ -193,20 +182,19 @@ export async function PUT(request: Request) {
       }
 
       await executeQuery({
-        query: 'UPDATE u711845530_gestao.comentarios SET comentario = ?, data_edicao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
+        query: 'UPDATE comentarios SET comentario = ?, data_edicao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
         values: [comentario, id]
       })
 
-      // Atualiza a data da última atualização da tarefa com ajuste de -3h
       if (comentarioExistente[0].atividade_id) {
         await executeQuery({
-          query: 'UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
+          query: 'UPDATE atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?',
           values: [comentarioExistente[0].atividade_id]
         });
       }
 
       comentarioAtualizado = await executeQuery({
-        query: 'SELECT * FROM u711845530_gestao.comentarios WHERE id = ?',
+        query: 'SELECT * FROM comentarios WHERE id = ?',
         values: [id]
       }) as Comentario[]
     }

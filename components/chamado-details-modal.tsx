@@ -183,11 +183,8 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     async function fetchComentarios() {
       if (!chamado?.id) return;
       try {
-        console.log('Buscando comentários para chamado ID:', chamado.id);
         const res = await fetch(`/api/comentarios?chamado_id=${chamado.id}`);
-        console.log('Resposta da API:', res.status, res.ok);
         const data = await res.json();
-        console.log('Dados dos comentários:', data);
         setComentarios(data);
       } catch (e) {
         console.error('Erro ao carregar comentários:', e);
@@ -461,13 +458,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     if (!comentario.trim() || !session?.user?.email) return;
     
     try {
-      console.log('Enviando comentário:', {
-        chamado_id: chamado.id,
-        comentario: comentario.trim(),
-        usuario_email: session.user.email,
-        usuario_nome: session.user.name
-      });
-      
       const res = await fetch('/api/comentarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -479,11 +469,8 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         })
       });
       
-      console.log('Resposta do envio:', res.status, res.ok);
-      
       if (res.ok) {
         const novo = await res.json();
-        console.log('Novo comentário criado:', novo);
         setComentarios([novo, ...comentarios]);
         setComentario("");
       } else {
