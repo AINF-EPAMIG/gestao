@@ -41,9 +41,6 @@ interface Comentario {
   comentario: string;
   data_criacao: string;
   data_edicao?: string | null;
-  // Campos de compatibilidade
-  usuario_email?: string;
-  usuario_nome?: string | null;
 }
 
 interface AnexoChamado {
@@ -142,8 +139,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     fetchChefiaImediata();
   }, [chamado]);
 
-
-
   // Função auxiliar para carregar responsáveis originais
   const loadOriginalResponsaveis = useCallback(() => {
     console.log('loadOriginalResponsaveis chamada - editingResponsavel:', editingResponsavel);
@@ -188,8 +183,11 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     async function fetchComentarios() {
       if (!chamado?.id) return;
       try {
+        console.log('Buscando comentários para chamado ID:', chamado.id);
         const res = await fetch(`/api/comentarios?chamado_id=${chamado.id}`);
+        console.log('Resposta da API:', res.status, res.ok);
         const data = await res.json();
+        console.log('Dados dos comentários:', data);
         setComentarios(data);
       } catch (e) {
         console.error('Erro ao carregar comentários:', e);
@@ -463,6 +461,13 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     if (!comentario.trim() || !session?.user?.email) return;
     
     try {
+      console.log('Enviando comentário:', {
+        chamado_id: chamado.id,
+        comentario: comentario.trim(),
+        usuario_email: session.user.email,
+        usuario_nome: session.user.name
+      });
+      
       const res = await fetch('/api/comentarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -474,10 +479,16 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         })
       });
       
+      console.log('Resposta do envio:', res.status, res.ok);
+      
       if (res.ok) {
         const novo = await res.json();
+        console.log('Novo comentário criado:', novo);
         setComentarios([novo, ...comentarios]);
         setComentario("");
+      } else {
+        const error = await res.json();
+        console.error('Erro na resposta:', error);
       }
     } catch (error) {
       console.error('Erro ao enviar comentário:', error);
@@ -594,8 +605,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         )}
-
-
 
         <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
           <div className="p-4 flex flex-col h-full">
@@ -833,8 +842,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                 
               </div>
             </div>
-
-
 
             {/* Responsáveis */}
             <div className="mt-6">
@@ -1130,20 +1137,19 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Avatar className="w-6 h-6">
-                            <AvatarImage email={comment.responsavel_comentario || comment.usuario_email} />
+                            <AvatarImage email={comment.responsavel_comentario} />
                             <AvatarFallback>
-                              {(comment.responsavel_comentario || comment.usuario_email || '?')[0].toUpperCase()}
+                              {(comment.responsavel_comentario || '?')[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-sm font-medium">
-                            {comment.usuario_nome || 
-                             funcionariosSetor.find(f => f.EMAIL === (comment.responsavel_comentario || comment.usuario_email))?.NOME ||
-                             getResponsavelName(comment.responsavel_comentario || comment.usuario_email || '') ||
-                             (comment.responsavel_comentario || comment.usuario_email || '').split('@')[0]}
+                            {funcionariosSetor.find(f => f.EMAIL === comment.responsavel_comentario)?.NOME ||
+                             getResponsavelName(comment.responsavel_comentario || '') ||
+                             (comment.responsavel_comentario || '').split('@')[0]}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {session?.user?.email === (comment.responsavel_comentario || comment.usuario_email) && comentarioEditando !== comment.id && (
+                          {session?.user?.email === comment.responsavel_comentario && comentarioEditando !== comment.id && (
                             <Button
                               variant="ghost"
                               size="icon"

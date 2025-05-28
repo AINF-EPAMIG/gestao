@@ -24,6 +24,8 @@ export async function GET(request: Request) {
   const atividade_id = searchParams.get('atividade_id')
   const chamado_id = searchParams.get('chamado_id')
 
+  console.log('GET comentarios - params:', { atividade_id, chamado_id });
+
   if (!atividade_id && !chamado_id) {
     return NextResponse.json({ error: 'ID da atividade ou chamado é obrigatório' }, { status: 400 })
   }
@@ -36,10 +38,12 @@ export async function GET(request: Request) {
       // Buscar comentários da nova tabela comentarios para chamados
       query = 'SELECT * FROM u711845530_atendimento.comentarios WHERE tipo_registro = ? AND registro_id = ? ORDER BY data_criacao DESC';
       values = ['chamado', parseInt(chamado_id)];
+      console.log('Query para chamados:', query, values);
     } else if (atividade_id) {
       // Buscar comentários da tabela comentarios para atividades (kanban)
       query = 'SELECT * FROM u711845530_gestao.comentarios WHERE atividade_id = ? ORDER BY data_criacao DESC';
       values = [parseInt(atividade_id)];
+      console.log('Query para atividades:', query, values);
     }
 
     const comentarios = await executeQuery({
@@ -47,6 +51,7 @@ export async function GET(request: Request) {
       values
     }) as Comentario[]
 
+    console.log('Comentários encontrados:', comentarios.length);
     return NextResponse.json(comentarios)
   } catch (error) {
     console.error('Erro ao buscar comentários:', error)
@@ -59,6 +64,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { atividade_id, chamado_id, comentario, usuario_email, usuario_nome } = body
 
+    console.log('POST comentarios - body:', { atividade_id, chamado_id, comentario, usuario_email, usuario_nome });
+
     if (!comentario || (!atividade_id && !chamado_id)) {
       return NextResponse.json(
         { error: 'Dados incompletos' },
@@ -70,6 +77,7 @@ export async function POST(request: Request) {
     let novoComentario: Comentario[];
 
     if (chamado_id) {
+      console.log('Inserindo comentário para chamado:', chamado_id);
       // Inserir na nova tabela comentarios para chamados
       result = await executeQuery({
         query: `
@@ -85,11 +93,16 @@ export async function POST(request: Request) {
         values: ['chamado', chamado_id, usuario_email || 'sistema', comentario]
       }) as InsertResult
 
+      console.log('Comentário inserido com ID:', result.insertId);
+
       novoComentario = await executeQuery({
         query: 'SELECT * FROM u711845530_atendimento.comentarios WHERE id = ?',
         values: [result.insertId]
       }) as Comentario[]
+
+      console.log('Comentário recuperado:', novoComentario[0]);
     } else {
+      console.log('Inserindo comentário para atividade:', atividade_id);
       // Inserir na tabela comentarios para atividades (kanban)
       result = await executeQuery({
         query: `
