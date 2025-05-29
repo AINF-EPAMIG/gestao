@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, X, Check, UserPlus, Trash2, Edit2, Send, Download, ChevronDown } from "lucide-react"
+import { Loader2, X, Check, UserPlus, Trash2, Edit2, Send, Download, ChevronDown, ExternalLink } from "lucide-react"
 import { cn, getResponsavelName } from "@/lib/utils"
 import { type Chamado as ChamadoBase } from "@/components/chamados-board"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -536,6 +536,24 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     }
   };
 
+  // Função para abrir anexo no Google Drive
+  const handleOpenInGoogleDrive = (googleDriveLink: string, anexoId: number) => {
+    try {
+      setLoadingDownload(anexoId);
+      if (!googleDriveLink) {
+        throw new Error('Link do Google Drive não disponível');
+      }
+      
+      // Abre o link em uma nova aba
+      window.open(googleDriveLink, '_blank');
+    } catch (error) {
+      console.error('Erro ao abrir arquivo no Google Drive:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao abrir arquivo no Google Drive');
+    } finally {
+      setLoadingDownload(null);
+    }
+  };
+
   // Função para formatar tamanho do arquivo
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -630,19 +648,19 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                 {/* Badge de Anexos */}
                 {anexos.length > 0 && (
                   anexos.length === 1 ? (
-                    // Download direto para um único anexo
+                    // Abrir no Google Drive para um único anexo
                     <Badge 
                       variant="outline" 
                       className="bg-blue-50 text-blue-600 border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors flex items-center gap-1"
-                      onClick={() => handleDownloadAnexo(anexos[0].id, anexos[0].nome_arquivo)}
-                      title={`Baixar ${anexos[0].nome_arquivo}`}
+                      onClick={() => handleOpenInGoogleDrive(anexos[0].google_drive_link || "", anexos[0].id)}
+                      title={`Abrir ${anexos[0].nome_arquivo} no Google Drive`}
                     >
                       {loadingDownload === anexos[0].id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Download className="h-3 w-3" />
+                        <ExternalLink className="h-3 w-3" />
                       )}
-                      1 Anexo
+                      Ver Anexo
                     </Badge>
                   ) : (
                     // Dropdown para múltiplos anexos
@@ -652,8 +670,8 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                           variant="outline" 
                           className="bg-blue-50 text-blue-600 border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors flex items-center gap-1"
                         >
-                          <Download className="h-3 w-3" />
-                          {anexos.length} Anexos
+                          <ExternalLink className="h-3 w-3" />
+                          Ver {anexos.length} Anexos
                           <ChevronDown className="h-3 w-3" />
                         </Badge>
                       </DropdownMenuTrigger>
@@ -661,7 +679,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                         {anexos.map((anexo) => (
                           <DropdownMenuItem
                             key={anexo.id}
-                            onClick={() => handleDownloadAnexo(anexo.id, anexo.nome_arquivo)}
+                            onClick={() => handleOpenInGoogleDrive(anexo.google_drive_link || "", anexo.id)}
                             disabled={loadingDownload === anexo.id}
                             className="flex items-center gap-3 p-3 cursor-pointer"
                           >
@@ -677,7 +695,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                             {loadingDownload === anexo.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Download className="h-4 w-4" />
+                              <ExternalLink className="h-4 w-4" />
                             )}
                           </DropdownMenuItem>
                         ))}
