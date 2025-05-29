@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2, X, Check, UserPlus, Trash2, Edit2, Send, Download, ChevronDown, ExternalLink } from "lucide-react"
+import { Loader2, X, Check, UserPlus, Trash2, Edit2, Send, ChevronDown, ExternalLink } from "lucide-react"
 import { cn, getResponsavelName } from "@/lib/utils"
 import { type Chamado as ChamadoBase } from "@/components/chamados-board"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -509,51 +509,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     }
   };
 
-  // Função para download de anexos
-  const handleDownloadAnexo = async (anexoId: number, fileName: string) => {
-    try {
-      setLoadingDownload(anexoId);
-      const response = await fetch(`/api/chamados/anexos/download/${anexoId}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao baixar anexo');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Erro ao baixar anexo:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao baixar anexo');
-    } finally {
-      setLoadingDownload(null);
-    }
-  };
-
-  // Função para abrir anexo no Google Drive
-  const handleOpenInGoogleDrive = (googleDriveLink: string, anexoId: number) => {
-    try {
-      setLoadingDownload(anexoId);
-      if (!googleDriveLink) {
-        throw new Error('Link do Google Drive não disponível');
-      }
-      
-      // Abre o link em uma nova aba
-      window.open(googleDriveLink, '_blank');
-    } catch (error) {
-      console.error('Erro ao abrir arquivo no Google Drive:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao abrir arquivo no Google Drive');
-    } finally {
-      setLoadingDownload(null);
-    }
-  };
-
   // Função para formatar tamanho do arquivo
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -596,6 +551,24 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
       }
       return part;
     });
+  };
+
+  // Função para abrir anexo no Google Drive
+  const handleOpenInGoogleDrive = (googleDriveLink: string, anexoId: number) => {
+    try {
+      setLoadingDownload(anexoId);
+      if (!googleDriveLink) {
+        throw new Error('Link do Google Drive não disponível');
+      }
+      
+      // Abre o link em uma nova aba
+      window.open(googleDriveLink, '_blank');
+    } catch (error) {
+      console.error('Erro ao abrir arquivo no Google Drive:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao abrir arquivo no Google Drive');
+    } finally {
+      setLoadingDownload(null);
+    }
   };
 
   return (
