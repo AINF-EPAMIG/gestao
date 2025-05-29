@@ -329,10 +329,14 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   useEffect(() => {
     const fetchComentarios = async () => {
       try {
+        console.log(`Fetching comments for task ID: ${task.id}`);
         const response = await fetch(`/api/comentarios?atividade_id=${task.id}`);
         if (response.ok) {
           const data = await response.json();
+          console.log('Comments retrieved:', data);
           setComentarios(data);
+        } else {
+          console.error('Failed to fetch comments:', await response.text());
         }
       } catch (error) {
         console.error('Erro ao carregar comentários:', error);
@@ -559,28 +563,35 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
 
     try {
+      console.log('Sending comment for task ID:', task.id);
+      const payload = {
+        atividade_id: task.id,
+        usuario_email: session.user.email,
+        usuario_nome: session.user.name,
+        comentario: comentario.trim()
+      };
+      console.log('Comment payload:', payload);
+      
       const response = await fetch('/api/comentarios', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          atividade_id: task.id,
-          usuario_email: session.user.email,
-          usuario_nome: session.user.name,
-          comentario: comentario.trim()
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const novoComentario = await response.json();
+        console.log('Comment created successfully:', novoComentario);
         setComentarios([...comentarios, novoComentario]);
         setComentario('');
         
         // Atualiza o timestamp da tarefa no store
         updateTaskTimestamp(task.id);
       } else {
-        alert('Erro ao enviar comentário');
+        const errorText = await response.text();
+        console.error('Error sending comment. Status:', response.status, 'Response:', errorText);
+        alert('Erro ao enviar comentário: ' + errorText);
       }
     } catch (error) {
       console.error('Erro ao enviar comentário:', error);
@@ -1276,8 +1287,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   {/* Linha divisória - só aparece quando há comentários */}
                   {comentarios.length > 0 && !isEditing && <Separator className="my-3" />}
 
-                  {/* Seção de Comentários - só mostra se não estiver na página de chamados */}
-                  {!isChamadosPage && !isEditing && (
+                  {/* Seção de Comentários - só mostra se não estiver no modo de edição */}
+                  {!isEditing && (
                     <div className={cn(
                       "space-y-2",
                       comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : ""
