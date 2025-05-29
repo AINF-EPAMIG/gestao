@@ -1,7 +1,7 @@
 "use client"
 import { Cell, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { useTaskStore } from "@/lib/store"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, ReactNode } from "react"
 import { Loader2 } from "lucide-react"
 
 const COLORS = {
@@ -20,12 +20,34 @@ interface CustomLabelProps {
   innerRadius: number
   outerRadius: number
   value: number
+  percent: number
 }
 
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value }: CustomLabelProps) => {
+interface ChartDataItem {
+  name: string;
+  value: number;
+  percent: number;
+  fill?: string;
+}
+
+interface PieChartTooltipProps {
+  active?: boolean;
+  payload?: {
+    name: string;
+    value: number;
+    payload: ChartDataItem;
+    fill: string;
+  }[];
+}
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }: CustomLabelProps) => {
+  if (percent < 0.05) return null;
+  
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5
   const x = cx + radius * Math.cos(-midAngle * RADIAN)
   const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+  const fontSize = value > 20 ? 'text-xs sm:text-sm' : 'text-[8px] sm:text-xs';
 
   return (
     <text
@@ -34,12 +56,34 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, val
       fill="white"
       textAnchor="middle"
       dominantBaseline="central"
-      className="text-xs lg:text-sm font-medium"
+      className={`${fontSize} font-medium`}
     >
       {value}
     </text>
   )
 }
+
+const CustomTooltip = ({ active, payload }: PieChartTooltipProps) => {
+  if (!active || !payload || !payload.length) return null;
+  
+  const data = payload[0];
+  
+  return (
+    <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg text-[10px] sm:text-xs">
+      <p className="font-medium">{data.name}</p>
+      <div className="flex items-center gap-2 mt-1">
+        <div 
+          className="w-2 h-2 sm:w-3 sm:h-3 rounded-full" 
+          style={{ backgroundColor: data.fill }}
+        />
+        <div>
+          <span className="font-medium">{data.value}</span>
+          <span className="text-gray-500 ml-1">({(data.payload.percent * 100).toFixed(0)}%)</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export function PieChart() {
   const [isLoading, setIsLoading] = useState(true)
@@ -54,10 +98,13 @@ export function PieChart() {
       },
       {} as Record<string, number>,
     )
+    
+    const total = Object.values(statusCount).reduce((sum, count) => sum + count, 0);
 
     return Object.entries(statusCount).map(([name, value]) => ({
       name,
       value,
+      percent: total > 0 ? value / total : 0
     }))
   }, [tasks])
 
@@ -70,7 +117,7 @@ export function PieChart() {
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -82,24 +129,31 @@ export function PieChart() {
           data={data}
           cx="50%"
           cy="50%"
-          innerRadius="30%"
-          outerRadius="60%"
+          innerRadius="25%"
+          outerRadius="70%"
           paddingAngle={2}
           dataKey="value"
           label={renderCustomizedLabel}
           labelLine={false}
+          animationDuration={800}
+          animationEasing="ease-out"
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
           ))}
         </Pie>
-        <Tooltip />
+        <Tooltip content={<CustomTooltip />} />
         <Legend
           verticalAlign="bottom"
-          height={32}
+          height={16}
+          iconSize={8}
+          iconType="circle"
+          formatter={(value: string): ReactNode => (
+            <span className="text-[8px] sm:text-[10px] md:text-xs">{value}</span>
+          )}
           wrapperStyle={{
-            fontSize: "12px",
-            paddingTop: "8px",
+            paddingTop: "4px",
+            fontSize: "10px",
           }}
         />
       </RechartsPieChart>

@@ -101,9 +101,9 @@ export function Sidebar() {
       label: "Chamados",
     },
     {
-      href: "/relatorios",
+      href: "/planilha",
       icon: FileSpreadsheet,
-      label: "Relatórios",
+      label: "Planilha",
     },
   ]
 

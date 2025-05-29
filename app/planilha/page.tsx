@@ -10,11 +10,11 @@ import { ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
 import AuthRequired from "@/components/auth-required"
 import { getResponsavelName } from '@/lib/utils'
 import { PollingWrapper } from "@/components/polling-wrapper"
 import { useSession } from "next-auth/react"
+import { cn } from "@/lib/utils"
 
 interface ResponsavelRM {
   EMAIL: string;
@@ -36,6 +36,12 @@ function formatStatusName(statusId: number): string {
   if (status === "Em testes") return "Testes"
   if (status === "Concluída") return "Concl."
   return status
+}
+
+function getStatusColor(statusName: string): string {
+  return (statusName in STATUS_COLORS) 
+    ? STATUS_COLORS[statusName as keyof typeof STATUS_COLORS] 
+    : "bg-gray-500 text-white"
 }
 
 function formatDate(dateString: string | null): string {
@@ -132,7 +138,7 @@ export default function PlanilhaPage() {
               {/* Reduced margin-bottom from mb-6 to mb-4 */}
               <div className="flex flex-col mb-3">
                 <div className="space-y-1">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Relatórios</h1>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Planilha Kanban</h1>
                 </div>
               </div>
 
@@ -154,15 +160,6 @@ export default function PlanilhaPage() {
                     <div className="text-xl font-bold text-emerald-600">{completedTasks}</div>
                   </CardContent>
                 </Card>
-              </div>
-
-              {/* Gráfico de barras com responsividade ajustada */}
-              <div className="mb-6 w-full overflow-hidden">
-                <TasksByStatusChart />
-                {/* Mensagem para dispositivos móveis */}
-                <div className="lg:hidden p-4 bg-gray-50 rounded-lg border text-center">
-                  <p className="text-sm text-gray-600">O gráfico de análise de tarefas está disponível apenas na versão desktop.</p>
-                </div>
               </div>
 
               {/* Nova seção de filtros - ajustada para telas médias */}
@@ -260,7 +257,7 @@ export default function PlanilhaPage() {
                 </div>
               </div>
 
-              {/* Desktop view */}
+              {/* Tabela para telas grandes - usando TableHead e TableHeader para sticky header */}
               <div className="hidden lg:block border rounded-md overflow-hidden">
                 <div className="relative w-full overflow-x-auto">
                   <Table className="min-w-full table-fixed">
@@ -280,44 +277,46 @@ export default function PlanilhaPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell className="font-medium whitespace-nowrap py-2">{task.id}</TableCell>
-                          <TableCell className="max-w-[150px] truncate py-2">{task.titulo}</TableCell>
-                          <TableCell className="max-w-[120px] truncate py-2">
-                            <div className="flex items-center">
-                              <span className="text-xs">
-                                {(task.responsaveis ?? []).length > 0 
-                                  ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
-                                  : 'Não atribuído'
-                                }
-                              </span>
-                            </div>
+                        <TableRow 
+                          key={task.id} 
+                          className={cn(
+                            "border-b border-gray-200 hover:bg-gray-50 cursor-pointer",
+                            expandedTasks.includes(task.id) && "bg-gray-50"
+                          )}
+                          onClick={() => toggleTaskExpansion(task.id)}
+                        >
+                          <TableCell className="text-center">{task.id}</TableCell>
+                          <TableCell className="text-sm font-medium max-w-0 truncate">
+                            {task.titulo}
                           </TableCell>
-                          <TableCell className="py-2">
-                            <Badge className={`text-xs ${STATUS_COLORS[formatStatusName(task.status_id) as keyof typeof STATUS_COLORS]}`}>
+                          <TableCell className="text-center text-sm">
+                            {task.responsaveis && task.responsaveis.length > 0 
+                              ? getResponsavelName(task.responsaveis[0].email)
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={cn("text-xs font-medium", getStatusColor(formatStatusName(task.status_id)))}>
                               {formatStatusName(task.status_id)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-2">
-                            <Badge
-                              variant="outline"
-                              className={`text-xs
-                                ${getPriorityName(task.prioridade_id) === "Alta"
-                                  ? "bg-red-50 text-red-600 border-red-100"
-                                  : getPriorityName(task.prioridade_id) === "Média"
-                                    ? "bg-yellow-50 text-yellow-600 border-yellow-100"
-                                    : "bg-green-50 text-green-600 border-green-100"
-                                }
-                              `}
-                            >
-                              {getPriorityName(task.prioridade_id)}
-                            </Badge>
+                          <TableCell className="text-center text-sm">
+                            {getPriorityName(task.prioridade_id)}
                           </TableCell>
-                          <TableCell className="max-w-[100px] truncate py-2">{task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}</TableCell>
-                          <TableCell className="py-2">{formatHours(task.estimativa_horas)}</TableCell>
-                          <TableCell className="py-2">{formatDate(task.data_inicio)}</TableCell>
-                          <TableCell className="py-2">{formatDate(task.data_fim)}</TableCell>
-                          <TableCell className="py-2">{task.id_release || "-"}</TableCell>
+                          <TableCell className="text-center text-sm max-w-0 truncate">
+                            {task.projeto_nome || "-"}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {formatHours(task.estimativa_horas)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {formatDate(task.data_inicio)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {formatDate(task.data_fim)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {task.id_release || "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -325,77 +324,77 @@ export default function PlanilhaPage() {
                 </div>
               </div>
 
-              {/* Mobile view */}
-              <div className="lg:hidden space-y-4 w-full overflow-hidden">
+              {/* Cards para telas pequenas/médias */}
+              <div className="lg:hidden grid grid-cols-1 gap-3">
                 {filteredTasks.map((task) => (
-                  <Card key={task.id}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg flex justify-between items-center">
-                        <span>Tarefa #{task.id}</span>
-                        <Button variant="ghost" size="sm" onClick={() => toggleTaskExpansion(task.id)}>
-                          {expandedTasks.includes(task.id) ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="font-medium">Título:</span> {task.titulo}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Responsável:</span>
+                  <Card key={task.id} className="overflow-hidden">
+                    <CardHeader className="p-3 pb-0">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1 pr-4">
                           <div className="flex items-center gap-2">
-                            <span>
-                              {(task.responsaveis ?? []).length > 0 
-                                ? (task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')
-                                : 'Não atribuído'
-                              }
-                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              #{task.id}
+                            </Badge>
+                            <Badge className={cn("text-xs", getStatusColor(formatStatusName(task.status_id)))}>
+                              {formatStatusName(task.status_id)}
+                            </Badge>
                           </div>
+                          <CardTitle className="text-base font-medium">{task.titulo}</CardTitle>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 mt-1"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleTaskExpansion(task.id)
+                          }}
+                        >
+                          {expandedTasks.includes(task.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-2">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Responsável:</span>
                         </div>
                         <div>
-                          <span className="font-medium">Status:</span>{" "}
-                          <Badge className={STATUS_COLORS[formatStatusName(task.status_id) as keyof typeof STATUS_COLORS]}>
-                            {formatStatusName(task.status_id)}
-                          </Badge>
+                          {task.responsaveis && task.responsaveis.length > 0 
+                            ? getResponsavelName(task.responsaveis[0].email)
+                            : "-"}
                         </div>
-                        <div>
-                          <span className="font-medium">Prioridade:</span>{" "}
-                          <Badge
-                            variant="outline"
-                            className={
-                              getPriorityName(task.prioridade_id) === "Alta"
-                                ? "bg-red-50 text-red-600 border-red-100"
-                                : getPriorityName(task.prioridade_id) === "Média"
-                                  ? "bg-yellow-50 text-yellow-600 border-yellow-100"
-                                  : "bg-green-50 text-green-600 border-green-100"
-                            }
-                          >
-                            {getPriorityName(task.prioridade_id)}
-                          </Badge>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prioridade:</span>
                         </div>
+                        <div>{getPriorityName(task.prioridade_id)}</div>
+                        
                         {expandedTasks.includes(task.id) && (
                           <>
-                            <div>
-                              <span className="font-medium">Projeto:</span>{" "}
-                              {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Projeto:</span>
                             </div>
-                            <div>
-                              <span className="font-medium">Estimativa:</span> {formatHours(task.estimativa_horas)}
+                            <div>{task.projeto_nome || "-"}</div>
+                            
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Estimativa:</span>
                             </div>
-                            <div>
-                              <span className="font-medium">Data de Início:</span> {formatDate(task.data_inicio)}
+                            <div>{formatHours(task.estimativa_horas)}</div>
+                            
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Início:</span>
                             </div>
-                            <div>
-                              <span className="font-medium">Data de Fim:</span> {formatDate(task.data_fim)}
+                            <div>{formatDate(task.data_inicio)}</div>
+                            
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Fim:</span>
                             </div>
-                            <div>
-                              <span className="font-medium">ID Release:</span> {task.id_release || "-"}
+                            <div>{formatDate(task.data_fim)}</div>
+                            
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">ID Release:</span>
                             </div>
+                            <div>{task.id_release || "-"}</div>
                           </>
                         )}
                       </div>
@@ -409,5 +408,4 @@ export default function PlanilhaPage() {
       </PollingWrapper>
     </AuthRequired>
   )
-}
-
+} 
