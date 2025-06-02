@@ -32,13 +32,15 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="min-h-screen w-full bg-background">
-            <div className="p-2 sm:p-3 lg:p-4 xl:p-6 2xl:p-8 pt-10 lg:pt-6 max-w-[100vw]">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 lg:mb-6">Painel Kanban</h1>
+            <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Painel Kanban</h1>
+              </div>
               
               {/* Gráficos em grade - Distribuição por Etapa e Cards Atribuídos por Usuário */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-3 sm:mb-6 lg:mb-8">
-                <Card className="w-full">
-                  <CardHeader className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <Card className="w-full overflow-hidden">
+                  <CardHeader className="px-4 py-3">
                     <CardTitle className="text-base sm:text-lg lg:text-xl flex items-center">
                       Distribuição por Etapa
                     </CardTitle>
@@ -46,17 +48,17 @@ export default function DashboardPage() {
                       Visão geral do estado atual das tarefas por etapa
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="px-2 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-                    <div className="w-full h-[180px] sm:h-[220px] lg:h-[280px] xl:h-[320px] 2xl:h-[350px] flex items-center justify-center">
-                      <div className="w-full h-full max-w-[90%] max-h-[90%]">
+                  <CardContent className="px-2 sm:px-4 pb-4">
+                    <div className="w-full h-[250px] sm:h-[300px] lg:h-[350px] xl:h-[400px] flex items-center justify-center">
+                      <div className="w-[95%] h-[95%]">
                         <PieChart />
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="w-full">
-                  <CardHeader className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
+                <Card className="w-full overflow-hidden">
+                  <CardHeader className="px-4 py-3">
                     <CardTitle className="text-base sm:text-lg lg:text-xl flex items-center">
                       Atividades Atribuídas por Usuário
                     </CardTitle>
@@ -64,9 +66,9 @@ export default function DashboardPage() {
                       Distribuição de tarefas por responsável
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="px-2 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-                    <div className="w-full h-[180px] sm:h-[220px] lg:h-[280px] xl:h-[320px] 2xl:h-[350px] flex items-center justify-center">
-                      <div className="w-full h-full max-w-[90%] max-h-[90%]">
+                  <CardContent className="px-2 sm:px-4 pb-4">
+                    <div className="w-full h-[250px] sm:h-[300px] lg:h-[350px] xl:h-[400px] flex items-center justify-center">
+                      <div className="w-[95%] h-[95%]">
                         <RadarChart />
                       </div>
                     </div>
@@ -75,9 +77,9 @@ export default function DashboardPage() {
               </div>
               
               {/* Gráfico de Movimentação no Kanban */}
-              <Card className="w-full mb-3 sm:mb-4 lg:mb-6 border-t-4 border-t-primary">
-                <CardHeader className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
-                  <div className="flex items-center gap-1 sm:gap-2">
+              <Card className="w-full mb-6 border-t-4 border-t-primary">
+                <CardHeader className="px-4 py-3">
+                  <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     <CardTitle className="text-base sm:text-lg lg:text-xl">Movimentação no Kanban</CardTitle>
                   </div>
@@ -85,17 +87,17 @@ export default function DashboardPage() {
                     Visão geral das tarefas criadas e atualizações de status nos últimos 30 dias
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="px-2 sm:px-4 lg:px-6 pb-3 sm:pb-4 lg:pb-6">
-                  <div className="w-full h-[180px] sm:h-[220px] lg:h-[280px] xl:h-[320px] 2xl:h-[350px]">
+                <CardContent className="px-2 sm:px-4 pb-4">
+                  <div className="w-full h-[230px] sm:h-[270px] lg:h-[330px] xl:h-[370px]">
                     <ActivityAreaChart />
                   </div>
                 </CardContent>
               </Card>
               
               {/* Gráfico de Distribuição de tarefas criadas e concluídas */}
-              <Card className="w-full mb-3 sm:mb-4 lg:mb-6 border-t-4 border-t-gray-300">
-                <CardHeader className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
-                  <div className="flex items-center gap-1 sm:gap-2">
+              <Card className="w-full mb-6 border-t-4 border-t-gray-300">
+                <CardHeader className="px-4 py-3">
+                  <div className="flex items-center gap-2">
                     <BarChart className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
                     <CardTitle className="text-base sm:text-lg lg:text-xl">Distribuição de tarefas criadas e concluídas</CardTitle>
                   </div>
@@ -103,7 +105,7 @@ export default function DashboardPage() {
                     Análise de Tarefas por Responsável
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="px-0 sm:px-2 lg:px-4 pb-0">
+                <CardContent className="px-0 sm:px-2 pb-0">
                   <div className="w-full overflow-x-auto md:overflow-x-hidden">
                     <TasksByStatusChart />
                   </div>

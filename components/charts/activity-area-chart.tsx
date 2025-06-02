@@ -129,6 +129,7 @@ export function ActivityAreaChart() {
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr)
+      // Formato DD/MM
       return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`
     } catch {
       return dateStr
@@ -137,8 +138,8 @@ export function ActivityAreaChart() {
 
   // Determinar intervalo de ticks para eixo X baseado na largura da tela
   const xAxisInterval = useMemo(() => {
-    if (windowWidth < 640) return 6;  // Mobile
-    if (windowWidth < 1024) return 3; // Tablet
+    if (windowWidth < 640) return 4;  // Mobile
+    if (windowWidth < 1024) return 2; // Tablet
     return 1;                         // Desktop
   }, [windowWidth]);
 
@@ -176,10 +177,10 @@ export function ActivityAreaChart() {
       <AreaChart
         data={transformedData}
         margin={{
-          top: 5,
-          right: 0,
-          left: -10,
-          bottom: 0,
+          top: 10,
+          right: 30,
+          left: 15,
+          bottom: 30,
         }}
       >
         <defs>
@@ -192,26 +193,47 @@ export function ActivityAreaChart() {
             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
         <XAxis 
           dataKey="date" 
           tickFormatter={formatDate}
-          tick={{ fontSize: 9 }}
-          tickMargin={5}
-          height={25}
+          tick={{ fontSize: 11, fill: '#4b5563' }}
+          tickMargin={10}
+          height={35}
           interval={xAxisInterval}
+          allowDataOverflow={false}
+          padding={{ right: 10 }}
+          label={{ 
+            value: 'Data', 
+            position: 'insideBottom', 
+            offset: -10,
+            fontSize: 12,
+            fill: '#4b5563',
+            fontWeight: 500
+          }}
         />
         <YAxis 
-          tick={{ fontSize: 9 }}
-          tickMargin={3}
-          width={22}
+          tick={{ fontSize: 11, fill: '#4b5563' }}
+          tickMargin={8}
+          width={40}
           tickFormatter={(value) => value.toString()}
+          label={{ 
+            value: 'Quantidade', 
+            angle: -90, 
+            position: 'insideLeft',
+            offset: 5,
+            fontSize: 12,
+            fill: '#4b5563',
+            fontWeight: 500
+          }}
         />
         <Tooltip content={<CustomTooltip />} />
         <Legend 
+          verticalAlign="bottom"
           wrapperStyle={{
-            paddingTop: "5px",
-            fontSize: "10px"
+            paddingTop: "20px",
+            fontSize: "10px",
+            marginTop: "10px"
           }}
           iconSize={8}
           iconType="circle"
