@@ -52,6 +52,15 @@ export async function uploadFileToDrive(
       fields: 'id,name,webViewLink',
     });
 
+    // Adiciona permissão pública de leitura ao arquivo
+    await drive.permissions.create({
+      fileId: response.data.id!,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      }
+    });
+
     return {
       id: response.data.id,
       name: response.data.name,
