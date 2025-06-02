@@ -7,13 +7,19 @@ import { uploadFileToDrive } from "@/lib/google-drive"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[Upload] Iniciando processo de upload")
+    
     const session = await getServerSession(authOptions)
     if (!session) {
+      console.log("[Upload] Erro: Usuário não autenticado")
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
+    console.log("[Upload] Usuário autenticado:", session.user?.email)
+
     // Verificar se temos o token de acesso
     if (!session.accessToken) {
+      console.log("[Upload] Erro: Token de acesso do Google não disponível")
       return NextResponse.json(
         { error: "Token de acesso do Google não disponível" },
         { status: 401 }
@@ -22,6 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar se há erro no token
     if (session.error) {
+      console.log("[Upload] Erro na autenticação:", session.error)
       return NextResponse.json(
         { error: `Erro na autenticação: ${session.error}` },
         { status: 401 }
@@ -32,7 +39,13 @@ export async function POST(request: NextRequest) {
     const taskId = formData.get("taskId")
     const files = formData.getAll("files")
 
+    console.log("[Upload] Dados recebidos:", {
+      taskId,
+      numberOfFiles: files.length
+    })
+
     if (!taskId || !files.length) {
+      console.log("[Upload] Erro: Dados inválidos")
       return NextResponse.json(
         { error: "Dados inválidos" },
         { status: 400 }
@@ -43,22 +56,34 @@ export async function POST(request: NextRequest) {
 
     for (const file of files) {
       if (!(file instanceof File)) {
+        console.log("[Upload] Arquivo ignorado (não é uma instância de File)")
         continue
       }
 
+      console.log("[Upload] Processando arquivo:", {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      })
+
       try {
         // Converter o arquivo para buffer
+        console.log("[Upload] Convertendo arquivo para buffer...")
         const fileBuffer = Buffer.from(await file.arrayBuffer())
+        console.log("[Upload] Buffer criado com sucesso, tamanho:", fileBuffer.length)
         
         // Upload para o Google Drive usando o token do usuário
+        console.log("[Upload] Iniciando upload para o Google Drive...")
         const driveFile = await uploadFileToDrive(
           session.accessToken,
           fileBuffer,
           file.name,
           file.type
         )
+        console.log("[Upload] Upload para Google Drive concluído:", driveFile)
 
         // Salvar informações no banco
+        console.log("[Upload] Salvando informações no banco de dados...")
         const [result] = await dbAtendimento.execute<ResultSetHeader>(
           `INSERT INTO u711845530_gestao.anexos (
             atividade_id,
@@ -78,9 +103,10 @@ export async function POST(request: NextRequest) {
             file.size,
             session.user?.email,
             driveFile.id,
-            driveFile.webContentLink || driveFile.webViewLink
+            driveFile.webViewLink || driveFile.webContentLink // Usar webViewLink primeiro
           ]
         )
+        console.log("[Upload] Registro inserido no banco com ID:", result.insertId)
 
         savedFiles.push({
           id: result.insertId,
@@ -90,29 +116,55 @@ export async function POST(request: NextRequest) {
           tamanho_bytes: file.size,
           usuario_email: session.user?.email,
           google_drive_id: driveFile.id,
-          google_drive_link: driveFile.webContentLink || driveFile.webViewLink,
+          google_drive_link: driveFile.webViewLink || driveFile.webContentLink,
           data_upload: new Date().toISOString()
         })
+        console.log("[Upload] Arquivo processado com sucesso")
       } catch (error) {
-        console.error("Erro ao processar arquivo:", {
+        console.error("[Upload] Erro ao processar arquivo:", {
           fileName: file.name,
-          error: error instanceof Error ? error.message : 'Erro desconhecido'
+          error: error instanceof Error ? {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          } : error
         })
-        throw error
+        
+        return NextResponse.json(
+          { 
+            error: `Erro ao processar arquivo ${file.name}`,
+            details: error instanceof Error ? error.message : 'Erro desconhecido'
+          },
+          { status: 500 }
+        )
       }
     }
 
     // Atualiza a data da última atualização da tarefa com ajuste de -3h
+    console.log("[Upload] Atualizando timestamp da tarefa...")
     await dbAtendimento.execute(
       `UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?`,
       [taskId]
     );
+    console.log("[Upload] Timestamp da tarefa atualizado")
 
+    console.log("[Upload] Upload concluído com sucesso. Arquivos salvos:", savedFiles.length)
     return NextResponse.json(savedFiles)
   } catch (error) {
-    console.error("Erro ao fazer upload:", error)
+    console.error("[Upload] Erro geral no upload:", {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : error,
+      type: typeof error
+    })
+    
     return NextResponse.json(
-      { error: "Erro ao fazer upload" },
+      { 
+        error: "Erro interno do servidor durante o upload",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
       { status: 500 }
     )
   }
