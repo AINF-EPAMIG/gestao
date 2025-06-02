@@ -49,7 +49,7 @@ export async function uploadFileToDrive(
     const response = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id,name,webViewLink',
+      fields: 'id,name,webViewLink,webContentLink',
     });
 
     // Adiciona permissão pública de leitura ao arquivo
@@ -61,10 +61,17 @@ export async function uploadFileToDrive(
       }
     });
 
+    // Atualiza os metadados do arquivo para obter os links atualizados após dar a permissão
+    const updatedFile = await drive.files.get({
+      fileId: response.data.id!,
+      fields: 'id,name,webViewLink,webContentLink'
+    });
+
     return {
-      id: response.data.id,
-      name: response.data.name,
-      webViewLink: response.data.webViewLink,
+      id: updatedFile.data.id,
+      name: updatedFile.data.name,
+      webViewLink: updatedFile.data.webViewLink,
+      webContentLink: updatedFile.data.webContentLink
     };
   } catch (error) {
     console.error('Erro ao fazer upload para o Google Drive:', error);

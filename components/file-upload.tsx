@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Upload, X, FileUp, Loader2, FileArchive, AlertTriangle } from "lucide-react"
 import { useTaskStore } from "@/lib/store"
 import { needsProcessing, processLargeFile } from "@/lib/file-utils"
+import { cn } from "@/lib/utils"
 
 interface FileUploadProps {
   taskId?: number
@@ -38,11 +39,44 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileValidation = async (file: File) => {
     setError(null)
+    
+    // Verifica se o arquivo é um arquivo compactado
+    const compressedFormats = [
+      'application/zip', 
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/vnd.rar',
+      'application/x-7z-compressed',
+      'application/gzip',
+      'application/x-tar'
+    ];
+    
+    // Verifica pelo tipo MIME ou pela extensão do arquivo
+    const isCompressedFile = 
+      compressedFormats.includes(file.type) || 
+      /\.(zip|rar|7z|tar|gz|tgz)$/i.test(file.name);
+    
+    if (isCompressedFile) {
+      setError("Não é permitido enviar arquivos compactados (ZIP, RAR, etc.) que podem conter múltiplos arquivos. Por favor, envie os arquivos individualmente.")
+      return false;
+    }
+
+    // Verifica se já atingiu o limite de 10 arquivos
+    if (totalAnexos >= 10) {
+      setError("Limite máximo de 10 arquivos por tarefa atingido")
+      return false;
+    }
+
+    return true;
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files)
       
@@ -54,34 +88,11 @@ export function FileUpload({
       }
 
       const file = selectedFiles[0];
+      const isValid = await handleFileValidation(file);
       
-      // Verifica se o arquivo é um arquivo compactado
-      const compressedFormats = [
-        'application/zip', 
-        'application/x-zip-compressed',
-        'application/x-rar-compressed',
-        'application/vnd.rar',
-        'application/x-7z-compressed',
-        'application/gzip',
-        'application/x-tar'
-      ];
-      
-      // Verifica pelo tipo MIME ou pela extensão do arquivo
-      const isCompressedFile = 
-        compressedFormats.includes(file.type) || 
-        /\.(zip|rar|7z|tar|gz|tgz)$/i.test(file.name);
-      
-      if (isCompressedFile) {
-        setError("Não é permitido enviar arquivos compactados (ZIP, RAR, etc.) que podem conter múltiplos arquivos. Por favor, envie os arquivos individualmente.")
+      if (!isValid) {
         e.target.value = "" // Limpa a seleção
-        return
-      }
-
-      // Verifica se já atingiu o limite de 10 arquivos
-      if (totalAnexos >= 10) {
-        setError("Limite máximo de 10 arquivos por tarefa atingido")
-        e.target.value = "" // Limpa a seleção
-        return
+        return;
       }
 
       // Verifica se o arquivo precisa ser processado (compactado)
@@ -119,6 +130,73 @@ export function FileUpload({
       }
     }
   }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    setError(null);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    
+    // Verifica se está tentando enviar mais de um arquivo
+    if (droppedFiles.length > 1) {
+      setError("Por favor, solte apenas 1 arquivo por vez");
+      return;
+    }
+
+    const file = droppedFiles[0];
+    const isValid = await handleFileValidation(file);
+    
+    if (!isValid) {
+      return;
+    }
+
+    // Verifica se o arquivo precisa ser processado
+    if (needsProcessing(file)) {
+      try {
+        setProcessing(true);
+        setProcessingStatus(`Processando arquivo grande (${formatFileSize(file.size)})...`);
+        
+        const result = await processLargeFile(file);
+        setProcessingStatus(`Arquivo foi compactado (${formatFileSize(result.files[0].size)})`);
+        
+        if (onFileSelect) {
+          onFileSelect(result.files);
+        } else {
+          setLocalFiles(result.files);
+        }
+      } catch (error) {
+        console.error("Erro ao processar arquivo:", error);
+        setError(error instanceof Error ? error.message : "Erro ao processar arquivo grande. Tente novamente.");
+      } finally {
+        setProcessing(false);
+      }
+    } else {
+      if (onFileSelect) {
+        onFileSelect([file]);
+      } else {
+        setLocalFiles([file]);
+      }
+    }
+  };
 
   const handleUpload = async () => {
     if (localFiles.length === 0 || !taskId) return
@@ -222,10 +300,21 @@ export function FileUpload({
             />
             <label
               htmlFor="file-upload"
-              className={`flex items-center justify-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer ${(uploading || processing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'} transition-colors`}
+              className={cn(
+                "flex flex-col items-center justify-center w-full gap-2 px-4 py-6 text-sm font-medium text-gray-700 bg-white border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                isDragging ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50",
+                (uploading || processing) && "opacity-50 cursor-not-allowed"
+              )}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
             >
-              <Upload className="h-5 w-5" />
-              {processing ? 'Processando...' : 'Selecionar Arquivo'}
+              <Upload className="h-8 w-8 text-gray-400" />
+              <div className="text-center">
+                <p className="text-base">{processing ? 'Processando...' : 'Arraste um arquivo ou clique para selecionar'}</p>
+                <p className="text-xs text-gray-500 mt-1">Tamanho máximo: 10MB</p>
+              </div>
             </label>
           </div>
           

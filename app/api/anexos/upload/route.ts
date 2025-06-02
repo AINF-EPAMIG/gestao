@@ -73,24 +73,24 @@ export async function POST(request: NextRequest) {
           [
             taskId,
             file.name,
-            driveFile.name,
+            file.name,
             file.type,
             file.size,
             session.user?.email,
             driveFile.id,
-            driveFile.webViewLink
+            driveFile.webContentLink || driveFile.webViewLink
           ]
         )
 
         savedFiles.push({
           id: result.insertId,
           nome_arquivo: file.name,
-          caminho_arquivo: driveFile.name,
+          caminho_arquivo: file.name,
           tipo_arquivo: file.type,
           tamanho_bytes: file.size,
           usuario_email: session.user?.email,
           google_drive_id: driveFile.id,
-          google_drive_link: driveFile.webViewLink,
+          google_drive_link: driveFile.webContentLink || driveFile.webViewLink,
           data_upload: new Date().toISOString()
         })
       } catch (error) {
