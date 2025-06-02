@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { dbAtendimento } from "@/lib/db"
+import { db } from "@/lib/db"
 import { ResultSetHeader } from "mysql2"
 import { uploadFileToDrive } from "@/lib/google-drive"
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
         // Salvar informações no banco
         console.log("[Upload] Salvando informações no banco de dados...")
-        const [result] = await dbAtendimento.execute<ResultSetHeader>(
+        const [result] = await db.execute<ResultSetHeader>(
           `INSERT INTO u711845530_gestao.anexos (
             atividade_id,
             nome_arquivo,
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Atualiza a data da última atualização da tarefa com ajuste de -3h
     console.log("[Upload] Atualizando timestamp da tarefa...")
-    await dbAtendimento.execute(
+    await db.execute(
       `UPDATE u711845530_gestao.atividades SET ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR) WHERE id = ?`,
       [taskId]
     );
