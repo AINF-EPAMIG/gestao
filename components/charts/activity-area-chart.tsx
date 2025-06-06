@@ -41,11 +41,13 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (!dateStr) return "";
     
     try {
-      const date = new Date(dateStr);
+      // Create date with UTC adjustment to prevent timezone shifting
+      const date = new Date(dateStr + 'T12:00:00Z'); // Add time and Z to ensure UTC interpretation
       return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'UTC' // Ensure date is interpreted in UTC
       });
     } catch {
       return dateStr;
@@ -128,9 +130,10 @@ export function ActivityAreaChart() {
 
   const formatDate = (dateStr: string) => {
     try {
-      const date = new Date(dateStr)
+      // Create date with UTC adjustment to prevent timezone shifting
+      const date = new Date(dateStr + 'T12:00:00Z') // Add time and Z to ensure UTC interpretation
       // Formato DD/MM
-      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`
+      return `${date.getUTCDate().toString().padStart(2, '0')}/${(date.getUTCMonth() + 1).toString().padStart(2, '0')}`
     } catch {
       return dateStr
     }

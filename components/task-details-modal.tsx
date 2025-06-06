@@ -749,7 +749,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           </div>
         )}
         
-        <div className="absolute top-3 right-4 flex items-center gap-1 z-10">
+        {/* Action buttons for desktop view - absolute positioned */}
+        <div className="absolute top-3 right-4 hidden sm:flex items-center gap-1 z-10">
           {!isEditing && (
             <>
               <AlertDialog>
@@ -829,6 +830,72 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   <TabsTrigger value="anexos">Anexos</TabsTrigger>
                 )}
               </TabsList>
+              
+              {/* Mobile action buttons row */}
+              {!isEditing && (
+                <div className="flex sm:hidden items-center gap-1">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600"
+                        disabled={!canEdit || isEditing}
+                        title="Excluir tarefa"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleDelete} 
+                          className="bg-red-500 hover:bg-red-600 text-white"
+                          disabled={isDeleting}
+                        >
+                          {isDeleting ? "Excluindo..." : "Excluir"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-yellow-600"
+                    onClick={() => {
+                      if (canEdit && !isEditing) {
+                        setLocalTask(task);
+                        setIsEditing(true);
+                      }
+                    }}
+                    disabled={!canEdit || isEditing}
+                    title="Editar tarefa"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-600"
+                    onClick={() => onOpenChange(false)}
+                    title="Fechar"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               
               {isEditing && (
                 <div className="flex items-center gap-1">
