@@ -13,11 +13,10 @@ export function Footer() {
           className="w-auto h-auto"
         />
         <div className="text-center text-xs">
-          <p>Desenvolvimento: AINF</p>
+          <p>Desenvolvimento: ASTI</p>
           <p>© 2025 Painel Gestão</p>
         </div>
       </div>
     </div>
   )
 }
-

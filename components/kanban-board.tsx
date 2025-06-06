@@ -205,9 +205,35 @@ const TaskCard = memo(function TaskCard({
         <div className="flex items-center justify-between pt-2 sm:pt-1 xl:pt-2 2xl:pt-3 border-t w-full">
           <div className="flex items-center gap-1 sm:gap-0.5 xl:gap-1 2xl:gap-2">
             <div className="flex -space-x-2 sm:-space-x-1 xl:-space-x-2 2xl:-space-x-3">
-              {(task.responsaveis ?? []).map(resp => (
-                <MemoizedAvatar key={resp.email} email={resp.email} />
-              ))}
+              {(task.responsaveis ?? []).length <= 6 ? (
+                <>
+                  {(task.responsaveis ?? []).map(resp => (
+                    <MemoizedAvatar key={resp.email} email={resp.email} />
+                  ))}
+                </>
+              ) : (
+                <>
+                  {(task.responsaveis ?? []).slice(0, 5).map(resp => (
+                    <MemoizedAvatar key={resp.email} email={resp.email} />
+                  ))}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Avatar className="w-7 h-7 sm:w-6 sm:h-6 xl:w-8 xl:h-8 2xl:w-9 2xl:h-9 bg-gray-200 text-gray-700 font-medium">
+                          <AvatarFallback>
+                            +{(task.responsaveis ?? []).length - 5}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="text-xs xl:text-sm">
+                          {(task.responsaveis ?? []).map(r => getResponsavelName(r.email)).join(', ')}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              )}
               {!(task.responsaveis ?? []).length && <MemoizedAvatar />}
             </div>
             {/* Texto de responsável único - mostrado em todas as telas */}
