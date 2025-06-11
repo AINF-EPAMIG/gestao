@@ -260,9 +260,18 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID não fornecido' },
+        { status: 400 }
+      );
+    }
+
     const data = await request.json();
     const { 
-      id, 
       status_id, 
       position,
       titulo,
@@ -275,7 +284,8 @@ export async function PUT(request: NextRequest) {
       estimativa_horas,
       userEmail,
       novosResponsaveis,
-      editorName
+      editorName,
+      id_release
     } = data;
 
     // Se for apenas atualização de status e posição
@@ -334,6 +344,7 @@ export async function PUT(request: NextRequest) {
               data_fim = ?,
               prioridade_id = ?,
               estimativa_horas = ?,
+              id_release = ?,
               ultima_atualizacao = DATE_SUB(NOW(), INTERVAL 3 HOUR)
           WHERE id = ?
         `,
@@ -345,6 +356,7 @@ export async function PUT(request: NextRequest) {
           data_fim,
           prioridade_id,
           estimativa_horas,
+          id_release,
           id
         ],
       });

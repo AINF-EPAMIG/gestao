@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useState, useEffect, useCallback } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Trash, Edit2, X, Check, Send, Loader2 } from "lucide-react"
+import { Trash, Edit2, X, Check, Send, Loader2, Search } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName, formatHours } from "@/lib/store"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { usePolling } from "./polling-wrapper"
 import { usePathname } from "next/navigation"
-import { useChamadosStore } from "@/lib/chamados-store"
 
 interface TaskResponsavel {
   id: number;
@@ -115,7 +114,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [projetoId, setProjetoId] = useState(task.projeto_id?.toString() || "")
-  const setTasks = useTaskStore((state) => state.setTasks)
   const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
   const [comentario, setComentario] = useState("")
   const [comentarios, setComentarios] = useState<Comentario[]>([])
@@ -127,6 +125,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const MAX_TITLE_LENGTH = 40
   const MAX_DESCRIPTION_LENGTH = 500
   const MAX_COMMENT_LENGTH = 200
+  const [idRelease, setIdRelease] = useState<string | null>(task.id_release)
+  const [openReleaseModal, setOpenReleaseModal] = useState(false)
+  const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [loadingTasks, setLoadingTasks] = useState(false)
 
   const formatDate = (date: string | undefined | null) => {
     if (!date) return "-"
@@ -379,6 +383,97 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     setSelectedResponsaveis(prevResponsaveis => prevResponsaveis.filter(r => r.EMAIL !== email));
   }
 
+  // Função para buscar todas as tarefas
+  const fetchAllTasks = useCallback(async () => {
+    try {
+      setLoadingTasks(true)
+      console.log('Buscando todas as tarefas do banco de dados...')
+      
+      // Buscar todas as tarefas sem filtros
+      const response = await fetch('/api/atividades?all=true', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Resposta da API:', data)
+        console.log('Tarefas encontradas:', data.length)
+        
+        // Garantir que temos um array de tarefas
+        if (Array.isArray(data)) {
+          setAllTasks(data)
+          setFilteredTasks(data)
+          
+          // Se já tiver um ID Release selecionado, encontre a tarefa correspondente
+          if (idRelease) {
+            const selectedTask = data.find((task: Task) => task.id.toString() === idRelease)
+            if (selectedTask) {
+              console.log('ID Release encontrado:', selectedTask.id)
+            }
+          }
+        } else {
+          console.log('Formato inválido retornado da API:', data)
+          setAllTasks([])
+          setFilteredTasks([])
+        }
+      } else {
+        console.error('Erro na resposta da API:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Detalhes do erro:', errorText)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar tarefas:', error)
+    } finally {
+      setLoadingTasks(false)
+    }
+  }, [idRelease])
+
+  // Função para filtrar tarefas com base no termo de busca
+  const filterTasks = useCallback((term: string) => {
+    if (!term.trim()) {
+      setFilteredTasks(allTasks)
+      return
+    }
+    
+    const lowerTerm = term.toLowerCase()
+    const filtered = allTasks.filter(task => {
+      const idMatch = task.id.toString().includes(lowerTerm)
+      const tituloMatch = task.titulo ? task.titulo.toLowerCase().includes(lowerTerm) : false
+      const descricaoMatch = task.descricao ? task.descricao.toLowerCase().includes(lowerTerm) : false
+      
+      return idMatch || tituloMatch || descricaoMatch
+    })
+    
+    setFilteredTasks(filtered)
+  }, [allTasks])
+
+  // Função para selecionar uma tarefa como ID Release
+  const selectTaskAsRelease = (task: Task) => {
+    setIdRelease(task.id.toString())
+    setOpenReleaseModal(false)
+  }
+
+  // Efeito para buscar tarefas quando o modal de release é aberto
+  useEffect(() => {
+    if (openReleaseModal) {
+      fetchAllTasks()
+    }
+  }, [openReleaseModal, fetchAllTasks])
+
+  // Efeito para filtrar tarefas quando o termo de busca muda
+  useEffect(() => {
+    filterTasks(searchTerm)
+  }, [searchTerm, filterTasks])
+
+  // Atualizar o estado do idRelease quando a task mudar
+  useEffect(() => {
+    setIdRelease(task.id_release)
+  }, [task.id_release])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -399,100 +494,71 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           body: JSON.stringify({
             chamadoId: task.id,
             origem: task.origem,
-            userName: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : null,
+            responsavelEmail: selectedResponsaveis[0]?.EMAIL,
+            userEmail: session?.user?.email,
           }),
         });
 
-        // Aguarda 2 segundos para efeito visual
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        if (response.ok) {
-          // Atualiza o estado local
-          const updatedTask = {
-            ...localTask,
-            tecnico_responsavel: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : undefined
-          };
-          setLocalTask(updatedTask);
-          setIsEditing(false);
-
-          // Atualiza apenas o chamado específico no store
-          const chamadosStore = useChamadosStore.getState();
-          const currentChamados = chamadosStore.chamados;
-          const updatedChamados = currentChamados.map(chamado => 
-            chamado.id === task.id && chamado.origem === task.origem
-              ? { ...chamado, tecnico_responsavel: selectedResponsaveis.length > 0 ? selectedResponsaveis[0].NOME : null }
-              : chamado
-          );
-          chamadosStore.setChamados(updatedChamados);
-        } else {
-          const error = await response.json();
-          alert(error.error || 'Erro ao atualizar responsável');
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar chamado');
         }
       } else {
-        // Para tarefas regulares, mantém o comportamento atual
-        // Identificar novos responsáveis
-        const responsaveisAtuais = task.responsaveis?.map(r => r.email) || [];
-        const novosResponsaveis = selectedResponsaveis
-          .filter(r => !responsaveisAtuais.includes(r.EMAIL))
-          .map(r => r.EMAIL);
-
-        // Armazenar o projeto_id original para comparação
-        const originalProjetoId = task.projeto_id;
-        const newProjetoId = parseInt(projetoId);
-        const projetoChanged = originalProjetoId !== newProjetoId;
-
-        const requestBody = {
-          id: task.id,
-          titulo,
-          descricao,
-          projeto_id: newProjetoId,
-          responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
-          data_inicio: dataInicio,
-          data_fim: dataFim,
-          prioridade_id: parseInt(prioridade),
-          estimativa_horas: estimativaHoras,
-          userEmail: session?.user?.email,
-          novosResponsaveis,
-          editorName: session?.user?.name || session?.user?.email
-        };
-
-        const response = await fetch('/api/atividades', {
+        // Para tarefas normais, atualizamos todos os campos
+        const response = await fetch(`/api/atividades?id=${task.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify({
+            titulo,
+            descricao,
+            projeto_id: parseInt(projetoId),
+            responsaveis_emails: selectedResponsaveis.map(r => r.EMAIL),
+            data_inicio: dataInicio,
+            data_fim: dataFim,
+            prioridade_id: parseInt(prioridade),
+            userEmail: session?.user?.email,
+            estimativa_horas: estimativaHoras || null,
+            id_release: idRelease ? idRelease.toString() : null
+          }),
         });
 
-        // Aguarda 2 segundos para efeito visual
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        if (response.ok) {
-          const updatedTasks = await response.json();
-          setTasks(updatedTasks);
-          setIsEditing(false);
-          
-          // Disparar evento personalizado para notificar sobre a atualização de tarefas
-          // Só dispara se o projeto foi alterado
-          if (projetoChanged) {
-            console.log('Projeto alterado de', originalProjetoId, 'para', newProjetoId);
-            const taskUpdatedEvent = new CustomEvent('taskUpdated', {
-              detail: { 
-                taskId: task.id, 
-                oldProjetoId: originalProjetoId,
-                newProjetoId: newProjetoId,
-                action: 'edit'
-              }
-            });
-            window.dispatchEvent(taskUpdatedEvent);
-          }
-        } else {
-          const error = await response.json();
-          alert(error.error || 'Erro ao atualizar tarefa');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao atualizar tarefa');
         }
       }
+
+      // Aguarda 2 segundos para efeito visual
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Atualiza o estado local da tarefa
+      setLocalTask({
+        ...localTask,
+        titulo,
+        descricao,
+        projeto_id: parseInt(projetoId),
+        responsaveis: selectedResponsaveis.map(r => ({
+          id: 0,
+          email: r.EMAIL,
+          nome: r.NOME,
+          cargo: r.CARGO
+        })),
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        prioridade_id: parseInt(prioridade),
+        estimativa_horas: estimativaHoras,
+        id_release: idRelease ? idRelease.toString() : null
+      });
+
+      // Atualiza o timestamp da tarefa no store
+      updateTaskTimestamp(task.id);
+
+      // Sai do modo de edição
+      setIsEditing(false);
     } catch (error) {
-      console.error('Erro ao atualizar tarefa:', error);
+      console.error('Erro ao salvar:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao salvar as alterações');
     } finally {
       setIsSaving(false);
       setIsFading(false);
@@ -728,804 +794,944 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   }
 
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      // Quando o modal for fechado, garantir que o polling seja retomado
-      if (!newOpen && isEditing) {
-        setIsEditing(false);
-        resumePolling();
-      }
-      onOpenChange(newOpen);
-    }}>
-      <DialogContent className={cn(
-        "sm:max-w-[600px] h-[85vh] p-0 flex flex-col overflow-hidden",
-        (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]",
-        "[&>button]:hidden" // Oculta o botão de fechar padrão do DialogContent
-      )}>
-        {showLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-50">
-            <div className="p-3 rounded-full">
-              <Loader2 className="h-8 w-8 animate-spin text-[#2E7D32]" />
+    <>
+      <Dialog open={open} onOpenChange={(newOpen) => {
+        // Quando o modal for fechado, garantir que o polling seja retomado
+        if (!newOpen && isEditing) {
+          setIsEditing(false);
+          resumePolling();
+        }
+        onOpenChange(newOpen);
+      }}>
+        <DialogContent className={cn(
+          "sm:max-w-[600px] h-[85vh] p-0 flex flex-col overflow-hidden",
+          (isFading || isSaving) && "opacity-50 pointer-events-none transition-opacity duration-[2000ms]",
+          "[&>button]:hidden" // Oculta o botão de fechar padrão do DialogContent
+        )}>
+          {showLoading && (
+            <div className="absolute inset-0 flex items-center justify-center z-50">
+              <div className="p-3 rounded-full">
+                <Loader2 className="h-8 w-8 animate-spin text-[#2E7D32]" />
+              </div>
             </div>
-          </div>
-        )}
-        
-        {/* Action buttons for desktop view - absolute positioned */}
-        <div className="absolute top-3 right-4 hidden sm:flex items-center gap-1 z-10">
-          {!isEditing && (
-            <>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
-                    disabled={!canEdit || isEditing}
-                    title="Excluir tarefa"
-                  >
-                    <Trash className="h-3.5 w-3.5 mr-1" />
-                    <span className="text-xs font-medium">Excluir</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDelete} 
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? "Excluindo..." : "Excluir"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              
-              <Button 
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2.5 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-200"
-                onClick={() => {
-                  if (canEdit && !isEditing) {
-                    setLocalTask(task);
-                    setIsEditing(true);
-                  }
-                }}
-                disabled={!canEdit || isEditing}
-                title="Editar tarefa"
-              >
-                <Edit2 className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs font-medium">Editar</span>
-              </Button>
-              
-              <Button 
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 border border-gray-200"
-                onClick={() => onOpenChange(false)}
-                title="Fechar"
-              >
-                <X className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs font-medium">Fechar</span>
-              </Button>
-            </>
           )}
-        </div>
-        
-        <Tabs defaultValue="detalhes" className="flex flex-col h-full">
-          <DialogHeader className="px-6 py-3 border-b shrink-0">
-            <DialogTitle className="sr-only">Detalhes da Tarefa</DialogTitle>
-            <div className="flex items-center justify-between">
-              <TabsList className="grid w-[200px] grid-cols-2">
-                <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
-                {!isChamadosPage && (
-                  <TabsTrigger value="anexos">Anexos</TabsTrigger>
-                )}
-              </TabsList>
-              
-              {/* Mobile action buttons row */}
-              {!isEditing && (
-                <div className="flex sm:hidden items-center gap-1">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-600"
-                        disabled={!canEdit || isEditing}
-                        title="Excluir tarefa"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleDelete} 
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                          disabled={isDeleting}
-                        >
-                          {isDeleting ? "Excluindo..." : "Excluir"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  
-                  <Button 
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-yellow-600"
-                    onClick={() => {
-                      if (canEdit && !isEditing) {
-                        setLocalTask(task);
-                        setIsEditing(true);
-                      }
-                    }}
-                    disabled={!canEdit || isEditing}
-                    title="Editar tarefa"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button 
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-gray-600"
-                    onClick={() => onOpenChange(false)}
-                    title="Fechar"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              
-              {isEditing && (
-                <div className="flex items-center gap-1">
-                  <Button 
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2.5 text-green-600 hover:text-green-700 hover:bg-green-50 border border-green-200"
-                    onClick={handleSubmit}
-                    disabled={isSaving || selectedResponsaveis.length === 0}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    <span className="text-xs font-medium">Salvar</span>
-                  </Button>
-                  <Button 
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
-                    onClick={() => {
-                      setIsEditing(false);
-                      // Restaurar os dados originais da tarefa
-                      setLocalTask(task);
-                      setTitulo(task.titulo);
-                      setDescricao(task.descricao || "");
-                      setPrioridade(task.prioridade_id.toString());
-                      setEstimativaHoras(task.estimativa_horas || "");
-                      setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
-                      setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
-                      setProjetoId(task.projeto_id?.toString() || "");
-                      setSelectedResponsaveis(
-                        task.responsaveis?.map(r => ({
-                          EMAIL: r.email,
-                          NOME: r.nome || r.email.split('@')[0],
-                          CARGO: r.cargo
-                        })) || []
-                      );
-                      // Retomar o polling
-                      resumePolling();
-                    }}
-                    disabled={isSaving}
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    <span className="text-xs font-medium">Cancelar</span>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            <div className="p-4 flex flex-col h-full">
-              <TabsContent value="detalhes" className="flex flex-col h-full">
-                {/* Conteúdo principal */}
-                <div className="space-y-2 flex-grow">
-                  {/* Cabeçalho com Avatar, Status, Prioridade e Projeto */}
-                  {!isEditing && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex -space-x-2">
-                        {(task.responsaveis ?? []).map(resp => (
-                          <Avatar key={resp.email} className="w-10 h-10 border-2 border-white">
-                            <AvatarImage email={resp.email} />
-                            <AvatarFallback>
-                              {resp.email ? resp.email[0].toUpperCase() : '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                        {!(task.responsaveis ?? []).length && (
-                          <Avatar className="w-10 h-10 border-2 border-white">
-                            <AvatarFallback>?</AvatarFallback>
-                          </Avatar>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          className={getStatusBadgeClass(task.status_id)}
-                        >
-                          {getStatusDisplayName(task.status_id)}
-                        </Badge>
-                        <Badge
-                          className={
-                            getPriorityName(task.prioridade_id) === "Alta"
-                              ? "bg-red-50 text-red-600 border-red-100"
-                              : getPriorityName(task.prioridade_id) === "Média"
-                              ? "bg-yellow-50 text-yellow-600 border-yellow-100"
-                              : "bg-green-50 text-green-600 border-green-100"
-                          }
-                        >
-                          {getPriorityName(task.prioridade_id)}
-                        </Badge>
-                        <Badge variant="outline">
-                          {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
-                        </Badge>
-                      </div>
-                    </div>
+          {/* Action buttons for desktop view - absolute positioned */}
+          <div className="absolute top-3 right-4 hidden sm:flex items-center gap-1 z-10">
+            {!isEditing && (
+              <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
+                      disabled={!canEdit || isEditing}
+                      title="Excluir tarefa"
+                    >
+                      <Trash className="h-3.5 w-3.5 mr-1" />
+                      <span className="text-xs font-medium">Excluir</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Excluindo..." : "Excluir"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2.5 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 border border-yellow-200"
+                  onClick={() => {
+                    if (canEdit && !isEditing) {
+                      setLocalTask(task);
+                      setIsEditing(true);
+                    }
+                  }}
+                  disabled={!canEdit || isEditing}
+                  title="Editar tarefa"
+                >
+                  <Edit2 className="h-3.5 w-3.5 mr-1" />
+                  <span className="text-xs font-medium">Editar</span>
+                </Button>
+                
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2.5 text-gray-600 hover:text-gray-700 hover:bg-gray-50 border border-gray-200"
+                  onClick={() => onOpenChange(false)}
+                  title="Fechar"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  <span className="text-xs font-medium">Fechar</span>
+                </Button>
+              </>
+            )}
+          </div>
+          
+          <Tabs defaultValue="detalhes" className="flex flex-col h-full">
+            <DialogHeader className="px-6 py-3 border-b shrink-0">
+              <DialogTitle className="sr-only">Detalhes da Tarefa</DialogTitle>
+              <div className="flex items-center justify-between">
+                <TabsList className="grid w-[200px] grid-cols-2">
+                  <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                  {!isChamadosPage && (
+                    <TabsTrigger value="anexos">Anexos</TabsTrigger>
                   )}
-
-                  {/* Prioridade e Projeto - Modo Edição */}
-                  {isEditing ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-sm text-gray-500">Prioridade</label>
-                        <Select value={prioridade} onValueChange={setPrioridade}>
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Selecione a prioridade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">Alta</SelectItem>
-                            <SelectItem value="2">Média</SelectItem>
-                            <SelectItem value="3">Baixa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm text-gray-500">Projeto</label>
-                        <Select value={projetoId} onValueChange={setProjetoId}>
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Selecione o projeto" />
-                          </SelectTrigger>
-                          <SelectContent className="!max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                            {projetos.map(projeto => (
-                              <SelectItem 
-                                key={projeto.id} 
-                                value={projeto.id.toString()}
-                                className="truncate"
-                                title={projeto.nome}
-                              >
-                                {projeto.nome.length > 30 ? `${projeto.nome.slice(0, 30)}...` : projeto.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Conteúdo em duas colunas */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Coluna da esquerda */}
-                    <div className="space-y-2">
-                      <div>
-                        <div className="text-sm text-gray-500">Título</div>
-                        {isEditing ? (
-                          <Input
-                            value={titulo}
-                            onChange={(e) => setTitulo(e.target.value)}
-                            placeholder="Digite o título da tarefa"
-                            className="h-8"
-                            maxLength={MAX_TITLE_LENGTH}
-                          />
-                        ) : (
-                          <div className="font-medium max-h-20 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words whitespace-pre-wrap">
-                            {task.titulo}
-                          </div>
-                        )}
-                        {isEditing && (
-                          <div className="flex justify-end">
-                            <span className={`text-xs ${titulo.length > MAX_TITLE_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                              {titulo.length}/{MAX_TITLE_LENGTH}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="text-sm text-gray-500">Descrição</div>
-                        {isEditing ? (
-                          <>
-                            <Textarea
-                              value={descricao}
-                              onChange={(e) => setDescricao(e.target.value)}
-                              placeholder="Digite a descrição da tarefa"
-                              className="h-16 resize-none"
-                              maxLength={MAX_DESCRIPTION_LENGTH}
-                            />
-                            <div className="flex justify-end">
-                              <span className={`text-xs ${descricao.length > MAX_DESCRIPTION_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                                {descricao.length}/{MAX_DESCRIPTION_LENGTH}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-sm mt-1 whitespace-pre-wrap max-h-[120px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
-                            {localTask.descricao || "-"}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Campos criacao_acessos - coluna esquerda */}
-                      {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
-                        <>
-                          <div>
-                            <div className="text-sm text-gray-500">Chapa colaborador</div>
-                            <div className="text-sm">{task.chapa_colaborador || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Nome colaborador</div>
-                            <div className="text-sm">{task.nome_colaborador || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Seção colaborador</div>
-                            <div className="text-sm">{task.secao_colaborador || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Nome chefia colaborador</div>
-                            <div className="text-sm">{task.nome_chefia_colaborador || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Email chefia colaborador</div>
-                            <div className="text-sm">{task.email_chefia_colaborador || '-'}</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Coluna da direita */}
-                    <div className="space-y-2">
-                      <div>
-                        <div className="text-sm text-gray-500">Data de Início</div>
-                        {isEditing ? (
-                          <Input
-                            type="date"
-                            value={dataInicio}
-                            onChange={(e) => setDataInicio(e.target.value)}
-                            className="h-8"
-                          />
-                        ) : (
-                          <div className="text-sm">{formatDate(localTask.data_inicio)}</div>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="text-sm text-gray-500">Data de Fim</div>
-                        {isEditing ? (
-                          <Input
-                            type="date"
-                            value={dataFim}
-                            onChange={(e) => setDataFim(e.target.value)}
-                            className="h-8"
-                          />
-                        ) : (
-                          <div className="text-sm">{formatDate(localTask.data_fim)}</div>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="text-sm text-gray-500">Estimativa</div>
-                        {isEditing ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.5"
-                                  value={estimativaHoras}
-                                  onChange={(e) => setEstimativaHoras(e.target.value)}
-                                  className="h-8"
-                                  placeholder=""
-                                />
-                              </div>
-                              <span className="text-xs">h</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Use valores decimais: 0.5 = 30min, 1.5 = 1h e 30min
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="text-sm">{formatEstimativa(localTask.estimativa_horas)}</div>
-                        )}
-                      </div>
-
-                      {/* Campos criacao_acessos - coluna direita */}
-                      {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
-                        <>
-                          <div>
-                            <div className="text-sm text-gray-500">Sistemas solicitados</div>
-                            <div className="text-sm">{(task.sistemas_solicitados || '-').toUpperCase()}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Modelo TOTVS</div>
-                            <div className="text-sm">{task.modelo_TOTVS || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Observação</div>
-                            <div className="text-sm">{task.observacao || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Nome solicitante</div>
-                            <div className="text-sm">{task.nome_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Email solicitante</div>
-                            <div className="text-sm">{task.email_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Status</div>
-                            <div className="text-sm">{task.status || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Técnico responsável</div>
-                            <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Data conclusão</div>
-                            <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Campos chamados_atendimento - coluna direita */}
-                      {isChamadosPage && task.origem === 'chamados_atendimento' && !isEditing && (
-                        <>
-                          <div>
-                            <div className="text-sm text-gray-500">Nome do solicitante</div>
-                            <div className="text-sm">{task.nome_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Email do solicitante</div>
-                            <div className="text-sm">{task.email_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Seção</div>
-                            <div className="text-sm">{task.secao || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Nome chefia solicitante</div>
-                            <div className="text-sm">{task.nome_chefia_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Email chefia solicitante</div>
-                            <div className="text-sm">{task.email_chefia_solicitante || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Categoria</div>
-                            <div className="text-sm">{task.categoria || '-'}</div>
-                          </div>
-                          {task.subcategoria && (
-                            <div>
-                              <div className="text-sm text-gray-500">Subcategoria</div>
-                              <div className="text-sm">{task.subcategoria}</div>
-                            </div>
-                          )}
-                          <div>
-                            <div className="text-sm text-gray-500">Prioridade</div>
-                            <div className="text-sm">{task.prioridade || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Descrição</div>
-                            <div className="text-sm">{task.descricao || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Data solicitação</div>
-                            <div className="text-sm">{formatDateTime(task.data_solicitacao)}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Status</div>
-                            <div className="text-sm">{task.status || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Técnico responsável</div>
-                            <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Data conclusão</div>
-                            <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                </TabsList>
+                
+                {/* Mobile action buttons row */}
+                {!isEditing && (
+                  <div className="flex sm:hidden items-center gap-1">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600"
+                          disabled={!canEdit || isEditing}
+                          title="Excluir tarefa"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente a tarefa.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleDelete} 
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Excluindo..." : "Excluir"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-yellow-600"
+                      onClick={() => {
+                        if (canEdit && !isEditing) {
+                          setLocalTask(task);
+                          setIsEditing(true);
+                        }
+                      }}
+                      disabled={!canEdit || isEditing}
+                      title="Editar tarefa"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-gray-600"
+                      onClick={() => onOpenChange(false)}
+                      title="Fechar"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-
-                  {/* Responsáveis - Modo de Edição */}
-                  {isEditing && (
-                    <div>
-                      <div className="text-sm text-gray-500 mb-1">Responsáveis</div>
-                      <div className="space-y-1.5">
-                        <div className="relative">
-                          <Input
-                            value={responsavelInput}
-                            onChange={(e) => {
-                              setResponsavelInput(e.target.value);
-                              setShowResponsavelSuggestions(true);
-                            }}
-                            onFocus={() => setShowResponsavelSuggestions(true)}
-                            onBlur={() => {
-                              // Atraso para permitir que o clique na sugestão seja processado
-                              setTimeout(() => setShowResponsavelSuggestions(false), 200);
-                            }}
-                            placeholder="Digite o nome do responsável"
-                            className="h-8"
-                          />
-                          {showResponsavelSuggestions && (
-                            <div className="absolute z-10 w-full mt-0.5 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                              {responsaveis
-                                .filter(r => {
-                                  const nameMatches = !responsavelInput || 
-                                    ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
-                                  const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
-                                  return nameMatches && notAlreadySelected;
-                                })
-                                .map(responsavel => (
-                                  <div
-                                    key={responsavel.EMAIL}
-                                    className="px-4 py-1.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleResponsavelSelect(responsavel);
-                                    }}
-                                  >
-                                    <div className="flex flex-col">
-                                      <div className="font-medium">
-                                        {responsavel.NOME}
-                                      </div>
-                                      <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Lista de responsáveis selecionados */}
-                        <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-50 rounded-md">
-                          {selectedResponsaveis.map((responsavel) => (
-                            <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border shadow-sm">
-                              <span className="text-sm font-medium">
-                                {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
-                                onClick={() => removeResponsavel(responsavel.EMAIL)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                          {selectedResponsaveis.length === 0 && (
-                            <div className="text-sm text-red-500 py-1 px-2">
-                              É necessário pelo menos um responsável
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Linha divisória - só aparece quando há comentários */}
-                  {comentarios.length > 0 && !isEditing && <Separator className="my-3" />}
-
-                  {/* Seção de Comentários - só mostra se não estiver no modo de edição */}
-                  {!isEditing && (
-                    <div className={cn(
-                      "space-y-2",
-                      comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : ""
-                    )}>
+                )}
+                
+                {isEditing && (
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2.5 text-green-600 hover:text-green-700 hover:bg-green-50 border border-green-200"
+                      onClick={handleSubmit}
+                      disabled={isSaving || selectedResponsaveis.length === 0}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      <span className="text-xs font-medium">Salvar</span>
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
+                      onClick={() => {
+                        setIsEditing(false);
+                        // Restaurar os dados originais da tarefa
+                        setLocalTask(task);
+                        setTitulo(task.titulo);
+                        setDescricao(task.descricao || "");
+                        setPrioridade(task.prioridade_id.toString());
+                        setEstimativaHoras(task.estimativa_horas || "");
+                        setDataInicio(task.data_inicio ? new Date(task.data_inicio).toISOString().split('T')[0] : "");
+                        setDataFim(task.data_fim ? new Date(task.data_fim).toISOString().split('T')[0] : "");
+                        setProjetoId(task.projeto_id?.toString() || "");
+                        setSelectedResponsaveis(
+                          task.responsaveis?.map(r => ({
+                            EMAIL: r.email,
+                            NOME: r.nome || r.email.split('@')[0],
+                            CARGO: r.cargo
+                          })) || []
+                        );
+                        // Retomar o polling
+                        resumePolling();
+                      }}
+                      disabled={isSaving}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" />
+                      <span className="text-xs font-medium">Cancelar</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+              <div className="p-4 flex flex-col h-full">
+                <TabsContent value="detalhes" className="flex flex-col h-full">
+                  {/* Conteúdo principal */}
+                  <div className="space-y-2 flex-grow">
+                    {/* Cabeçalho com Avatar, Status, Prioridade e Projeto */}
+                    {!isEditing && (
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">Comentários</h4>
+                        <div className="flex -space-x-2">
+                          {(task.responsaveis ?? []).map(resp => (
+                            <Avatar key={resp.email} className="w-10 h-10 border-2 border-white">
+                              <AvatarImage email={resp.email} />
+                              <AvatarFallback>
+                                {resp.email ? resp.email[0].toUpperCase() : '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {!(task.responsaveis ?? []).length && (
+                            <Avatar className="w-10 h-10 border-2 border-white">
+                              <AvatarFallback>?</AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            className={getStatusBadgeClass(task.status_id)}
+                          >
+                            {getStatusDisplayName(task.status_id)}
+                          </Badge>
+                          <Badge
+                            className={
+                              getPriorityName(task.prioridade_id) === "Alta"
+                                ? "bg-red-50 text-red-600 border-red-100"
+                                : getPriorityName(task.prioridade_id) === "Média"
+                                ? "bg-yellow-50 text-yellow-600 border-yellow-100"
+                                : "bg-green-50 text-green-600 border-green-100"
+                            }
+                          >
+                            {getPriorityName(task.prioridade_id)}
+                          </Badge>
+                          <Badge variant="outline">
+                            {task.projeto_nome || (!task.projeto_id ? "Projeto Indefinido" : `Projeto ${task.projeto_id}`)}
+                          </Badge>
+                        </div>
                       </div>
+                    )}
 
-                      {/* Lista de Comentários */}
-                      <div className="space-y-1.5 min-h-[40px] max-h-[250px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                        {comentarios.length > 0 ? (
-                          comentarios.map((comment) => (
-                            <div key={comment.id} className="bg-gray-50 p-2 rounded-lg space-y-1.5 w-full overflow-hidden">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="w-6 h-6">
-                                    <AvatarImage email={comment.usuario_email} />
-                                    <AvatarFallback>
-                                      {comment.usuario_email[0].toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-sm font-medium">
-                                    {comment.usuario_nome || comment.usuario_email.split('@')[0]}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={() => {
-                                        setComentarioEditando(comment.id);
-                                        setTextoEditando(comment.comentario);
-                                      }}
-                                    >
-                                      <Edit2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                  <span className="text-xs text-gray-500">
-                                    {comment.data_edicao 
-                                      ? `Editado em ${formatDateTime(comment.data_edicao)}`
-                                      : formatDateTime(comment.data_criacao)
-                                    }
-                                  </span>
-                                </div>
-                              </div>
-                              {comentarioEditando === comment.id ? (
-                                <div className="flex gap-2">
-                                  <div className="flex flex-col w-full">
-                                    <Textarea
-                                      value={textoEditando}
-                                      onChange={(e) => setTextoEditando(e.target.value)}
-                                      className="h-14 resize-none"
-                                      maxLength={MAX_COMMENT_LENGTH}
-                                    />
-                                    <div className="flex justify-end">
-                                      <span className={`text-xs ${textoEditando.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                                        {textoEditando.length}/{MAX_COMMENT_LENGTH}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col gap-2">
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => handleEditComment(comment.id, textoEditando)}
-                                      disabled={textoEditando.length > MAX_COMMENT_LENGTH}
-                                    >
-                                      <Check className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => {
-                                        setComentarioEditando(null);
-                                        setTextoEditando("");
-                                      }}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="max-w-full overflow-hidden">
-                                  <p className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal] [hyphens:auto] [text-wrap:pretty] overflow-hidden text-ellipsis">
-                                    {renderTextWithLinks(comment.comentario)}
-                                  </p>
-                                </div>
+                    {/* Campos de edição em duas colunas */}
+                    {isEditing ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-sm text-gray-500">Prioridade</label>
+                          <Select value={prioridade} onValueChange={setPrioridade}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Selecione a prioridade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Alta</SelectItem>
+                              <SelectItem value="2">Média</SelectItem>
+                              <SelectItem value="3">Baixa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm text-gray-500">Projeto</label>
+                          <Select value={projetoId} onValueChange={setProjetoId}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Selecione o projeto" />
+                            </SelectTrigger>
+                            <SelectContent className="!max-h-[180px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                              {projetos.map(projeto => (
+                                <SelectItem 
+                                  key={projeto.id} 
+                                  value={projeto.id.toString()}
+                                  className="truncate"
+                                  title={projeto.nome}
+                                >
+                                  {projeto.nome.length > 30 ? `${projeto.nome.slice(0, 30)}...` : projeto.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm text-gray-500">ID Release</label>
+                          <div className="flex gap-1">
+                            <div className="relative flex-1">
+                              <Input
+                                value={idRelease || ''}
+                                placeholder="Selecione"
+                                className="flex-1 bg-gray-50 pr-8 h-8"
+                                readOnly
+                              />
+                              {idRelease && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                  onClick={() => {
+                                    setIdRelease(null)
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
                               )}
                             </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center justify-center text-sm text-gray-500">
-                            -
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setOpenReleaseModal(true)}
+                              className="shrink-0 h-8"
+                            >
+                              Selecionar
+                            </Button>
                           </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm text-gray-500">Estimativa</label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={estimativaHoras}
+                                onChange={(e) => setEstimativaHoras(e.target.value)}
+                                className="h-8"
+                                placeholder=""
+                              />
+                            </div>
+                            <span className="text-xs">h</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Conteúdo em duas colunas */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Coluna da esquerda */}
+                      <div className="space-y-2">
+                        <div>
+                          <div className="text-sm text-gray-500">Título</div>
+                          {isEditing ? (
+                            <Input
+                              value={titulo}
+                              onChange={(e) => setTitulo(e.target.value)}
+                              placeholder="Digite o título da tarefa"
+                              className="h-8"
+                              maxLength={MAX_TITLE_LENGTH}
+                            />
+                          ) : (
+                            <div className="font-medium max-h-20 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words whitespace-pre-wrap">
+                              {task.titulo}
+                            </div>
+                          )}
+                          {isEditing && (
+                            <div className="flex justify-end">
+                              <span className={`text-xs ${titulo.length > MAX_TITLE_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                {titulo.length}/{MAX_TITLE_LENGTH}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="text-sm text-gray-500">Descrição</div>
+                          {isEditing ? (
+                            <>
+                              <Textarea
+                                value={descricao}
+                                onChange={(e) => setDescricao(e.target.value)}
+                                placeholder="Digite a descrição da tarefa"
+                                className="h-16 resize-none"
+                                maxLength={MAX_DESCRIPTION_LENGTH}
+                              />
+                              <div className="flex justify-end">
+                                <span className={`text-xs ${descricao.length > MAX_DESCRIPTION_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                  {descricao.length}/{MAX_DESCRIPTION_LENGTH}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm mt-1 whitespace-pre-wrap max-h-[120px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400 break-words">
+                              {localTask.descricao || "-"}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Campos criacao_acessos - coluna esquerda */}
+                        {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
+                          <>
+                            <div>
+                              <div className="text-sm text-gray-500">Chapa colaborador</div>
+                              <div className="text-sm">{task.chapa_colaborador || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Nome colaborador</div>
+                              <div className="text-sm">{task.nome_colaborador || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Seção colaborador</div>
+                              <div className="text-sm">{task.secao_colaborador || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Nome chefia colaborador</div>
+                              <div className="text-sm">{task.nome_chefia_colaborador || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Email chefia colaborador</div>
+                              <div className="text-sm">{task.email_chefia_colaborador || '-'}</div>
+                            </div>
+                          </>
                         )}
                       </div>
 
-                      {/* Espaço adicional quando há poucos comentários */}
-                      {comentarios.length > 0 && comentarios.length <= 3 && (
-                        <div className="h-6"></div>
-                      )}
-
-                      {/* Campo de Novo Comentário */}
-                      <div className="flex gap-2">
-                        <div className="flex flex-col w-full">
-                          <Textarea
-                            value={comentario}
-                            onChange={(e) => setComentario(e.target.value)}
-                            placeholder="Escreva um comentário..."
-                            className="h-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                            maxLength={MAX_COMMENT_LENGTH}
-                          />
-                          <div className="flex justify-end">
-                            <span className={`text-xs ${comentario.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
-                              {comentario.length}/{MAX_COMMENT_LENGTH}
-                            </span>
-                          </div>
+                      {/* Coluna da direita */}
+                      <div className="space-y-2">
+                        <div>
+                          <div className="text-sm text-gray-500">Data de Início</div>
+                          {isEditing ? (
+                            <Input
+                              type="date"
+                              value={dataInicio}
+                              onChange={(e) => setDataInicio(e.target.value)}
+                              className="h-8"
+                            />
+                          ) : (
+                            <div className="text-sm">{formatDate(localTask.data_inicio)}</div>
+                          )}
                         </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="self-end"
-                          disabled={!comentario.trim() || !session?.user?.email || comentario.length > MAX_COMMENT_LENGTH}
-                          onClick={handleSendComment}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
+
+                        <div>
+                          <div className="text-sm text-gray-500">Data de Fim</div>
+                          {isEditing ? (
+                            <Input
+                              type="date"
+                              value={dataFim}
+                              onChange={(e) => setDataFim(e.target.value)}
+                              className="h-8"
+                            />
+                          ) : (
+                            <div className="text-sm">{formatDate(localTask.data_fim)}</div>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="text-sm text-gray-500">Estimativa</div>
+                          {!isEditing && (
+                            <div className="text-sm">{formatEstimativa(localTask.estimativa_horas)}</div>
+                          )}
+                        </div>
+
+                        {/* Campos criacao_acessos - coluna direita */}
+                        {isChamadosPage && task.origem === 'criacao_acessos' && !isEditing && (
+                          <>
+                            <div>
+                              <div className="text-sm text-gray-500">Sistemas solicitados</div>
+                              <div className="text-sm">{(task.sistemas_solicitados || '-').toUpperCase()}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Modelo TOTVS</div>
+                              <div className="text-sm">{task.modelo_TOTVS || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Observação</div>
+                              <div className="text-sm">{task.observacao || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Nome solicitante</div>
+                              <div className="text-sm">{task.nome_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Email solicitante</div>
+                              <div className="text-sm">{task.email_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Status</div>
+                              <div className="text-sm">{task.status || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Técnico responsável</div>
+                              <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Data conclusão</div>
+                              <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Campos chamados_atendimento - coluna direita */}
+                        {isChamadosPage && task.origem === 'chamados_atendimento' && !isEditing && (
+                          <>
+                            <div>
+                              <div className="text-sm text-gray-500">Nome do solicitante</div>
+                              <div className="text-sm">{task.nome_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Email do solicitante</div>
+                              <div className="text-sm">{task.email_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Seção</div>
+                              <div className="text-sm">{task.secao || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Nome chefia solicitante</div>
+                              <div className="text-sm">{task.nome_chefia_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Email chefia solicitante</div>
+                              <div className="text-sm">{task.email_chefia_solicitante || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Categoria</div>
+                              <div className="text-sm">{task.categoria || '-'}</div>
+                            </div>
+                            {task.subcategoria && (
+                              <div>
+                                <div className="text-sm text-gray-500">Subcategoria</div>
+                                <div className="text-sm">{task.subcategoria}</div>
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-sm text-gray-500">Prioridade</div>
+                              <div className="text-sm">{task.prioridade || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Descrição</div>
+                              <div className="text-sm">{task.descricao || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Data solicitação</div>
+                              <div className="text-sm">{formatDateTime(task.data_solicitacao)}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Status</div>
+                              <div className="text-sm">{task.status || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Técnico responsável</div>
+                              <div className="text-sm">{task.tecnico_responsavel || '-'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Data conclusão</div>
+                              <div className="text-sm">{formatDateTime(task.data_conclusao)}</div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Última Atualização/Data Solicitação e ID Release - Sempre no final */}
-                <div className="text-xs text-gray-400 text-center space-y-0.5 mt-auto pt-2 border-t">
-                  <div>
-                    ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
+                    {/* Responsáveis - Modo de Edição */}
+                    {isEditing && (
+                      <div>
+                        <div className="text-sm text-gray-500 mb-1">Responsáveis</div>
+                        <div className="space-y-1.5">
+                          <div className="relative">
+                            <Input
+                              value={responsavelInput}
+                              onChange={(e) => {
+                                setResponsavelInput(e.target.value);
+                                setShowResponsavelSuggestions(true);
+                              }}
+                              onFocus={() => setShowResponsavelSuggestions(true)}
+                              onBlur={() => {
+                                // Atraso para permitir que o clique na sugestão seja processado
+                                setTimeout(() => setShowResponsavelSuggestions(false), 200);
+                              }}
+                              placeholder="Digite o nome do responsável"
+                              className="h-8"
+                            />
+                            {showResponsavelSuggestions && (
+                              <div className="absolute z-10 w-full mt-0.5 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                                {responsaveis
+                                  .filter(r => {
+                                    const nameMatches = !responsavelInput || 
+                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                    const notAlreadySelected = !selectedResponsaveis.find(sr => sr.EMAIL === r.EMAIL);
+                                    return nameMatches && notAlreadySelected;
+                                  })
+                                  .map(responsavel => (
+                                    <div
+                                      key={responsavel.EMAIL}
+                                      className="px-4 py-1.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleResponsavelSelect(responsavel);
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <div className="font-medium">
+                                          {responsavel.NOME}
+                                        </div>
+                                        <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Lista de responsáveis selecionados */}
+                          <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-50 rounded-md">
+                            {selectedResponsaveis.map((responsavel) => (
+                              <div key={responsavel.EMAIL} className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border shadow-sm">
+                                <span className="text-sm font-medium">
+                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
+                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                            {selectedResponsaveis.length === 0 && (
+                              <div className="text-sm text-red-500 py-1 px-2">
+                                É necessário pelo menos um responsável
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Linha divisória - só aparece quando há comentários */}
+                    {comentarios.length > 0 && !isEditing && <Separator className="my-3" />}
+
+                    {/* Seção de Comentários - só mostra se não estiver no modo de edição */}
+                    {!isEditing && (
+                      <div className={cn(
+                        "space-y-2",
+                        comentarios.length === 0 ? "pt-12" : comentarios.length <= 2 ? "pt-6" : ""
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium">Comentários</h4>
+                        </div>
+
+                        {/* Lista de Comentários */}
+                        <div className="space-y-1.5 min-h-[40px] max-h-[250px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                          {comentarios.length > 0 ? (
+                            comentarios.map((comment) => (
+                              <div key={comment.id} className="bg-gray-50 p-2 rounded-lg space-y-1.5 w-full overflow-hidden">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarImage email={comment.usuario_email} />
+                                      <AvatarFallback>
+                                        {comment.usuario_email[0].toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">
+                                      {comment.usuario_nome || comment.usuario_email.split('@')[0]}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {session?.user?.email === comment.usuario_email && comentarioEditando !== comment.id && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => {
+                                          setComentarioEditando(comment.id);
+                                          setTextoEditando(comment.comentario);
+                                        }}
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                    <span className="text-xs text-gray-500">
+                                      {comment.data_edicao 
+                                        ? `Editado em ${formatDateTime(comment.data_edicao)}`
+                                        : formatDateTime(comment.data_criacao)
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                                {comentarioEditando === comment.id ? (
+                                  <div className="flex gap-2">
+                                    <div className="flex flex-col w-full">
+                                      <Textarea
+                                        value={textoEditando}
+                                        onChange={(e) => setTextoEditando(e.target.value)}
+                                        className="h-14 resize-none"
+                                        maxLength={MAX_COMMENT_LENGTH}
+                                      />
+                                      <div className="flex justify-end">
+                                        <span className={`text-xs ${textoEditando.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                          {textoEditando.length}/{MAX_COMMENT_LENGTH}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleEditComment(comment.id, textoEditando)}
+                                        disabled={textoEditando.length > MAX_COMMENT_LENGTH}
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => {
+                                          setComentarioEditando(null);
+                                          setTextoEditando("");
+                                        }}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="max-w-full overflow-hidden">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:break-word] [word-break:normal] [hyphens:auto] [text-wrap:pretty] overflow-hidden text-ellipsis">
+                                      {renderTextWithLinks(comment.comentario)}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="flex items-center justify-center text-sm text-gray-500">
+                              -
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Espaço adicional quando há poucos comentários */}
+                        {comentarios.length > 0 && comentarios.length <= 3 && (
+                          <div className="h-6"></div>
+                        )}
+
+                        {/* Campo de Novo Comentário */}
+                        <div className="flex gap-2">
+                          <div className="flex flex-col w-full">
+                            <Textarea
+                              value={comentario}
+                              onChange={(e) => setComentario(e.target.value)}
+                              placeholder="Escreva um comentário..."
+                              className="h-12 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                              maxLength={MAX_COMMENT_LENGTH}
+                            />
+                            <div className="flex justify-end">
+                              <span className={`text-xs ${comentario.length > MAX_COMMENT_LENGTH * 0.8 ? 'text-red-500' : 'text-gray-500'}`}>
+                                {comentario.length}/{MAX_COMMENT_LENGTH}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="self-end"
+                            disabled={!comentario.trim() || !session?.user?.email || comentario.length > MAX_COMMENT_LENGTH}
+                            onClick={handleSendComment}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {task.origem ? (
+
+                  {/* Última Atualização/Data Solicitação e ID Release - Sempre no final */}
+                  <div className="text-xs text-gray-400 text-center space-y-0.5 mt-auto pt-2 border-t">
                     <div>
-                      {task.data_solicitacao 
-                        ? `Data de solicitação: ${formatDateTimeWithTime(task.data_solicitacao)}`
-                        : '-'}
+                      ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
                     </div>
-                  ) : (
-                    <div>
-                      {task.ultima_atualizacao 
-                        ? `Última atualização: ${formatDateTimeWithTime(task.ultima_atualizacao)}`
-                        : '-'}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              {!isChamadosPage && (
-                <TabsContent value="anexos" className="space-y-3 py-3">
-                  <TaskAttachments 
-                    taskId={task.id} 
-                    canEdit={canEdit}
-                  />
+                    {task.origem ? (
+                      <div>
+                        {task.data_solicitacao 
+                          ? `Data de solicitação: ${formatDateTimeWithTime(task.data_solicitacao)}`
+                          : '-'}
+                      </div>
+                    ) : (
+                      <div>
+                        {task.ultima_atualizacao 
+                          ? `Última atualização: ${formatDateTimeWithTime(task.ultima_atualizacao)}`
+                          : '-'}
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
+                {!isChamadosPage && (
+                  <TabsContent value="anexos" className="space-y-3 py-3">
+                    <TaskAttachments 
+                      taskId={task.id} 
+                      canEdit={canEdit}
+                    />
+                  </TabsContent>
+                )}
+              </div>
+            </div>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de seleção de ID Release */}
+      <Dialog open={openReleaseModal} onOpenChange={setOpenReleaseModal}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Selecionar ID Release</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4 flex-1 overflow-hidden">
+            <div className="flex items-center border rounded-md mb-4">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por ID ou título..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-muted-foreground">
+                {filteredTasks.length > 0 ? `${filteredTasks.length} tarefas encontradas` : ''}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchAllTasks}
+                disabled={loadingTasks}
+              >
+                {loadingTasks ? 'Carregando...' : 'Recarregar'}
+              </Button>
+            </div>
+            
+            <div className="border rounded-md overflow-y-auto" style={{ maxHeight: 'calc(80vh - 250px)' }}>
+              {loadingTasks ? (
+                <div className="p-8 flex justify-center items-center">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <span className="ml-2">Carregando tarefas...</span>
+                </div>
+              ) : filteredTasks.length > 0 ? (
+                <div className="divide-y">
+                  {filteredTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                        idRelease === task.id.toString() ? 'bg-primary/10' : ''
+                      }`}
+                      onClick={() => selectTaskAsRelease(task)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">
+                          <span className="inline-block min-w-[30px] text-center bg-gray-100 rounded-md mr-2">
+                            {task.id}
+                          </span>
+                          {task.titulo || 'Sem título'}
+                        </div>
+                        {task.descricao && (
+                          <div className="text-sm text-gray-500 truncate max-w-[400px] pl-[40px]">
+                            {task.descricao}
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant={idRelease === task.id.toString() ? "default" : "ghost"} 
+                        size="sm"
+                        className="ml-2 shrink-0"
+                      >
+                        {idRelease === task.id.toString() ? "Selecionada" : "Selecionar"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 mb-4">
+                    {searchTerm ? 'Nenhuma tarefa encontrada para esta busca' : 'Nenhuma tarefa encontrada'}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={fetchAllTasks}
+                    disabled={loadingTasks}
+                  >
+                    Tentar novamente
+                  </Button>
+                </div>
               )}
             </div>
           </div>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenReleaseModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

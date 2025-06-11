@@ -8,7 +8,6 @@ import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Footer } from "./footer"
 import { useSession } from "next-auth/react"
-import { AuthButton } from "@/components/auth-button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useTaskStore } from "@/lib/store"
@@ -177,11 +176,6 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      {session && (
-        <div className="px-3 sm:px-4 py-2 flex justify-center">
-          <AuthButton showLogout={true} />
-        </div>
-      )}
       <Footer />
     </div>
   )
