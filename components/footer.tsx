@@ -5,7 +5,7 @@ export function Footer() {
     <div className="p-4 text-sm text-emerald-100/80">
       <div className="flex flex-col items-center gap-2 border-t border-emerald-700/50 pt-4">
         <Image 
-          src="/logo_epamig.svg" 
+          src="/logo_epamig_branca.svg" 
           alt="Logo EPAMIG" 
           width={200}
           height={80}
