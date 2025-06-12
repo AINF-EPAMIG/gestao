@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useTaskStore } from "@/lib/store"
+import { useUserSector } from "@/lib/user-sector-context"
 
 interface Setor {
   id: number;
@@ -18,11 +19,7 @@ interface Setor {
   nome: string;
 }
 
-// Helpers para nova API
-async function getUserInfo(email: string) {
-  const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
-  return res.json();
-}
+// Helper para verificar admin
 async function isUserAdmin() {
   // Adapte conforme sua lógica de admin, se necessário
   // Exemplo: checar se o email está em uma lista de admins
@@ -33,32 +30,28 @@ export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { data: session } = useSession()
-  const [userSetor, setUserSetor] = useState<string | undefined>(undefined)
+  const { userSector } = useUserSector()
   const [isAdmin, setIsAdmin] = useState<boolean | undefined>(undefined)
   const [setores, setSetores] = useState<Setor[]>([])
   const selectedSetor = useTaskStore((state) => state.selectedSetor)
   const setSelectedSetor = useTaskStore((state) => state.setSelectedSetor)
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
+    const checkAdmin = async () => {
       if (session?.user?.email) {
         // Verificar se é admin
         const admin = await isUserAdmin();
         setIsAdmin(admin);
 
-        if (!admin) {
-          // Se não for admin, buscar setor do usuário
-          const userInfo = await getUserInfo(session.user.email);
-          if (userInfo) {
-            setUserSetor(userInfo.secao);
-            setSelectedSetor(userInfo.secao); // Define o setor do usuário como selecionado
-          }
+        if (!admin && userSector) {
+          // Só definir o setor selecionado se o userSector não for nulo
+          setSelectedSetor(userSector);
         }
       }
     };
 
-    fetchUserInfo();
-  }, [session?.user?.email, setSelectedSetor]);
+    checkAdmin();
+  }, [session?.user?.email, userSector, setSelectedSetor]);
 
   useEffect(() => {
     // Buscar setores do banco apenas se for admin
@@ -151,9 +144,9 @@ export function Sidebar() {
               </DropdownMenu>
             </div>
           )}
-          {isAdmin === false && userSetor && (
+          {isAdmin === false && userSector && (
             <div className="mt-2 text-sm text-white/80">
-              Setor: {userSetor}
+              Setor: {userSector}
             </div>
           )}
         </div>
