@@ -6,6 +6,7 @@ import AuthRequired from "@/components/auth-required"
 import { Loader2 } from "lucide-react"
 import { useChamadosStore } from "@/lib/chamados-store"
 import { PollingWrapper } from "@/components/polling-wrapper"
+import AuthenticatedLayout from "../authenticated-layout"
 
 export default function ChamadosPage() {
   const { data: session } = useSession()
@@ -31,30 +32,32 @@ export default function ChamadosPage() {
 
   return (
     <AuthRequired>
-      <PollingWrapper>
-        <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Chamados</h1>
-          </div>
+      <AuthenticatedLayout>
+        <PollingWrapper>
+          <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Chamados</h1>
+            </div>
 
-          {isLoading && chamados.length === 0 ? (
-            <div className="flex items-center justify-center min-h-[500px] w-full">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : chamados.length === 0 ? (
-            <div className="flex items-center justify-center min-h-[500px] w-full">
-              <span className="text-gray-500 text-lg">Nenhum chamado encontrado</span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto md:overflow-x-hidden w-full">
-              <ChamadosBoard 
-                chamados={chamados} 
-                onChamadoMove={handleChamadoMove}
-              />
-            </div>
-          )}
-        </div>
-      </PollingWrapper>
+            {isLoading && chamados.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[500px] w-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : chamados.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[500px] w-full">
+                <span className="text-gray-500 text-lg">Nenhum chamado encontrado</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto md:overflow-x-hidden w-full">
+                <ChamadosBoard 
+                  chamados={chamados} 
+                  onChamadoMove={handleChamadoMove}
+                />
+              </div>
+            )}
+          </div>
+        </PollingWrapper>
+      </AuthenticatedLayout>
     </AuthRequired>
   )
 } 

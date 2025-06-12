@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { useState, useMemo, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Loader2 } from "lucide-react"
+import AuthenticatedLayout from "../authenticated-layout"
 
 type PeriodoFilter = "todos" | "hoje" | "esta_semana" | "este_mes" | "este_ano"
 
@@ -134,142 +135,144 @@ export default function KanbanPage() {
 
   return (
     <AuthRequired>
-      <PollingWrapper>
-        <div className="p-2 sm:p-3 lg:p-4 xl:p-6 2xl:p-8 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 xl:mb-4 2xl:mb-5">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Kanban</h1>
-            <div className="mt-2 lg:mt-0">
-              <CreateTaskModal />
+      <AuthenticatedLayout>
+        <PollingWrapper>
+          <div className="p-2 sm:p-3 lg:p-4 xl:p-6 2xl:p-8 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 xl:mb-4 2xl:mb-5">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Kanban</h1>
+              <div className="mt-2 lg:mt-0">
+                <CreateTaskModal />
+              </div>
             </div>
-          </div>
-          
-          <div className="flex flex-col lg:flex-row lg:items-center gap-2 mb-3 sm:mb-4 xl:mb-5 2xl:mb-6">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2 flex-wrap w-full">
-              <div className="lg:flex lg:items-end mb-1 lg:mb-0 lg:mr-1 lg:self-end hidden sm:block">
-                <span className="text-sm lg:text-base font-medium bg-gray-100 px-2 py-1 rounded-md">Filtros:</span>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">Responsável</label>
-                <Select 
-                  value={responsavelFilter || "todos"}
-                  onValueChange={(value) => setResponsavelFilter(value === "todos" ? null : value)}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger className="h-8">
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SelectValue placeholder="Todos" />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem key="todos" value="todos">Todos</SelectItem>
-                    {responsaveisSetor.map((resp) => (
-                      <SelectItem key={`resp-${resp.EMAIL}`} value={resp.EMAIL}>
-                        {resp.NOME}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">Projeto</label>
-                <Select 
-                  value={projetoFilter || "todos"}
-                  onValueChange={(value) => setProjetoFilter(value === "todos" ? null : value)}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {Array.from(new Set(tasks.map(task => task.projeto_id))).filter(id => id).map((projetoId) => {
-                      const projeto = tasks.find(t => t.projeto_id === projetoId);
-                      return (
-                        <SelectItem key={projetoId} value={projetoId.toString()}>
-                          {projeto?.projeto_nome || `Projeto ${projetoId}`}
+            
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2 mb-3 sm:mb-4 xl:mb-5 2xl:mb-6">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2 flex-wrap w-full">
+                <div className="lg:flex lg:items-end mb-1 lg:mb-0 lg:mr-1 lg:self-end hidden sm:block">
+                  <span className="text-sm lg:text-base font-medium bg-gray-100 px-2 py-1 rounded-md">Filtros:</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Responsável</label>
+                  <Select 
+                    value={responsavelFilter || "todos"}
+                    onValueChange={(value) => setResponsavelFilter(value === "todos" ? null : value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-8">
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <SelectValue placeholder="Todos" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[200px]">
+                      <SelectItem key="todos" value="todos">Todos</SelectItem>
+                      {responsaveisSetor.map((resp) => (
+                        <SelectItem key={`resp-${resp.EMAIL}`} value={resp.EMAIL}>
+                          {resp.NOME}
                         </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">Status</label>
-                <Select 
-                  value={statusFilter || "todos"}
-                  onValueChange={(value) => setStatusFilter(value === "todos" ? null : value)}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="1">Não iniciada</SelectItem>
-                    <SelectItem value="2">Em desenvolvimento</SelectItem>
-                    <SelectItem value="3">Em testes</SelectItem>
-                    <SelectItem value="4">Concluída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Projeto</label>
+                  <Select 
+                    value={projetoFilter || "todos"}
+                    onValueChange={(value) => setProjetoFilter(value === "todos" ? null : value)}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[200px]">
+                      <SelectItem value="todos">Todos</SelectItem>
+                      {Array.from(new Set(tasks.map(task => task.projeto_id))).filter(id => id).map((projetoId) => {
+                        const projeto = tasks.find(t => t.projeto_id === projetoId);
+                        return (
+                          <SelectItem key={projetoId} value={projetoId.toString()}>
+                            {projeto?.projeto_nome || `Projeto ${projetoId}`}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">Prioridade</label>
-                <Select 
-                  value={prioridadeFilter || "todas"}
-                  onValueChange={(value) => setPrioridadeFilter(value === "todas" ? null : value)}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todas">Todos</SelectItem>
-                    <SelectItem value="1">Alta</SelectItem>
-                    <SelectItem value="2">Média</SelectItem>
-                    <SelectItem value="3">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Status</label>
+                  <Select 
+                    value={statusFilter || "todos"}
+                    onValueChange={(value) => setStatusFilter(value === "todos" ? null : value)}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[200px]">
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="1">Não iniciada</SelectItem>
+                      <SelectItem value="2">Em desenvolvimento</SelectItem>
+                      <SelectItem value="3">Em testes</SelectItem>
+                      <SelectItem value="4">Concluída</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">Período</label>
-                <Select 
-                  value={periodoFilter}
-                  onValueChange={(value: PeriodoFilter) => setPeriodoFilter(value)}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent className="overflow-y-auto max-h-[200px]">
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="hoje">Hoje</SelectItem>
-                    <SelectItem value="esta_semana">Esta Semana</SelectItem>
-                    <SelectItem value="este_mes">Este Mês</SelectItem>
-                    <SelectItem value="este_ano">Este Ano</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Prioridade</label>
+                  <Select 
+                    value={prioridadeFilter || "todas"}
+                    onValueChange={(value) => setPrioridadeFilter(value === "todas" ? null : value)}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[200px]">
+                      <SelectItem value="todas">Todos</SelectItem>
+                      <SelectItem value="1">Alta</SelectItem>
+                      <SelectItem value="2">Média</SelectItem>
+                      <SelectItem value="3">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Período</label>
+                  <Select 
+                    value={periodoFilter}
+                    onValueChange={(value: PeriodoFilter) => setPeriodoFilter(value)}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[200px]">
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="hoje">Hoje</SelectItem>
+                      <SelectItem value="esta_semana">Esta Semana</SelectItem>
+                      <SelectItem value="este_mes">Este Mês</SelectItem>
+                      <SelectItem value="este_ano">Este Ano</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center min-h-[500px] w-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredTasks.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[500px] w-full">
+                <span className="text-gray-500 text-lg">Nenhuma tarefa encontrada</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto md:overflow-x-hidden w-full">
+                <KanbanBoard tasks={filteredTasks} />
+              </div>
+            )}
           </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center min-h-[500px] w-full">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : filteredTasks.length === 0 ? (
-            <div className="flex items-center justify-center min-h-[500px] w-full">
-              <span className="text-gray-500 text-lg">Nenhuma tarefa encontrada</span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto md:overflow-x-hidden w-full">
-              <KanbanBoard tasks={filteredTasks} />
-            </div>
-          )}
-        </div>
-      </PollingWrapper>
+        </PollingWrapper>
+      </AuthenticatedLayout>
     </AuthRequired>
   )
 }

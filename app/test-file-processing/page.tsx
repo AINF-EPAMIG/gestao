@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import AuthRequired from "@/components/auth-required"
 import { needsProcessing, processLargeFile, MAX_UPLOAD_SIZE, MAX_COMPRESSED_SIZE } from "@/lib/file-utils"
 import { AlertTriangle } from "lucide-react"
+import AuthenticatedLayout from "../authenticated-layout"
 
 // Definindo uma interface para o resultado
 interface ProcessingResult {
@@ -167,108 +169,114 @@ export default function TestFileProcessingPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Teste de Processamento de Arquivos</h1>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-        <h2 className="text-xl font-semibold mb-4">Configurações</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="p-4 border rounded-md">
-            <p className="font-medium">Tamanho máximo para upload direto:</p>
-            <p className="text-lg">{formatFileSize(MAX_UPLOAD_SIZE)}</p>
-          </div>
-          <div className="p-4 border rounded-md">
-            <p className="font-medium">Tamanho máximo para arquivos compactados:</p>
-            <p className="text-lg">{formatFileSize(MAX_COMPRESSED_SIZE)}</p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-        <h2 className="text-xl font-semibold mb-4">Selecionar Arquivo</h2>
-        
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-4">
-            <div className="flex-1">
-              <input 
-                type="file" 
-                onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
-                className="block w-full text-sm text-gray-500
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-md file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-blue-50 file:text-blue-700
-                  hover:file:bg-blue-100"
-              />
+    <AuthRequired>
+      <AuthenticatedLayout>
+        <div className="p-4 pt-6 sm:p-6">
+          <div className="container mx-auto py-8">
+            <h1 className="text-2xl font-bold mb-6">Teste de Processamento de Arquivos</h1>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <h2 className="text-xl font-semibold mb-4">Configurações</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="p-4 border rounded-md">
+                  <p className="font-medium">Tamanho máximo para upload direto:</p>
+                  <p className="text-lg">{formatFileSize(MAX_UPLOAD_SIZE)}</p>
+                </div>
+                <div className="p-4 border rounded-md">
+                  <p className="font-medium">Tamanho máximo para arquivos compactados:</p>
+                  <p className="text-lg">{formatFileSize(MAX_COMPRESSED_SIZE)}</p>
+                </div>
+              </div>
             </div>
             
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleProcessFile} 
-                disabled={selectedFiles.length === 0 || processing}
-                className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap h-[42px]"
-              >
-                {processing ? "Processando..." : "Processar Arquivo"}
-              </Button>
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <h2 className="text-xl font-semibold mb-4">Selecionar Arquivo</h2>
               
-              <Button 
-                onClick={handleTestUpload} 
-                disabled={selectedFiles.length === 0 || processing}
-                variant="outline"
-                className="whitespace-nowrap h-[42px]"
-              >
-                Testar Upload
-              </Button>
-            </div>
-          </div>
-          
-          {error && (
-            <div className="p-4 bg-red-50 rounded-md border border-red-200">
-              <p className="text-sm text-red-600 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span>{error}</span>
-              </p>
-            </div>
-          )}
-        </div>
-        
-        {selectedFiles.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-md">
-            <p className="font-medium">Arquivo selecionado:</p>
-            <p>{selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})</p>
-            <p className="text-sm text-gray-500">Tipo: {selectedFiles[0].type || "Desconhecido"}</p>
-            <p className="text-sm text-gray-500">
-              Status: {selectedFiles[0].size > MAX_UPLOAD_SIZE ? 
-                "Precisa ser compactado" : 
-                "Não precisa ser processado"}
-            </p>
-          </div>
-        )}
-      </div>
-      
-      {processedFiles.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <h2 className="text-xl font-semibold mb-4">Arquivos Processados</h2>
-          <div className="space-y-2">
-            {processedFiles.map((file, index) => (
-              <div key={index} className="p-3 border rounded-md">
-                <p className="font-medium">{file.name}</p>
-                <p className="text-sm text-gray-500">Tamanho: {formatFileSize(file.size)}</p>
-                <p className="text-sm text-gray-500">Tipo: {file.type || "Desconhecido"}</p>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <input 
+                      type="file" 
+                      onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-blue-50 file:text-blue-700
+                        hover:file:bg-blue-100"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleProcessFile} 
+                      disabled={selectedFiles.length === 0 || processing}
+                      className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap h-[42px]"
+                    >
+                      {processing ? "Processando..." : "Processar Arquivo"}
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleTestUpload} 
+                      disabled={selectedFiles.length === 0 || processing}
+                      variant="outline"
+                      className="whitespace-nowrap h-[42px]"
+                    >
+                      Testar Upload
+                    </Button>
+                  </div>
+                </div>
+                
+                {error && (
+                  <div className="p-4 bg-red-50 rounded-md border border-red-200">
+                    <p className="text-sm text-red-600 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>{error}</span>
+                    </p>
+                  </div>
+                )}
               </div>
-            ))}
+              
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                  <p className="font-medium">Arquivo selecionado:</p>
+                  <p>{selectedFiles[0].name} ({formatFileSize(selectedFiles[0].size)})</p>
+                  <p className="text-sm text-gray-500">Tipo: {selectedFiles[0].type || "Desconhecido"}</p>
+                  <p className="text-sm text-gray-500">
+                    Status: {selectedFiles[0].size > MAX_UPLOAD_SIZE ? 
+                      "Precisa ser compactado" : 
+                      "Não precisa ser processado"}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {processedFiles.length > 0 && (
+              <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 className="text-xl font-semibold mb-4">Arquivos Processados</h2>
+                <div className="space-y-2">
+                  {processedFiles.map((file, index) => (
+                    <div key={index} className="p-3 border rounded-md">
+                      <p className="font-medium">{file.name}</p>
+                      <p className="text-sm text-gray-500">Tamanho: {formatFileSize(file.size)}</p>
+                      <p className="text-sm text-gray-500">Tipo: {file.type || "Desconhecido"}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {result && (
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4">Resultado</h2>
+                <pre className="bg-gray-50 p-4 rounded-md overflow-x-auto">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
-      )}
-      
-      {result && (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Resultado</h2>
-          <pre className="bg-gray-50 p-4 rounded-md overflow-x-auto">
-            {JSON.stringify(result, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
+      </AuthenticatedLayout>
+    </AuthRequired>
   )
 } 

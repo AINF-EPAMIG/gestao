@@ -3,7 +3,6 @@ import { GeistSans } from "geist/font/sans"
 import "./globals.css"
 import type React from "react"
 import { Providers } from "@/components/providers"
-import { SectorCheck } from "@/components/sector-check"
 
 export const metadata: Metadata = {
   title: "Painel Gestão",
@@ -19,9 +18,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={GeistSans.className}>
         <Providers>
-          <SectorCheck>
-            {children}
-          </SectorCheck>
+          {children}
         </Providers>
       </body>
     </html>
