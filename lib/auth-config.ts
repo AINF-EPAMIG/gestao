@@ -4,7 +4,7 @@
 
 // Lista de emails que devem ter privilégios de chefia independente do cargo/hierarquia formal
 export const EXCEPTION_EMAILS_CHEFIA: string[] = [
-  // "arthur.souza@epamig.br",
+  // "exemplo@epamig.br",
 ];
 
 /**
