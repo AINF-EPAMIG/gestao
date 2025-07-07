@@ -67,17 +67,14 @@ async function isUserChefe(email: string) {
     return true;
   }
   
-  // Verificação tradicional por chefia/cargo
+  // Verificação tradicional por cargo
   const userInfo = await getUserInfo(email);
   if (!userInfo) return false;
   
-  // Verificar se tem chefia definida (campo chefia não vazio)
-  const hasChefia = typeof userInfo.chefia === 'string' && userInfo.chefia.trim() !== '';
-  
-  // Verificar se cargo contém "CHEFE" (para compatibilidade com outras funções)
+  // Verificar se cargo contém "CHEFE"
   const isChefeCargo = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
   
-  return hasChefia || isChefeCargo;
+  return isChefeCargo;
 }
 
 export async function GET(request: NextRequest) {

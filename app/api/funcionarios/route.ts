@@ -48,13 +48,10 @@ function isUserChefe(user: Funcionario | null): boolean {
     return true;
   }
   
-  // Verificar se tem chefia definida (campo chefia não vazio)
-  const hasChefia = typeof user.chefia === 'string' && user.chefia.trim() !== '';
-  
   // Verificar se cargo contém "CHEFE"
   const isChefeCargo = typeof user.cargo === 'string' && user.cargo.toUpperCase().includes('CHEFE');
   
-  return hasChefia || isChefeCargo;
+  return isChefeCargo;
 }
 
 function isUserEstagiario(user: Funcionario | null): boolean {

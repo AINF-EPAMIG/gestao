@@ -29,13 +29,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ isChefe: false });
     }
     
-    // Verificar se tem chefia definida (campo chefia não vazio)
-    const hasChefia = typeof userInfo.chefia === 'string' && userInfo.chefia.trim() !== '';
-    
-    // Verificar se cargo contém "CHEFE" (para compatibilidade)
-    const isChefeCargo = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
-    
-    const isChefe = hasChefia || isChefeCargo;
+    // Verificar se cargo contém "CHEFE"
+    const isChefe = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
 
     return NextResponse.json({ isChefe });
   } catch (error) {
