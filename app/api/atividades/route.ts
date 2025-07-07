@@ -2,6 +2,7 @@ import { executeQuery, executeQueryFuncionarios } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, createTaskAssignmentEmail, createTaskNewResponsibleEmail } from '@/lib/email-service';
 import { Funcionario } from '@/lib/types';
+import { isExceptionEmailChefia } from '@/lib/auth-config';
 
 interface Atividade {
   id: number;
@@ -58,6 +59,25 @@ async function isUserAdmin() {
   // Adapte conforme sua lógica de admin, se necessário
   // Exemplo: checar se o email está em uma lista de admins
   return false;
+}
+
+async function isUserChefe(email: string) {
+  // Verificar se é email de exceção primeiro
+  if (isExceptionEmailChefia(email)) {
+    return true;
+  }
+  
+  // Verificação tradicional por chefia/cargo
+  const userInfo = await getUserInfo(email);
+  if (!userInfo) return false;
+  
+  // Verificar se tem chefia definida (campo chefia não vazio)
+  const hasChefia = typeof userInfo.chefia === 'string' && userInfo.chefia.trim() !== '';
+  
+  // Verificar se cargo contém "CHEFE" (para compatibilidade com outras funções)
+  const isChefeCargo = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
+  
+  return hasChefia || isChefeCargo;
 }
 
 export async function GET(request: NextRequest) {
@@ -304,7 +324,7 @@ export async function PUT(request: NextRequest) {
       let canEdit = false;
 
       if (!isAdmin) {
-        const isChefe = await isUserAdmin();
+        const isChefe = await isUserChefe(userEmail);
 
         // Verificar se é responsável pela tarefa
         const taskResponsaveis = await executeQuery({

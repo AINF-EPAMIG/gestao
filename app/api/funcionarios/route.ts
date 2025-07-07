@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQueryFuncionarios } from '@/lib/db';
 import { Funcionario } from '@/lib/types';
+import { isExceptionEmailChefia } from '@/lib/auth-config';
 
 // Busca informações do usuário pelo e-mail
 async function getUserInfo(email: string) {
@@ -40,7 +41,20 @@ async function getResponsaveisBySetor(secao: string) {
 
 // Utilitários equivalentes ao rm-service
 function isUserChefe(user: Funcionario | null): boolean {
-  return !!user && typeof user.cargo === 'string' && user.cargo.toUpperCase().includes('CHEFE');
+  if (!user) return false;
+  
+  // Verificar se é email de exceção primeiro
+  if (isExceptionEmailChefia(user.email)) {
+    return true;
+  }
+  
+  // Verificar se tem chefia definida (campo chefia não vazio)
+  const hasChefia = typeof user.chefia === 'string' && user.chefia.trim() !== '';
+  
+  // Verificar se cargo contém "CHEFE"
+  const isChefeCargo = typeof user.cargo === 'string' && user.cargo.toUpperCase().includes('CHEFE');
+  
+  return hasChefia || isChefeCargo;
 }
 
 function isUserEstagiario(user: Funcionario | null): boolean {
