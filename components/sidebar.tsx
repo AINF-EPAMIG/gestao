@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown, Ticket } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown, Ticket, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Footer } from "./footer"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useTaskStore } from "@/lib/store"
@@ -102,54 +102,64 @@ export function Sidebar() {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
-        <div className="px-3 sm:px-4 mb-4 sm:mb-6">
+        <div className="px-3 sm:px-4 mb-4 sm:mb-6 flex justify-between items-center">
           <h1 className="text-lg sm:text-xl font-semibold">Painel Gestão</h1>
-          {isAdmin === true && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm text-white/80">Setor:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="flex-1 h-8 text-white hover:bg-emerald-700/50 justify-between"
-                  >
-                    {selectedSetor || "Todos os Setores"}
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="start" 
-                  className="w-56 bg-white max-h-[250px] overflow-y-auto"
-                  style={{ 
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#10b981 transparent'
-                  }}
-                >
-                  <DropdownMenuItem 
-                    onClick={() => handleSetorSelect(null)}
-                    className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
-                  >
-                    Todos os Setores
-                  </DropdownMenuItem>
-                  {setores.map((setor) => (
-                    <DropdownMenuItem 
-                      key={setor.id}
-                      onClick={() => handleSetorSelect(setor.sigla)}
-                      className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
-                    >
-                      {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
-          {isAdmin === false && userSector && (
-            <div className="mt-2 text-sm text-white/80">
-              Setor: {userSector}
-            </div>
+          {/* Botão de Logout */}
+          {session && (
+            <button
+              onClick={() => signOut()}
+              className="flex items-center justify-center w-6 h-6 text-white/50 hover:text-white/80 transition-colors rounded-full"
+              title="Sair"
+            >
+              <LogOut size={14} className="shrink-0" />
+            </button>
           )}
         </div>
+        {isAdmin === true && (
+          <div className="px-3 sm:px-4 mt-2 flex items-center gap-2">
+            <span className="text-sm text-white/80">Setor:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="flex-1 h-8 text-white hover:bg-emerald-700/50 justify-between"
+                >
+                  {selectedSetor || "Todos os Setores"}
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                align="start" 
+                className="w-56 bg-white max-h-[250px] overflow-y-auto"
+                style={{ 
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#10b981 transparent'
+                }}
+              >
+                <DropdownMenuItem 
+                  onClick={() => handleSetorSelect(null)}
+                  className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                >
+                  Todos os Setores
+                </DropdownMenuItem>
+                {setores.map((setor) => (
+                  <DropdownMenuItem 
+                    key={setor.id}
+                    onClick={() => handleSetorSelect(setor.sigla)}
+                    className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                  >
+                    {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        {isAdmin === false && userSector && (
+          <div className="px-3 sm:px-4 mt-2 text-sm text-white/80">
+            Setor: {userSector}
+          </div>
+        )}
         <nav className="mt-1 sm:mt-2">
           {navigation.map((item) => (
             <Link
@@ -169,6 +179,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
+      
       <Footer />
     </div>
   )
