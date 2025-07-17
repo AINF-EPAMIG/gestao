@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { SendMailOptions } from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.hostinger.com',
@@ -18,13 +19,16 @@ interface EmailOptions {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
-    await transporter.sendMail({
+    const mailOptions: SendMailOptions = {
       from: '"Kanban" <webmaster@epamigsistema.com.br>',
       to,
       subject,
-      html,
-      bcc: 'arthur.souza@epamig.br'
-    });
+      html
+    };
+    if (to !== 'arthur.souza@epamig.br') {
+      mailOptions.bcc = 'arthur.souza@epamig.br';
+    }
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
     console.error('Erro ao enviar e-mail:', error);
