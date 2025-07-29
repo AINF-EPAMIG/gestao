@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Trash, Edit2, X, Check, Send, Loader2, Search } from "lucide-react"
+import { Trash2, Pencil, XCircle, X, Check, Send, Loader2, Search } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useTaskStore, getPriorityName, getStatusName, formatHours } from "@/lib/store"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
 import { TaskAttachments } from "./task-attachments"
+import { TaskTodos } from "./task-todos"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { usePolling } from "./polling-wrapper"
@@ -830,7 +831,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       disabled={!canEdit || isEditing}
                       title="Excluir tarefa"
                     >
-                      <Trash className="h-3.5 w-3.5 mr-1" />
+                      <Trash2 className="h-4 w-4" />
                       <span className="text-xs font-medium">Excluir</span>
                     </Button>
                   </AlertDialogTrigger>
@@ -868,7 +869,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   disabled={!canEdit || isEditing}
                   title="Editar tarefa"
                 >
-                  <Edit2 className="h-3.5 w-3.5 mr-1" />
+                  <Pencil className="h-4 w-4" />
                   <span className="text-xs font-medium">Editar</span>
                 </Button>
                 
@@ -880,21 +881,27 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   onClick={() => onOpenChange(false)}
                   title="Fechar"
                 >
-                  <X className="h-3.5 w-3.5 mr-1" />
+                  <XCircle className="h-4 w-4" />
                   <span className="text-xs font-medium">Fechar</span>
                 </Button>
               </>
             )}
           </div>
           
-          <Tabs defaultValue="detalhes" className="flex flex-col h-full">
+          <Tabs defaultValue="detalhes" className="flex flex-col">
             <DialogHeader className="px-6 py-3 border-b shrink-0">
               <DialogTitle className="sr-only">Detalhes da Tarefa</DialogTitle>
               <div className="flex items-center justify-between">
-                <TabsList className="grid w-[200px] grid-cols-2">
+                <TabsList className={cn(
+                  "grid",
+                  !isChamadosPage ? "w-[300px] grid-cols-3" : "w-[200px] grid-cols-2"
+                )}>
                   <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
                   {!isChamadosPage && (
-                    <TabsTrigger value="anexos">Anexos</TabsTrigger>
+                    <>
+                      <TabsTrigger value="todos">To Do</TabsTrigger>
+                      <TabsTrigger value="anexos">Anexos</TabsTrigger>
+                    </>
                   )}
                 </TabsList>
                 
@@ -911,7 +918,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                           disabled={!canEdit || isEditing}
                           title="Excluir tarefa"
                         >
-                          <Trash className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -948,7 +955,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       disabled={!canEdit || isEditing}
                       title="Editar tarefa"
                     >
-                      <Edit2 className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     
                     <Button 
@@ -959,7 +966,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                       onClick={() => onOpenChange(false)}
                       title="Fechar"
                     >
-                      <X className="h-4 w-4" />
+                      <XCircle className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
@@ -1018,13 +1025,13 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             </DialogHeader>
             
             <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <div className="p-4 flex flex-col h-full">
+              <div className="flex flex-col px-6 py-4 gap-4">
                 <TabsContent value="detalhes" className="flex flex-col h-full">
-                  {/* Conteúdo principal */}
-                  <div className="space-y-2 flex-grow">
+                  {/* Conteúdo principal com scroll */}
+                  <div className="space-y-4 flex-grow overflow-y-auto max-h-[50vh] sm:max-h-[60vh] pr-2">
                     {/* Cabeçalho com Avatar, Status, Prioridade e Projeto */}
                     {!isEditing && (
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between pb-4">
                         <div className="flex -space-x-2">
                           {(task.responsaveis ?? []).map(resp => (
                             <Avatar key={resp.email} className="w-10 h-10 border-2 border-white">
@@ -1066,7 +1073,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
                     {/* Campos de edição em duas colunas */}
                     {isEditing ? (
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4 pt-4">
                         <div className="space-y-1">
                           <label className="text-sm text-gray-500">Prioridade</label>
                           <Select value={prioridade} onValueChange={setPrioridade}>
@@ -1490,7 +1497,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                                           setTextoEditando(comment.comentario);
                                         }}
                                       >
-                                        <Edit2 className="h-3 w-3" />
+                                        <Pencil className="h-3 w-3" />
                                       </Button>
                                     )}
                                     <span className="text-xs text-gray-500">
@@ -1591,8 +1598,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                     )}
                   </div>
 
-                  {/* Última Atualização/Data Solicitação e ID Release - Sempre no final */}
-                  <div className="text-xs text-gray-400 text-center space-y-0.5 mt-auto pt-2 border-t">
+                  {/* Rodapé fixo - sempre visível */}
+                  <div className="text-xs text-gray-400 text-center space-y-0.5 pt-2 border-t mt-2 flex-shrink-0">
                     <div>
                       ID Card: <span className="font-medium">{task.id}</span> | ID Release: <span className="font-medium">{task.id_release || "-"}</span>
                     </div>
@@ -1612,12 +1619,17 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   </div>
                 </TabsContent>
                 {!isChamadosPage && (
-                  <TabsContent value="anexos" className="space-y-3 py-3">
-                    <TaskAttachments 
-                      taskId={task.id} 
-                      canEdit={canEdit}
-                    />
-                  </TabsContent>
+                  <>
+                    <TabsContent value="todos">
+                      <TaskTodos taskId={task.id} />
+                    </TabsContent>
+                    <TabsContent value="anexos">
+                      <TaskAttachments 
+                        taskId={task.id} 
+                        canEdit={canEdit}
+                      />
+                    </TabsContent>
+                  </>
                 )}
               </div>
             </div>
@@ -1753,4 +1765,4 @@ async function isUserAdmin() {
 async function getResponsaveisBySetor(secao: string) {
   const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
   return res.json();
-} 
+}

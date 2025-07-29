@@ -264,7 +264,7 @@ export function TaskAttachments({ taskId, canEdit = false }: TaskAttachmentsProp
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-[400px] text-center border-2 border-dashed rounded-lg p-6">
+          <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-6 min-h-[120px]">
             <FileIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium">Nenhum anexo encontrado</p>
             {canEdit && (
