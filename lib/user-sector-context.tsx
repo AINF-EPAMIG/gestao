@@ -38,7 +38,7 @@ export function UserSectorProvider({ children }: { children: ReactNode }) {
           const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(session.user.email)}`)
           if (res.ok) {
             const userInfo = await res.json()
-            const sector = userInfo?.secao || null
+            const sector = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao || null
             const authorized = sector === "ASTI"
             
             // Armazena no state

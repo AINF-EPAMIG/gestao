@@ -69,8 +69,8 @@ export default function KanbanPage() {
             setResponsavelFilter(session.user.email); // Usuário comum vê só suas tarefas
           }
 
-          // Busca responsáveis do setor (usando o campo secao do banco)
-          const secaoParaBuscar = selectedSetor || userInfo?.secao;
+          // Busca responsáveis do setor (usando os novos campos da view)
+          const secaoParaBuscar = selectedSetor || userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
           if (secaoParaBuscar) {
             const responsaveis = await getResponsaveisBySetor(secaoParaBuscar);
             setResponsaveisSetor(responsaveis);

@@ -81,8 +81,9 @@ export default function PlanilhaPage() {
       if (session?.user?.email) {
         try {
           const userInfo = await getUserInfo(session.user.email)
-          if (userInfo?.secao) {
-            const responsaveisData = await getResponsaveisBySetor(userInfo.secao)
+          const secaoParaBuscar = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+          if (secaoParaBuscar) {
+            const responsaveisData = await getResponsaveisBySetor(secaoParaBuscar)
             setResponsaveis(responsaveisData)
           }
         } catch (error) {

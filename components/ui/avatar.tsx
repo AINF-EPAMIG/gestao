@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import { useEffect, useState } from "react"
 
-import { cn, getUserIcon } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -20,42 +21,41 @@ const Avatar = React.forwardRef<
 ))
 Avatar.displayName = AvatarPrimitive.Root.displayName
 
-interface AvatarImageProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> {
-  email?: string;
-}
-
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
-  AvatarImageProps
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> & { email?: string }
 >(({ className, email, ...props }, ref) => {
-  const [avatarUrl, setAvatarUrl] = React.useState<string | undefined>(props.src);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
-  React.useEffect(() => {
-    async function fetchAvatar() {
-      if (!email) return;
-      
+  useEffect(() => {
+    if (!email) {
+      setAvatarUrl(null)
+      return
+    }
+
+    const fetchAvatar = async () => {
       try {
-        console.log(`AvatarImage: Buscando avatar para o email ${email}`);
-        const url = await getUserIcon(email);
-        console.log(`AvatarImage: URL obtida para ${email}:`, url);
-        if (url) {
-          setAvatarUrl(url);
+        const response = await fetch(`/api/responsaveis/avatar?email=${encodeURIComponent(email)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvatarUrl(data.image_url)
         } else {
-          console.warn(`AvatarImage: Nenhuma URL retornada para ${email}`);
+          setAvatarUrl(null)
         }
-      } catch (err) {
-        console.error(`AvatarImage: Erro ao buscar avatar para ${email}:`, err);
+      } catch (error) {
+        console.error('Erro ao buscar avatar:', error)
+        setAvatarUrl(null)
       }
     }
-    
-    fetchAvatar();
-  }, [email]);
+
+    fetchAvatar()
+  }, [email])
 
   return (
     <AvatarPrimitive.Image
       ref={ref}
-      src={avatarUrl}
       className={cn("aspect-square h-full w-full", className)}
+      src={avatarUrl || undefined}
       {...props}
     />
   )

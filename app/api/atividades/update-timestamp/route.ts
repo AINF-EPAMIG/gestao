@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function PUT(request: NextRequest) {
   try {
     const { taskId } = await request.json();
-
-    console.log('🔵 Atualizando timestamp da tarefa...');
     
     // Atualiza a data de última atualização da tarefa com ajuste de -3h
     await executeQuery({
@@ -16,8 +14,6 @@ export async function PUT(request: NextRequest) {
       `,
       values: [taskId],
     });
-    
-    console.log('✅ Timestamp atualizado com sucesso');
     
     return NextResponse.json({ success: true });
   } catch (error) {

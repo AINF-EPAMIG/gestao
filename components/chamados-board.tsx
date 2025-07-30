@@ -124,7 +124,6 @@ const ChamadoCard = memo(function ChamadoCard({
   const testAvatar = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (chamado.tecnico_responsavel) {
-      console.log('Testando avatar para técnico:', chamado.tecnico_responsavel);
       import('@/lib/utils').then(utils => {
         utils.testGetUserIcon(chamado.tecnico_responsavel!);
       });

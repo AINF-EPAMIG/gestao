@@ -6,6 +6,7 @@ import { Upload, X, FileUp, Loader2, FileArchive, AlertTriangle } from "lucide-r
 import { useTaskStore } from "@/lib/store"
 import { needsProcessing, processLargeFile } from "@/lib/file-utils"
 import { cn } from "@/lib/utils"
+// Remover: import { toast } from "react-toastify"
 
 interface FileUploadProps {
   taskId?: number
@@ -202,25 +203,15 @@ export function FileUpload({
     if (localFiles.length === 0 || !taskId) return
 
     setUploading(true)
-    console.log("[FileUpload] Iniciando upload de arquivos", {
-      numberOfFiles: localFiles.length,
-      taskId
-    })
 
     const formData = new FormData()
     formData.append("taskId", taskId.toString())
     
     localFiles.forEach(file => {
-      console.log("[FileUpload] Adicionando arquivo ao FormData:", {
-        name: file.name,
-        type: file.type,
-        size: file.size
-      })
       formData.append("files", file)
     })
 
     try {
-      console.log("[FileUpload] Enviando requisição para o servidor")
       const response = await fetch("/api/anexos/upload", {
         method: "POST",
         body: formData
@@ -238,8 +229,6 @@ export function FileUpload({
         throw new Error(responseData.error || "Erro ao fazer upload dos arquivos")
       }
 
-      console.log("[FileUpload] Upload concluído com sucesso:", responseData)
-
       setLocalFiles([])
       setProcessingStatus(null)
       
@@ -255,15 +244,8 @@ export function FileUpload({
         onUploadComplete()
       }
     } catch (error) {
-      console.error("[FileUpload] Erro durante o upload:", {
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        } : error,
-        type: typeof error
-      })
-      alert(error instanceof Error ? error.message : "Erro ao fazer upload dos arquivos")
+      console.error("[FileUpload] Erro durante upload:", error)
+      alert("Erro ao fazer upload dos arquivos")
     } finally {
       setUploading(false)
     }

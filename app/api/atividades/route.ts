@@ -49,7 +49,7 @@ interface QueryResult {
 // Helpers para nova API
 async function getUserInfo(email: string) {
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT * FROM funcionarios WHERE email = ? LIMIT 1',
+    query: 'SELECT * FROM vw_colaboradores_completos WHERE email = ? LIMIT 1',
     values: [email],
   });
   return result[0] || null;
@@ -165,7 +165,8 @@ export async function GET(request: NextRequest) {
     if (!isAdmin) {
       const userInfo = await getUserInfo(userEmail);
       
-      if (!userInfo?.secao) {
+      const setorUsuario = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+      if (!setorUsuario) {
         return NextResponse.json(
           { error: 'Setor do usuário não encontrado' },
           { status: 404 }
@@ -173,7 +174,7 @@ export async function GET(request: NextRequest) {
       }
 
       whereClause = 'WHERE s.sigla = ?';
-      queryValues = [userInfo.secao];
+      queryValues = [setorUsuario];
     } else if (setorSigla) {
       // Se for admin e um setor foi especificado
       whereClause = 'WHERE s.sigla = ?';
@@ -573,7 +574,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let setorSigla = userInfo.secao;
+    let setorSigla = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
 
     // Se for admin e especificou um setor diferente, usar o setor especificado
     const isAdmin = await isUserAdmin();

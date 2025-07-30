@@ -225,7 +225,8 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
             }
 
             // Buscar responsáveis do setor
-            const responsaveisData = await getResponsaveisBySetor(userInfo?.secao);
+            const setorParaBuscar = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+            const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
             if (responsaveisData) {
               // Usar todos os responsáveis sem filtrar
               setResponsaveis(responsaveisData);
@@ -312,8 +313,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       if (session?.user?.email) {
         try {
           const userInfo = await getUserInfo(session.user.email);
-          if (userInfo?.SECAO) {
-            const responsaveisData = await getResponsaveisBySetor(userInfo.SECAO);
+          const setorParaBuscar = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao || userInfo?.SECAO;
+          if (setorParaBuscar) {
+            const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
             if (responsaveisData) {
               // Usar todos os responsáveis sem filtrar
               setResponsaveis(responsaveisData);
@@ -334,11 +336,9 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   useEffect(() => {
     const fetchComentarios = async () => {
       try {
-        console.log(`Fetching comments for task ID: ${task.id}`);
         const response = await fetch(`/api/comentarios?atividade_id=${task.id}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('Comments retrieved:', data);
           setComentarios(data);
         } else {
           console.error('Failed to fetch comments:', await response.text());
@@ -388,7 +388,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const fetchAllTasks = useCallback(async () => {
     try {
       setLoadingTasks(true)
-      console.log('Buscando todas as tarefas do banco de dados...')
       
       // Buscar todas as tarefas sem filtros
       const response = await fetch('/api/atividades?all=true', {
@@ -401,8 +400,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Resposta da API:', data)
-        console.log('Tarefas encontradas:', data.length)
         
         // Garantir que temos um array de tarefas
         if (Array.isArray(data)) {
@@ -413,11 +410,10 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
           if (idRelease) {
             const selectedTask = data.find((task: Task) => task.id.toString() === idRelease)
             if (selectedTask) {
-              console.log('ID Release encontrado:', selectedTask.id)
+              // ID Release encontrado
             }
           }
         } else {
-          console.log('Formato inválido retornado da API:', data)
           setAllTasks([])
           setFilteredTasks([])
         }
@@ -630,14 +626,12 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
     }
 
     try {
-      console.log('Sending comment for task ID:', task.id);
       const payload = {
         atividade_id: task.id,
         usuario_email: session.user.email,
         usuario_nome: session.user.name,
         comentario: comentario.trim()
       };
-      console.log('Comment payload:', payload);
       
       const response = await fetch('/api/comentarios', {
         method: 'POST',
@@ -649,7 +643,6 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
 
       if (response.ok) {
         const novoComentario = await response.json();
-        console.log('Comment created successfully:', novoComentario);
         setComentarios([...comentarios, novoComentario]);
         setComentario('');
         
@@ -1397,7 +1390,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                               placeholder="Digite o nome do responsável"
                               className="h-8"
                             />
-                            {showResponsavelSuggestions && (
+                            {showResponsavelSuggestions && responsavelInput && responsavelInput.length >= 3 && (
                               <div className="absolute z-10 w-full mt-0.5 bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
                                 {responsaveis
                                   .filter(r => {

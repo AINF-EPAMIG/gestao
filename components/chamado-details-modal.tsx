@@ -107,26 +107,12 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
       // Usar o nome do solicitante para buscar a chefia
       if (chamado?.nome_solicitante) {
         try {
-          console.log('Debug - Dados do chamado:', {
-            chamado,
-            nomeSolicitante: chamado.nome_solicitante,
-            origem: chamado.origem
-          });
-          
           const res = await fetch(`/api/funcionarios?action=getChefiaImediata&nome=${encodeURIComponent(chamado.nome_solicitante)}`);
           const data = await res.json();
           
-          console.log('Debug - Resposta da API de chefia:', {
-            data,
-            status: res.status,
-            ok: res.ok
-          });
-          
           if (data && data.nome) {
-            console.log(`Chefia imediata encontrada: ${data.nome}`);
             setChefiaImediata(data.nome);
           } else {
-            console.log('Nenhuma chefia imediata encontrada');
             setChefiaImediata(null);
           }
         } catch (error) {
@@ -141,7 +127,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
 
   // Função auxiliar para carregar responsáveis originais
   const loadOriginalResponsaveis = useCallback(() => {
-    console.log('loadOriginalResponsaveis chamada - editingResponsavel:', editingResponsavel);
     if (chamado?.tecnicos_responsaveis) {
       const emails = chamado.tecnicos_responsaveis.split(',').map((e: string) => e.trim()).filter(Boolean);
       const responsaveisEncontrados = emails.map(email => {
@@ -152,7 +137,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
           CHEFE: ''
         };
       });
-      console.log('Carregando responsáveis múltiplos:', responsaveisEncontrados.length);
       setSelectedResponsaveis(responsaveisEncontrados);
     } else if (chamado?.tecnico_responsavel) {
       // fallback para um responsável
@@ -162,13 +146,11 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         NOME: getResponsavelName(chamado.tecnico_responsavel),
         CHEFE: ''
       };
-      console.log('Carregando responsável único:', responsavelObj.NOME);
       setSelectedResponsaveis([responsavelObj]);
     } else {
-      console.log('Nenhum responsável para carregar');
       setSelectedResponsaveis([]);
     }
-  }, [chamado, funcionariosSetor, editingResponsavel]);
+  }, [chamado, funcionariosSetor]);
 
   // Carregar responsáveis múltiplos ao abrir (apenas quando não está editando)
   useEffect(() => {
@@ -267,14 +249,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
       const primeiroResponsavel = selectedResponsaveis[0];
       const userName = primeiroResponsavel.EMAIL.includes('@') ? primeiroResponsavel.EMAIL.split('@')[0] : primeiroResponsavel.EMAIL;
       
-      console.log('Enviando requisição para múltiplos responsáveis:', {
-        chamadoId: chamado.id,
-        origem: chamado.origem,
-        userName,
-        emailsResponsaveis,
-        totalResponsaveis: selectedResponsaveis.length
-      });
-
       const response = await fetch('/api/chamados/assign', {
         method: 'PUT',
         headers: {
@@ -293,8 +267,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error(errorData.error || 'Erro ao atualizar responsáveis');
       }
 
-      const data = await response.json();
-      console.log('Resposta da API:', data);
+      await response.json();
 
       // Atualiza o estado local
       if (chamado) {
@@ -324,11 +297,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     setError(null);
     
     try {
-      console.log('Removendo responsável do chamado:', {
-        chamadoId: chamado.id,
-        origem: chamado.origem
-      });
-
       const response = await fetch('/api/chamados/assign', {
         method: 'PUT',
         headers: {
@@ -346,8 +314,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error(errorData.error || 'Erro ao remover responsável');
       }
 
-      const data = await response.json();
-      console.log('Resposta da API:', data);
+      await response.json();
 
       // Atualiza o estado local
       if (chamado) {
@@ -406,8 +373,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error('Erro ao atualizar resposta de conclusão')
       }
 
-      const data = await response.json()
-      console.log('Resposta da API:', data)
+      await response.json()
 
       // Atualiza o estado local
       chamado.resposta_conclusao = respostaConclusao
@@ -833,7 +799,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                       size="sm"
                       className="h-7 px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-200"
                       onClick={() => {
-                        console.log('Clicou em editar responsável');
                         setEditingResponsavel(true);
                         setResponsavelInput("");
                       }}
@@ -865,7 +830,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                     size="sm"
                     className="h-7 px-2.5 text-green-600 hover:text-green-700 hover:bg-green-50 border border-green-200"
                     onClick={() => {
-                      console.log('Clicou em atribuir responsável');
                       setEditingResponsavel(true);
                       setResponsavelInput("");
                     }}
@@ -940,7 +904,6 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
                               className="px-4 py-1.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
                               onClick={() => {
                                 const novosResponsaveis = [...selectedResponsaveis, responsavel];
-                                console.log('Adicionando responsável:', responsavel.NOME, 'Total responsáveis:', novosResponsaveis.length);
                                 setSelectedResponsaveis(novosResponsaveis);
                                 setResponsavelInput("");
                                 setShowResponsavelSuggestions(false);

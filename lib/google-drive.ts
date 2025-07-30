@@ -16,106 +16,110 @@ export async function getGoogleDriveClient(accessToken: string) {
 }
 
 // Função para fazer upload de um arquivo para o Google Drive
-export async function uploadFileToDrive(
-  accessToken: string,
-  file: Buffer,
-  fileName: string,
-  mimeType: string,
-  folderId?: string
-) {
+export async function uploadToGoogleDrive(fileBuffer: Buffer, fileName: string): Promise<{ id: string; webViewLink: string; webContentLink: string }> {
   try {
-    console.log("[GoogleDrive] Iniciando upload do arquivo:", fileName)
-    console.log("[GoogleDrive] Detalhes do arquivo:", {
-      fileName,
-      mimeType,
-      fileSize: file.length,
-      folderId
-    })
+    const auth = new google.auth.GoogleAuth({
+      keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
 
-    const drive = await getGoogleDriveClient(accessToken);
-    console.log("[GoogleDrive] Cliente do Google Drive criado com sucesso")
-    
-    // Configuração do arquivo a ser enviado
-    const fileMetadata: { name: string; parents?: string[] } = {
+    const drive = google.drive({ version: 'v3', auth });
+
+    const fileMetadata = {
       name: fileName,
+      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!],
     };
-    
-    // Se tiver um ID de pasta, adiciona ao arquivo
-    if (folderId) {
-      fileMetadata.parents = [folderId];
-    }
 
-    console.log("[GoogleDrive] Metadados do arquivo:", fileMetadata)
-
-    // Converter o Buffer para um stream legível
-    const fileStream = Readable.from(file);
-    console.log("[GoogleDrive] Stream criado a partir do buffer")
-
-    // Configuração da mídia
     const media = {
-      mimeType,
-      body: fileStream,
+      mimeType: 'application/octet-stream',
+      body: Readable.from(fileBuffer),
     };
 
-    // Executa o upload
-    console.log("[GoogleDrive] Iniciando upload para o Google Drive...")
-    const response = await drive.files.create({
+    const file = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id,name,webViewLink,webContentLink',
+      fields: 'id,webViewLink,webContentLink',
     });
-    console.log("[GoogleDrive] Upload inicial concluído:", {
-      id: response.data.id,
-      name: response.data.name,
-      webViewLink: response.data.webViewLink,
-      webContentLink: response.data.webContentLink
-    })
 
-    // Adiciona permissão pública de leitura ao arquivo
-    console.log("[GoogleDrive] Adicionando permissões públicas...")
+    const fileId = file.data.id!;
+
+    // Adicionar permissões públicas
     await drive.permissions.create({
-      fileId: response.data.id!,
+      fileId: fileId,
       requestBody: {
         role: 'reader',
-        type: 'anyone'
-      }
+        type: 'anyone',
+      },
     });
-    console.log("[GoogleDrive] Permissões públicas adicionadas com sucesso")
 
-    // Atualiza os metadados do arquivo para obter os links atualizados após dar a permissão
-    console.log("[GoogleDrive] Obtendo links atualizados...")
+    // Obter links atualizados
     const updatedFile = await drive.files.get({
-      fileId: response.data.id!,
-      fields: 'id,name,webViewLink,webContentLink'
+      fileId: fileId,
+      fields: 'id,webViewLink,webContentLink',
     });
-    console.log("[GoogleDrive] Links atualizados obtidos:", {
-      id: updatedFile.data.id,
-      name: updatedFile.data.name,
-      webViewLink: updatedFile.data.webViewLink,
-      webContentLink: updatedFile.data.webContentLink
-    })
 
-    const result = {
-      id: updatedFile.data.id,
-      name: updatedFile.data.name,
-      webViewLink: updatedFile.data.webViewLink,
-      webContentLink: updatedFile.data.webContentLink
+    return {
+      id: fileId,
+      webViewLink: updatedFile.data.webViewLink!,
+      webContentLink: updatedFile.data.webContentLink!,
     };
-    
-    console.log("[GoogleDrive] Upload concluído com sucesso:", result)
-    return result;
   } catch (error) {
-    console.error('[GoogleDrive] Erro detalhado ao fazer upload:', {
-      fileName,
-      mimeType,
-      fileSize: file.length,
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      } : error
+    console.error('Erro no upload para Google Drive:', error);
+    throw error;
+  }
+}
+
+// Função para fazer upload de um arquivo para o Google Drive usando o token do usuário
+export async function uploadFileToDrive(
+  accessToken: string,
+  fileBuffer: Buffer,
+  fileName: string,
+  mimeType: string
+): Promise<{ id: string; webViewLink: string; webContentLink: string }> {
+  try {
+    const drive = await getGoogleDriveClient(accessToken);
+
+    const fileMetadata = {
+      name: fileName,
+      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!],
+    };
+
+    const media = {
+      mimeType: mimeType,
+      body: Readable.from(fileBuffer),
+    };
+
+    const file = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id,webViewLink,webContentLink',
     });
-    throw new Error(`Falha ao fazer upload do arquivo para o Google Drive: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+
+    const fileId = file.data.id!;
+
+    // Adicionar permissões públicas
+    await drive.permissions.create({
+      fileId: fileId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+
+    // Obter links atualizados
+    const updatedFile = await drive.files.get({
+      fileId: fileId,
+      fields: 'id,webViewLink,webContentLink',
+    });
+
+    return {
+      id: fileId,
+      webViewLink: updatedFile.data.webViewLink!,
+      webContentLink: updatedFile.data.webContentLink!,
+    };
+  } catch (error) {
+    console.error('Erro no upload para Google Drive:', error);
+    throw error;
   }
 }
 

@@ -46,12 +46,7 @@ export async function executeQuery<T>({
   values?: (string | number)[] 
 }): Promise<T> {
   try {
-    console.log('📝 Executando query:', query);
-    console.log('📝 Valores:', values);
-    
     const [results] = await db.execute(query, values);
-    
-    console.log('✅ Query executada com sucesso');
     return results as T;
   } catch (error) {
     console.error('❌ Erro na execução da query:', error);
@@ -68,12 +63,7 @@ export async function executeQueryFuncionarios<T>({
   values?: (string | number)[] 
 }): Promise<T> {
   try {
-    console.log('📝 Executando query no banco de funcionários:', query);
-    console.log('📝 Valores:', values);
-    
     const [results] = await dbFuncionarios.execute(query, values);
-    
-    console.log('✅ Query executada com sucesso no banco de funcionários');
     return results as T;
   } catch (error) {
     console.error('❌ Erro na execução da query no banco de funcionários:', error);
@@ -90,12 +80,7 @@ export async function executeQueryAtendimento<T>({
   values?: (string | number)[] 
 }): Promise<T> {
   try {
-    console.log('📝 Executando query no banco de atendimento:', query);
-    console.log('📝 Valores:', values);
-    
     const [results] = await dbAtendimento.execute(query, values);
-    
-    console.log('✅ Query executada com sucesso no banco de atendimento');
     return results as T;
   } catch (error) {
     console.error('❌ Erro na execução da query no banco de atendimento:', error);

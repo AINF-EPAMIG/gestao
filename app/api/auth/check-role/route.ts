@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await executeQueryFuncionarios<Funcionario[]>({
-      query: 'SELECT * FROM funcionarios WHERE email = ? LIMIT 1',
+      query: 'SELECT * FROM vw_colaboradores_completos WHERE email = ? LIMIT 1',
       values: [email],
     });
     const userInfo = result[0] || null;

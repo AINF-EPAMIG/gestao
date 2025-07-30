@@ -106,27 +106,76 @@ export async function GET() {
     await verificarECorrigirPosicoesNoBanco(kanbanPositions);
 
     // Buscar novamente as posições após possíveis correções
-    const [kanbanPositionsAtualizadas] = await dbAtendimento.query<KanbanPosition[]>(
+    await dbAtendimento.query<KanbanPosition[]>(
       'SELECT * FROM kanban_positions'
     );
-    const positionsAtualizadas = Array.isArray(kanbanPositionsAtualizadas) ? kanbanPositionsAtualizadas : [];
 
-    // Criar mapa de posições para lookup rápido
-    const positionsMap = new Map<string, { status: string; posicao: number | null }>();
-    positionsAtualizadas.forEach(pos => {
-      const key = `${pos.tipo_item === 'chamado' ? 'chamados_atendimento' : 'criacao_acessos'}-${pos.id_referencia}`;
-      positionsMap.set(key, { status: pos.status, posicao: pos.posicao });
+    // Carregar mapa de posições
+    const positionsMap = new Map();
+    const positionsResponse = await dbAtendimento.query<KanbanPosition[]>(
+      `
+        SELECT id, tipo_item, id_referencia, status, posicao
+        FROM u711845530_atendimento.posicoes_itens
+        WHERE status IN (1, 2, 3, 4)
+        ORDER BY status, posicao
+      `
+    );
+
+    positionsResponse[0].forEach((pos: KanbanPosition) => {
+      const posKey = `${pos.tipo_item}-${pos.id_referencia}`;
+      positionsMap.set(posKey, {
+        status: pos.status,
+        posicao: pos.posicao
+      });
     });
 
-    console.log(`Mapa de posições carregado: ${positionsMap.size} itens`);
-    
+    // Normalizar posições se necessário
+    const statusList = [1, 2, 3, 4];
+    for (const status of statusList) {
+      const posicoes = positionsResponse[0].filter((pos: KanbanPosition) => pos.status === status.toString());
+      
+      if (posicoes.length > 0) {
+        // Verificar se as posições estão sequenciais
+        const posicoesOrdenadas = posicoes.sort((a: KanbanPosition, b: KanbanPosition) => {
+          const posA = a.posicao ?? 0;
+          const posB = b.posicao ?? 0;
+          return posA - posB;
+        });
+        let precisaNormalizar = false;
+        
+        for (let i = 0; i < posicoesOrdenadas.length; i++) {
+          const posicaoAtual = posicoesOrdenadas[i].posicao ?? 0;
+          if (posicaoAtual !== i + 1) {
+            precisaNormalizar = true;
+            break;
+          }
+        }
+        
+        if (precisaNormalizar) {
+          // Normalizar posições
+          for (let i = 0; i < posicoesOrdenadas.length; i++) {
+            const novaPos = i + 1;
+            const posicaoAtual = posicoesOrdenadas[i].posicao ?? 0;
+            if (posicaoAtual !== novaPos) {
+              await dbAtendimento.execute(
+                `
+                  UPDATE u711845530_atendimento.posicoes_itens
+                  SET posicao = ?
+                  WHERE id = ?
+                `,
+                [novaPos, posicoesOrdenadas[i].id]
+              );
+            }
+          }
+        }
+      }
+    }
+
     // Padronizar campos para ambos os tipos
     const normalize = (item: ChamadoAtendimento | CriacaoAcesso, origem: string): ChamadoNormalizado => {
       // Obter as informações de posição a partir do mapa
       const posKey = `${origem}-${item.id}`;
       const posInfo = positionsMap.get(posKey);
-      
-      console.log(`Normalizando item ${posKey}: status=${posInfo?.status}, posicao=${posInfo?.posicao}`);
       
       if (origem === 'chamados_atendimento') {
         const chamado = item as ChamadoAtendimento;

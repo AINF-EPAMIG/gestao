@@ -86,7 +86,7 @@ export default function DashboardPage() {
                       <CardTitle className="text-base sm:text-lg lg:text-xl">Movimentação no Kanban</CardTitle>
                     </div>
                     <CardDescription className="text-xs sm:text-sm">
-                      Visão geral das tarefas criadas e atualizações de status nos últimos 30 dias
+                      Visão geral das tarefas criadas e atualizações de status nos últimos 7 dias
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-2 sm:px-4 pb-4">

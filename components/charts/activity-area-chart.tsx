@@ -110,7 +110,6 @@ export function ActivityAreaChart() {
         }
         
         const result = await response.json()
-        console.log('Activity stats data:', result)
         
         if (result.chartData && Array.isArray(result.chartData)) {
           setData(result.chartData)

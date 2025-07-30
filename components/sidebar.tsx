@@ -102,7 +102,7 @@ export function Sidebar() {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
-        <div className="px-3 sm:px-4 mb-4 sm:mb-6 flex justify-between items-center">
+        <div className="px-3 sm:px-4 flex justify-between items-center">
           <h1 className="text-lg sm:text-xl font-semibold">Painel Gestão</h1>
           {/* Botão de Logout */}
           {session && (
@@ -116,7 +116,7 @@ export function Sidebar() {
           )}
         </div>
         {isAdmin === true && (
-          <div className="px-3 sm:px-4 mt-2 flex items-center gap-2">
+          <div className="px-3 sm:px-4 flex items-center gap-2">
             <span className="text-sm text-white/80">Setor:</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -156,11 +156,11 @@ export function Sidebar() {
           </div>
         )}
         {isAdmin === false && userSector && (
-          <div className="px-3 sm:px-4 mt-2 text-sm text-white/80">
+          <div className="px-3 sm:px-4 text-sm text-white/80">
             Setor: {userSector}
           </div>
         )}
-        <nav className="mt-1 sm:mt-2">
+        <nav className="mt-4 sm:mt-6">
           {navigation.map((item) => (
             <Link
               key={item.href}
@@ -196,7 +196,7 @@ export function Sidebar() {
           </SheetTrigger>
           <SheetContent 
             side="left" 
-            className="w-[280px] p-0 bg-emerald-800 text-white h-full flex flex-col"
+            className="w-[280px] p-0 bg-emerald-800 text-white h-full flex flex-col [&>button]:hidden"
           >
             <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
             <NavContent />

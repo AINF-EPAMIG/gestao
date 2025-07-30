@@ -95,3 +95,72 @@ async function normalizarPosicoesDoStatus(status: string): Promise<number> {
     return 0;
   }
 } 
+
+export async function POST() {
+  try {
+    // Buscar todos os status únicos
+    const [statusResult] = await dbAtendimento.execute<RowDataPacket[]>(
+      `SELECT DISTINCT status 
+       FROM u711845530_atendimento.posicoes_itens 
+       WHERE status IN (1, 2, 3, 4)
+       ORDER BY status`
+    );
+
+    const statusList = statusResult.map((row: RowDataPacket) => row.status as number);
+
+    let totalCorrecoes = 0;
+
+    // Para cada status, normalizar as posições
+    for (const status of statusList) {
+      // Buscar todos os itens para este status
+      const [items] = await dbAtendimento.execute<KanbanPositionRow[]>(
+        `SELECT id, tipo_item, id_referencia, posicao
+         FROM u711845530_atendimento.posicoes_itens
+         WHERE status = ?
+         ORDER BY posicao`,
+        [status]
+      );
+
+      if (items.length === 0) continue;
+
+      // Verificar se as posições já estão normalizadas
+      let precisaNormalizar = false;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].posicao !== i + 1) {
+          precisaNormalizar = true;
+          break;
+        }
+      }
+
+      if (!precisaNormalizar) continue;
+
+      // Normalizar posições
+      let correcoes = 0;
+      for (let i = 0; i < items.length; i++) {
+        const novaPos = i + 1;
+        if (items[i].posicao !== novaPos) {
+          await dbAtendimento.execute<OkPacket>(
+            `UPDATE u711845530_atendimento.posicoes_itens
+             SET posicao = ?
+             WHERE id = ?`,
+            [novaPos, items[i].id]
+          );
+          correcoes++;
+        }
+      }
+
+      totalCorrecoes += correcoes;
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Normalização concluída. ${totalCorrecoes} posições corrigidas.` 
+    });
+  } catch (error) {
+    console.error('Erro ao normalizar posições:', error);
+    return NextResponse.json(
+      { error: 'Erro ao normalizar posições' },
+      { status: 500 }
+    );
+  }
+} 

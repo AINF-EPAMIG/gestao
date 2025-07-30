@@ -6,7 +6,7 @@ import { isExceptionEmailChefia } from '@/lib/auth-config';
 // Busca informações do usuário pelo e-mail
 async function getUserInfo(email: string) {
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: 'SELECT * FROM funcionarios WHERE email = ? LIMIT 1',
+    query: 'SELECT * FROM vw_colaboradores_completos WHERE email = ? LIMIT 1',
     values: [email],
   });
   return result[0] || null;
@@ -17,7 +17,7 @@ async function getSubordinados(email: string) {
   const chefe = await getUserInfo(email);
   if (!chefe) return [];
   const result = await executeQueryFuncionarios<Funcionario[]>({
-    query: `SELECT nome, chapa, filial, secao, cargo, email FROM funcionarios WHERE chefia = ? OR chefia_substituto = ?`,
+    query: `SELECT nome, chapa, regional AS filial, departamento AS secao, cargo, email FROM vw_colaboradores_completos WHERE chefe = ? OR chefe_substituto = ?`,
     values: [chefe.email, chefe.email],
   });
   return result;
@@ -33,8 +33,10 @@ interface ResponsavelSetor {
 // Busca responsáveis por setor
 async function getResponsaveisBySetor(secao: string) {
   const result = await executeQueryFuncionarios<ResponsavelSetor[]>({
-    query: `SELECT nome AS NOME, email AS EMAIL, chefia AS CHEFE FROM funcionarios WHERE secao = ? AND chefia IS NOT NULL AND chefia != ''`,
-    values: [secao],
+    query: `SELECT nome AS NOME, email AS EMAIL, chefe AS CHEFE FROM vw_colaboradores_completos 
+            WHERE (departamento = ? OR divisao = ? OR assessoria = ?) 
+            AND chefe IS NOT NULL AND chefe != ''`,
+    values: [secao, secao, secao],
   });
   return result;
 }
@@ -59,7 +61,8 @@ function isUserEstagiario(user: Funcionario | null): boolean {
 }
 
 function getUserSection(user: Funcionario | null): string {
-  return user?.secao || '';
+  // Prioriza os novos campos, mas mantém compatibilidade com o antigo
+  return user?.departamento || user?.divisao || user?.assessoria || user?.secao || '';
 }
 
 function getUserRole(user: Funcionario | null): string {
@@ -67,11 +70,13 @@ function getUserRole(user: Funcionario | null): string {
 }
 
 function getUserBranch(user: Funcionario | null): string {
-  return user?.filial || '';
+  // Usa o novo campo regional, mas mantém compatibilidade com filial
+  return user?.regional || user?.filial || '';
 }
 
 function getUserManager(user: Funcionario | null): string {
-  return user?.chefia || '';
+  // Usa o novo campo chefe, mas mantém compatibilidade com chefia
+  return user?.chefe || user?.chefia || '';
 }
 
 function getUserRegistration(user: Funcionario | null): string {
@@ -89,7 +94,7 @@ async function getChefiaImediata(nome: string) {
   const conditions = nomeParts.map(() => 'nome LIKE ?').join(' AND ');
   const values = nomeParts.map(part => `%${part}%`);
   
-  const query = `SELECT chefia FROM funcionarios WHERE ${conditions} LIMIT 1`;
+  const query = `SELECT chefe AS chefia FROM vw_colaboradores_completos WHERE ${conditions} LIMIT 1`;
   console.log('Debug - Query:', query, 'Values:', values);
   
   const result = await executeQueryFuncionarios<Funcionario[]>({
@@ -106,7 +111,7 @@ async function getChefiaImediata(nome: string) {
       const primeiroNome = nomeParts[0];
       const ultimoNome = nomeParts[nomeParts.length - 1];
       
-      const fallbackQuery = 'SELECT chefia FROM funcionarios WHERE nome LIKE ? AND nome LIKE ? LIMIT 1';
+      const fallbackQuery = 'SELECT chefe AS chefia FROM vw_colaboradores_completos WHERE nome LIKE ? AND nome LIKE ? LIMIT 1';
       const fallbackValues = [`%${primeiroNome}%`, `%${ultimoNome}%`];
       
       console.log('Debug - Tentando fallback query:', fallbackQuery, 'Values:', fallbackValues);
