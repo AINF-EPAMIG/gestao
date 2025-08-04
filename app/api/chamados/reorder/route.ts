@@ -4,7 +4,7 @@ import { RowDataPacket, OkPacket } from 'mysql2';
 
 interface ChamadoRow extends RowDataPacket {
   id: number;
-  tecnico_responsavel: string | null;
+  tecnicos_responsaveis?: string | null;
   [key: string]: unknown; // para outros campos que não precisamos tipar explicitamente
 }
 
@@ -130,21 +130,21 @@ export async function PUT(request: NextRequest) {
             );
             console.log(`[REORDER API] Adicionado responsável: ${userName} à lista: ${newResponsibles}`);
           }
-          
-          // Mantém compatibilidade com tecnico_responsavel (primeiro da lista)
-          if (!chamado.tecnico_responsavel && responsiblesList.length > 0) {
-            await dbAtendimento.execute<OkPacket>(
-              `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
-              [responsiblesList[0], chamadoIdNumber]
-            );
-            console.log(`[REORDER API] Definido tecnico_responsavel principal: ${responsiblesList[0]}`);
-          }
         } else {
           // Fallback para tabelas sem campo tecnicos_responsaveis
-          if (!chamado.tecnico_responsavel) {
+          // Como a tabela chamados_atendimento só tem tecnicos_responsaveis, usar esse campo
+          const currentResponsibles = (chamado as Record<string, unknown>).tecnicos_responsaveis as string || '';
+          const responsiblesList = currentResponsibles 
+            ? currentResponsibles.split(',').map((email: string) => email.trim()).filter(Boolean)
+            : [];
+          
+          if (!responsiblesList.includes(userName)) {
+            responsiblesList.push(userName);
+            const newResponsibles = responsiblesList.join(',');
+            
             await dbAtendimento.execute<OkPacket>(
-              `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
-              [userName, chamadoIdNumber]
+              `UPDATE ${table} SET tecnicos_responsaveis = ? WHERE id = ?`,
+              [newResponsibles, chamadoIdNumber]
             );
             console.log(`[REORDER API] Atribuído técnico responsável: ${userName}`);
           }

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useTaskStore, getStatusName, getPriorityName, formatHours } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SetorIndicator } from "@/components/setor-indicator"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -16,6 +17,8 @@ import { PollingWrapper } from "@/components/polling-wrapper"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import AuthenticatedLayout from "../authenticated-layout"
+import { usePermissions } from "@/lib/hooks/use-permissions"
+import { PageHeader } from "@/components/page-header"
 
 interface ResponsavelRM {
   EMAIL: string;
@@ -63,6 +66,8 @@ async function getResponsaveisBySetor(secao: string) {
 export default function PlanilhaPage() {
   const { data: session } = useSession()
   const tasks = useTaskStore((state) => state.tasks)
+  const selectedSetor = useTaskStore((state) => state.selectedSetor)
+  const { canViewAllSectors } = usePermissions()
   const [expandedTasks, setExpandedTasks] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [responsaveis, setResponsaveis] = useState<ResponsavelRM[]>([])
@@ -81,7 +86,13 @@ export default function PlanilhaPage() {
       if (session?.user?.email) {
         try {
           const userInfo = await getUserInfo(session.user.email)
-          const secaoParaBuscar = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+          
+          // Para diretores/presidentes: buscar responsáveis do setor selecionado
+          // Para outros: buscar responsáveis do próprio setor
+          const secaoParaBuscar = canViewAllSectors && selectedSetor 
+            ? selectedSetor 
+            : userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+            
           if (secaoParaBuscar) {
             const responsaveisData = await getResponsaveisBySetor(secaoParaBuscar)
             setResponsaveis(responsaveisData)
@@ -95,7 +106,7 @@ export default function PlanilhaPage() {
     }
 
     fetchResponsaveis()
-  }, [session?.user?.email])
+  }, [session?.user?.email, selectedSetor, canViewAllSectors])
 
   // Obter listas únicas para os selects
   const uniqueStatus = Array.from(new Set(tasks.map(task => getStatusName(task.status_id))))
@@ -135,15 +146,9 @@ export default function PlanilhaPage() {
             </div>
           ) : (
             <div className="min-h-screen w-full bg-background">
-              {/* Reduced spacer height from h-14 to h-10 */}
-              <div className="h-10 lg:hidden" />
-              <div className="p-2 sm:p-3 md:p-4 lg:p-6 max-w-[100vw] overflow-x-hidden">
-                {/* Reduced margin-bottom from mb-6 to mb-4 */}
-                <div className="flex flex-col mb-3">
-                  <div className="space-y-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Planilha Kanban</h1>
-                  </div>
-                </div>
+              <SetorIndicator />
+              <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+                <PageHeader title="Planilha Kanban" />
 
                 {/* Cards de estatísticas */}
                 <div className="grid gap-3 md:grid-cols-2 mb-4">

@@ -1,8 +1,11 @@
 import { executeQuery, executeQueryFuncionarios } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail, createTaskAssignmentEmail, createTaskNewResponsibleEmail } from '@/lib/email-service';
-import { Funcionario } from '@/lib/types';
-import { isExceptionEmailChefia } from '@/lib/auth-config';
+import { Funcionario, NivelHierarquico } from '@/lib/types';
+import { 
+  determinarNivelHierarquico, 
+  verificarPermissao 
+} from '@/lib/auth-config';
 
 interface Atividade {
   id: number;
@@ -55,26 +58,29 @@ async function getUserInfo(email: string) {
   return result[0] || null;
 }
 
-async function isUserAdmin() {
-  // Adapte conforme sua lógica de admin, se necessário
-  // Exemplo: checar se o email está em uma lista de admins
-  return false;
-}
-
-async function isUserChefe(email: string) {
-  // Verificar se é email de exceção primeiro
-  if (isExceptionEmailChefia(email)) {
-    return true;
-  }
-  
-  // Verificação tradicional por cargo
+async function isUserAdmin(email: string) {
+  // Nova lógica baseada em nível hierárquico
   const userInfo = await getUserInfo(email);
   if (!userInfo) return false;
   
-  // Verificar se cargo contém "CHEFE"
-  const isChefeCargo = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
+  const nivel = determinarNivelHierarquico(userInfo);
+  return nivel === NivelHierarquico.PRESIDENTE || nivel === NivelHierarquico.DIRETORIA;
+}
+
+async function isUserChefe(email: string) {
+  // Nova lógica baseada em nível hierárquico
+  const userInfo = await getUserInfo(email);
+  if (!userInfo) return false;
   
-  return isChefeCargo;
+  const nivel = determinarNivelHierarquico(userInfo);
+  return nivel === NivelHierarquico.CHEFE || 
+         nivel === NivelHierarquico.PRESIDENTE || 
+         nivel === NivelHierarquico.DIRETORIA;
+}
+
+async function canUserAccessAllSectors(email: string) {
+  const userInfo = await getUserInfo(email);
+  return verificarPermissao(userInfo, 'visualizar_todos_setores');
 }
 
 export async function GET(request: NextRequest) {
@@ -155,17 +161,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se é um administrador
-    const isAdmin = await isUserAdmin();
+    const canAccessAll = await canUserAccessAllSectors(userEmail);
 
-    // Se não for admin, buscar o setor do usuário
+    // Buscar informações do usuário para controle de acesso
+    const userInfo = await getUserInfo(userEmail);
+    if (!userInfo) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado' },
+        { status: 404 }
+      );
+    }
     let whereClause = '';
     let queryValues: (string)[] = [];
 
-    if (!isAdmin) {
-      const userInfo = await getUserInfo(userEmail);
-      
-      const setorUsuario = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
+    if (canAccessAll) {
+      // Presidente/Diretoria pode ver todos os setores
+      if (setorSigla) {
+        whereClause = 'WHERE s.sigla = ?';
+        queryValues = [setorSigla];
+      }
+    } else {
+      // Colaborador e Chefe veem apenas atividades do próprio setor
+      const setorUsuario = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
       if (!setorUsuario) {
         return NextResponse.json(
           { error: 'Setor do usuário não encontrado' },
@@ -175,10 +192,6 @@ export async function GET(request: NextRequest) {
 
       whereClause = 'WHERE s.sigla = ?';
       queryValues = [setorUsuario];
-    } else if (setorSigla) {
-      // Se for admin e um setor foi especificado
-      whereClause = 'WHERE s.sigla = ?';
-      queryValues = [setorSigla];
     }
 
     // Buscar atividades sem depender da tabela responsaveis
@@ -318,7 +331,7 @@ export async function PUT(request: NextRequest) {
       console.log('✅ Tarefa atualizada com sucesso');
     } else {
       // Verificar permissões
-      const isAdmin = await isUserAdmin();
+      const isAdmin = await isUserAdmin(userEmail);
       let canEdit = false;
 
       if (!isAdmin) {
@@ -550,20 +563,56 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { 
-      titulo, 
-      descricao, 
-      data_inicio, 
-      status_id, 
-      prioridade_id, 
-      projeto_id, 
-      responsaveis_emails, // Array de emails dos responsáveis
-      data_fim, 
+    
+    // Log dos dados recebidos para debug
+    console.log('🔍 Dados recebidos na API:', JSON.stringify(data, null, 2));
+    
+    // Mapear os dados do frontend para os nomes esperados pela API
+    const titulo = data.titulo;
+    const descricao = data.descricao;
+    const data_inicio = data.data_inicio;
+    const status_id = data.status_id || 1; // Status padrão: Não iniciada
+    const prioridade_id = data.prioridade || data.prioridade_id;
+    const projeto_id = data.projeto_id;
+    const responsaveis_emails = data.responsaveis ? data.responsaveis.map((r: { email: string }) => r.email) : [];
+    const data_fim = data.data_fim;
+    const userEmail = data.userEmail;
+    const data_criacao = data.data_criacao || new Date().toISOString().split('T')[0];
+    const id_release = data.id_release;
+    const estimativa_horas = data.horas_estimadas || data.estimativa_horas;
+
+    // Log dos valores mapeados
+    console.log('🔍 Valores mapeados:', {
+      titulo,
+      descricao,
+      data_inicio,
+      status_id,
+      prioridade_id,
+      projeto_id,
+      responsaveis_emails,
+      data_fim,
       userEmail,
       data_criacao,
       id_release,
       estimativa_horas
-    } = data;
+    });
+
+    // Validar campos obrigatórios
+    if (!titulo || !data_inicio || !status_id || !prioridade_id || !projeto_id || !userEmail) {
+      console.log('❌ Validação falhou:', {
+        titulo: !!titulo,
+        descricao: !!descricao,
+        data_inicio: !!data_inicio,
+        status_id: !!status_id,
+        prioridade_id: !!prioridade_id,
+        projeto_id: !!projeto_id,
+        userEmail: !!userEmail
+      });
+      return NextResponse.json(
+        { error: 'Campos obrigatórios não fornecidos' },
+        { status: 400 }
+      );
+    }
 
     // Obter informações do usuário
     const userInfo = await getUserInfo(userEmail);
@@ -577,10 +626,38 @@ export async function POST(request: NextRequest) {
     let setorSigla = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
 
     // Se for admin e especificou um setor diferente, usar o setor especificado
-    const isAdmin = await isUserAdmin();
+    const isAdmin = await isUserAdmin(userEmail);
     if (isAdmin && data.setorSigla) {
       setorSigla = data.setorSigla;
     }
+
+    // Buscar o ID do setor se a sigla foi fornecida
+    let setorId = null;
+    if (setorSigla) {
+      const setorResult = await executeQuery({
+        query: 'SELECT id FROM u711845530_gestao.setor WHERE sigla = ?',
+        values: [setorSigla]
+      }) as { id: number }[];
+      
+      if (setorResult.length > 0) {
+        setorId = setorResult[0].id;
+      }
+    }
+
+    // Preparar valores para a query, garantindo que não sejam undefined
+    const queryValues = [
+      titulo, 
+      descricao, 
+      projeto_id,
+      data_inicio,
+      data_fim || null,
+      status_id,
+      prioridade_id,
+      estimativa_horas || null,
+      setorId,
+      data_criacao,
+      id_release || null
+    ];
 
     // Criar a atividade primeiro
     const result = await executeQuery({
@@ -588,26 +665,9 @@ export async function POST(request: NextRequest) {
         INSERT INTO u711845530_gestao.atividades 
         (titulo, descricao, projeto_id, data_inicio, data_fim, 
          status_id, prioridade_id, estimativa_horas, setor_id, data_criacao, id_release, position) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?,
-          ${setorSigla ? '(SELECT id FROM u711845530_gestao.setor WHERE sigla = ?)' : '?'},
-          ?,
-          ?,
-          0
-        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
       `,
-      values: [
-        titulo, 
-        descricao, 
-        projeto_id,
-        data_inicio,
-        data_fim,
-        status_id,
-        prioridade_id,
-        estimativa_horas || 0, // Usar o valor fornecido ou 0 como padrão
-        setorSigla || null,
-        data_criacao,
-        id_release
-      ],
+      values: queryValues,
     }) as QueryResult;
 
     const atividadeId = result.insertId;

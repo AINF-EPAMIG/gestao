@@ -28,12 +28,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const chamadoId = searchParams.get("chamadoId")
+    const origem = searchParams.get("origem") // Novo parâmetro para identificar a origem
 
     if (!chamadoId) {
       return NextResponse.json(
         { error: "ID do chamado não fornecido" },
         { status: 400 }
       )
+    }
+
+    // Determinar o tipo de registro baseado na origem
+    let tipoRegistro = 'chamado'; // padrão
+    if (origem === 'criacao_acessos') {
+      tipoRegistro = 'acesso';
     }
 
     // Buscar anexos do chamado na nova tabela anexos
@@ -51,9 +58,9 @@ export async function GET(request: NextRequest) {
         google_drive_id,
         google_drive_link
       FROM anexos 
-      WHERE tipo_registro = 'chamado' AND registro_id = ?
+      WHERE tipo_registro = ? AND registro_id = ?
       ORDER BY data_upload DESC`,
-      [chamadoId]
+      [tipoRegistro, chamadoId]
     )
 
     return NextResponse.json(rows || [])

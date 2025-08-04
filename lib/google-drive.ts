@@ -69,11 +69,50 @@ export async function uploadToGoogleDrive(fileBuffer: Buffer, fileName: string):
   }
 }
 
-// Função para fazer upload de um arquivo para o Google Drive usando o token do usuário
+// Função para obter um arquivo do Google Drive
+export async function getFileFromDrive(accessToken: string, fileId: string) {
+  try {
+    const drive = await getGoogleDriveClient(accessToken);
+    
+    // Obtém os metadados do arquivo
+    const fileMetadata = await drive.files.get({
+      fileId,
+      fields: 'id,name,mimeType,webViewLink',
+    });
+
+    // Obtém o conteúdo do arquivo
+    const fileContent = await drive.files.get({
+      fileId,
+      alt: 'media',
+    }, { responseType: 'arraybuffer' });
+
+    return {
+      metadata: fileMetadata.data,
+      content: Buffer.from(fileContent.data as ArrayBuffer),
+    };
+  } catch (error) {
+    console.error('Erro ao obter arquivo do Google Drive:', error);
+    throw new Error('Falha ao obter arquivo do Google Drive');
+  }
+}
+
+// Função para excluir um arquivo do Google Drive
+export async function deleteFileFromDrive(accessToken: string, fileId: string) {
+  try {
+    const drive = await getGoogleDriveClient(accessToken);
+    await drive.files.delete({ fileId });
+    return true;
+  } catch (error) {
+    console.error('Erro ao excluir arquivo do Google Drive:', error);
+    throw new Error('Falha ao excluir arquivo do Google Drive');
+  }
+}
+
+// Função para fazer upload de arquivo usando o token do usuário
 export async function uploadFileToDrive(
-  accessToken: string,
-  fileBuffer: Buffer,
-  fileName: string,
+  accessToken: string, 
+  fileBuffer: Buffer, 
+  fileName: string, 
   mimeType: string
 ): Promise<{ id: string; webViewLink: string; webContentLink: string }> {
   try {
@@ -81,7 +120,6 @@ export async function uploadFileToDrive(
 
     const fileMetadata = {
       name: fileName,
-      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!],
     };
 
     const media = {
@@ -119,46 +157,7 @@ export async function uploadFileToDrive(
     };
   } catch (error) {
     console.error('Erro no upload para Google Drive:', error);
-    throw error;
-  }
-}
-
-// Função para obter um arquivo do Google Drive
-export async function getFileFromDrive(accessToken: string, fileId: string) {
-  try {
-    const drive = await getGoogleDriveClient(accessToken);
-    
-    // Obtém os metadados do arquivo
-    const fileMetadata = await drive.files.get({
-      fileId,
-      fields: 'id,name,mimeType,webViewLink',
-    });
-
-    // Obtém o conteúdo do arquivo
-    const fileContent = await drive.files.get({
-      fileId,
-      alt: 'media',
-    }, { responseType: 'arraybuffer' });
-
-    return {
-      metadata: fileMetadata.data,
-      content: Buffer.from(fileContent.data as ArrayBuffer),
-    };
-  } catch (error) {
-    console.error('Erro ao obter arquivo do Google Drive:', error);
-    throw new Error('Falha ao obter arquivo do Google Drive');
-  }
-}
-
-// Função para excluir um arquivo do Google Drive
-export async function deleteFileFromDrive(accessToken: string, fileId: string) {
-  try {
-    const drive = await getGoogleDriveClient(accessToken);
-    await drive.files.delete({ fileId });
-    return true;
-  } catch (error) {
-    console.error('Erro ao excluir arquivo do Google Drive:', error);
-    throw new Error('Falha ao excluir arquivo do Google Drive');
+    throw new Error('Falha ao fazer upload do arquivo para o Google Drive');
   }
 }
 

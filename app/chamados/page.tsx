@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react"
 import { useChamadosStore } from "@/lib/chamados-store"
 import { PollingWrapper } from "@/components/polling-wrapper"
 import AuthenticatedLayout from "../authenticated-layout"
+import { PageHeader } from "@/components/page-header"
 
 export default function ChamadosPage() {
   const { data: session } = useSession()
@@ -35,9 +36,7 @@ export default function ChamadosPage() {
       <AuthenticatedLayout>
         <PollingWrapper>
           <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Chamados</h1>
-            </div>
+            <PageHeader title="Chamados" />
 
             {isLoading && chamados.length === 0 ? (
               <div className="flex items-center justify-center min-h-[500px] w-full">

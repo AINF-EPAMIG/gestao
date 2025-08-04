@@ -1,109 +1,150 @@
 import { NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db'
 
+interface StatsRow {
+  date: Date;
+  count: number;
+}
+
 export async function GET() {
   try {
-    // Buscar estatísticas de criação de atividades nos últimos 7 dias
-    const creationStats = await executeQuery({
+    console.log('Fetching activity stats from database using MySQL...');
+    
+    // Get task creation data by date
+    const creationStats = await executeQuery<StatsRow[]>({
       query: `
         SELECT 
           DATE(data_criacao) as date,
           COUNT(*) as count
-        FROM u711845530_gestao.atividades 
-        WHERE data_criacao >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        FROM u711845530_gestao.atividades
+        WHERE data_criacao > DATE_SUB(NOW(), INTERVAL 30 DAY)
         GROUP BY DATE(data_criacao)
-        ORDER BY date
-      `
+        ORDER BY date;
+      `,
+      values: []
     });
 
-    // Buscar estatísticas de mudança de status nos últimos 7 dias
-    const statusChangeStats = await executeQuery({
+    // Get status changes by date
+    const statusChangeStats = await executeQuery<StatsRow[]>({
       query: `
         SELECT 
           DATE(ultima_atualizacao) as date,
           COUNT(*) as count
-        FROM u711845530_gestao.atividades 
-        WHERE ultima_atualizacao >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        AND status_id != 1
+        FROM u711845530_gestao.atividades
+        WHERE ultima_atualizacao > DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND ultima_atualizacao IS NOT NULL
         GROUP BY DATE(ultima_atualizacao)
-        ORDER BY date
-      `
+        ORDER BY date;
+      `,
+      values: []
     });
 
-    // Combinar os dados de criação e mudança de status
-    const combinedStats = new Map();
+    console.log('Creation stats rows:', creationStats.length);
+    console.log('Status change stats rows:', statusChangeStats.length);
 
-    // Adicionar dados de criação
-    (creationStats as { date: string; count: number }[]).forEach((stat: { date: string; count: number }) => {
-      const date = stat.date;
-      combinedStats.set(date, {
-        date,
-        TarefasCriadas: stat.count,
-        AtualizacoesStatus: 0
-      });
-    });
-
-    // Adicionar dados de mudança de status
-    (statusChangeStats as { date: string; count: number }[]).forEach((stat: { date: string; count: number }) => {
-      const date = stat.date;
-      if (combinedStats.has(date)) {
-        combinedStats.get(date).AtualizacoesStatus = stat.count;
-      } else {
-        combinedStats.set(date, {
-          date,
-          TarefasCriadas: 0,
-          AtualizacoesStatus: stat.count
-        });
+    // Format data for chart visualization
+    const dates = new Set<string>();
+    
+    // Add all dates from both datasets
+    creationStats.forEach((row: StatsRow) => {
+      if (row.date) {
+        const dateObj = new Date(row.date);
+        dates.add(dateObj.toISOString().split('T')[0]);
       }
     });
-
-    // Gerar dados para os últimos 7 dias
-    const chartData = [];
-    const today = new Date();
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      const stats = combinedStats.get(dateStr) || { TarefasCriadas: 0, AtualizacoesStatus: 0 };
-      
-      chartData.push({
-        date: dateStr,
-        TarefasCriadas: stats.TarefasCriadas,
-        AtualizacoesStatus: stats.AtualizacoesStatus
+    statusChangeStats.forEach((row: StatsRow) => {
+      if (row.date) {
+        const dateObj = new Date(row.date);
+        dates.add(dateObj.toISOString().split('T')[0]);
+      }
+    });
+    
+    // Sort dates
+    const sortedDates = Array.from(dates).sort();
+    
+    // Create a map for quick lookup
+    const creationMap = new Map(
+      creationStats.map((row: StatsRow) => {
+        const dateObj = new Date(row.date);
+        return [dateObj.toISOString().split('T')[0], parseInt(row.count.toString())];
+      })
+    );
+    
+    const statusChangeMap = new Map(
+      statusChangeStats.map((row: StatsRow) => {
+        const dateObj = new Date(row.date);
+        return [dateObj.toISOString().split('T')[0], parseInt(row.count.toString())];
+      })
+    );
+    
+    // Create the final dataset
+    const chartData = sortedDates.map(date => ({
+      date,
+      "TarefasCriadas": creationMap.get(date) || 0,
+      "AtualizacoesStatus": statusChangeMap.get(date) || 0
+    }));
+
+    // Se não houver dados, adicione dados simulados para testes
+    if (chartData.length === 0) {
+      console.log('No activity data found for the last 30 days, using mock data');
+      return NextResponse.json({ 
+        chartData: generateMockData()
+      });
+    } else {
+      console.log(`Returning ${chartData.length} days of activity data`);
+      return NextResponse.json({ 
+        chartData
       });
     }
-
-    // Se não houver dados reais, usar dados mock
-    if (chartData.every(day => day.TarefasCriadas === 0 && day.AtualizacoesStatus === 0)) {
-      // Gerar dados mock para demonstração
-      chartData.forEach((day) => {
-        day.TarefasCriadas = Math.floor(Math.random() * 5) + 1;
-        day.AtualizacoesStatus = Math.floor(Math.random() * 3) + 1;
-      });
-    }
-
-    return NextResponse.json({ chartData });
   } catch (error) {
-    console.error('Erro ao buscar estatísticas de atividade:', error);
-    
-    // Fallback para dados mock em caso de erro
-    const chartData = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      chartData.push({
-        date: dateStr,
-        TarefasCriadas: Math.floor(Math.random() * 5) + 1,
-        AtualizacoesStatus: Math.floor(Math.random() * 3) + 1
-      });
-    }
-    
-    return NextResponse.json({ chartData });
+    console.error('Error fetching activity stats:', error);
+    console.log('Falling back to mock data due to error');
+    return NextResponse.json({ 
+      chartData: generateMockData() 
+    });
   }
+}
+
+// Função para gerar dados de teste para o gráfico
+function generateMockData() {
+  const today = new Date();
+  const data = [];
+  
+  // Valores iniciais
+  let tasksBase = 3;
+  const updatesBase = 5;
+  
+  // Tendência crescente para tarefas criadas
+  const taskTrend = 0.15; // Crescimento diário médio
+  
+  // Flutuação aleatória
+  const taskRandom = 3; // Variação máxima aleatória para tarefas
+  const updateRandom = 5; // Variação máxima aleatória para atualizações
+  
+  // Gerar dados para os últimos 30 dias
+  for (let i = 30; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Aplicar tendência
+    tasksBase += taskTrend;
+    
+    // Menos atividade nos finais de semana
+    const dayOfWeek = date.getDay(); // 0 = domingo, 6 = sábado
+    const weekendFactor = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.3 : 1;
+    
+    // Gerar valores para o dia
+    const tasksCreated = Math.max(0, Math.round((tasksBase + (Math.random() * taskRandom) - (taskRandom / 2)) * weekendFactor));
+    const statusUpdates = Math.max(0, Math.round((updatesBase + tasksCreated + (Math.random() * updateRandom) - (updateRandom / 2)) * weekendFactor));
+    
+    data.push({
+      date: dateStr,
+      "TarefasCriadas": tasksCreated,
+      "AtualizacoesStatus": statusUpdates
+    });
+  }
+  
+  return data;
 } 

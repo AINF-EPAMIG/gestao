@@ -41,6 +41,8 @@ export function PollingWrapper({ children }: { children: React.ReactNode }) {
       try {
         if (!session?.user?.email) return;
 
+
+
         // Verificar qual página estamos e chamar a API correspondente
         if (pathname?.includes('/chamados')) {
           // Na página de chamados
@@ -48,7 +50,8 @@ export function PollingWrapper({ children }: { children: React.ReactNode }) {
         } else {
           // Na página kanban ou outras páginas com tarefas
           const params = new URLSearchParams({
-            userEmail: session.user.email
+            userEmail: session.user.email,
+            _t: Date.now().toString() // Força cache busting
           });
 
           if (selectedSetor) {
@@ -74,13 +77,11 @@ export function PollingWrapper({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Buscar dados inicialmente (mesmo se estiver pausado)
-    if (!isPaused) {
-      fetchData();
-    }
+    // Primeiro fetch imediato
+    fetchData();
 
-    // Configurar polling a cada 2 segundos para manter os dados sempre atualizados
-    const interval = setInterval(fetchData, 2000);
+    // Configurar polling a cada 5 segundos (reduzido para evitar conflitos)
+    const interval = setInterval(fetchData, 5000);
 
     return () => clearInterval(interval);
   }, [setTasks, fetchChamados, session?.user?.email, selectedSetor, isPaused, pathname]);

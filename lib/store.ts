@@ -395,7 +395,12 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     }
   },
 
-  setSelectedSetor: (setor) => set({ selectedSetor: setor }),
+  setSelectedSetor: (setor) => {
+    console.log('Mudando setor selecionado para:', setor);
+    set({ 
+      selectedSetor: setor
+    });
+  },
 }))
 
 export function getStatusName(statusId: number): Status {

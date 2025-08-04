@@ -18,16 +18,27 @@ interface CustomAxisTickProps {
 }
 
 const CustomAxisTick = ({ x, y, payload }: CustomAxisTickProps) => {
-  const name = payload.value;
-  const email = payload.email;
-
+  const { value, email } = payload;
   let adjustX = 0;
   let adjustY = 0;
   let textAnchor = "middle";
 
   // Ajustes responsivos com base no tamanho da tela
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-  const padding = isMobile ? 20 : 25;
+  const [padding, setPadding] = useState(25);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkMobile = () => {
+        const mobile = window.innerWidth < 640;
+        setPadding(mobile ? 20 : 25);
+      };
+      
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      
+      return () => window.removeEventListener('resize', checkMobile);
+    }
+  }, []);
 
   if (payload.angle === 0) {
     adjustX = padding;
@@ -67,7 +78,7 @@ const CustomAxisTick = ({ x, y, payload }: CustomAxisTickProps) => {
             <AvatarFallback>{!imageLoaded && (email ? email[0].toUpperCase() : '?')}</AvatarFallback>
           </Avatar>
           <span className="text-[7px] sm:text-[8px] md:text-[10px] font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[30px] sm:max-w-[40px] md:max-w-[50px]">
-            {name}
+            {value}
           </span>
         </div>
       </foreignObject>

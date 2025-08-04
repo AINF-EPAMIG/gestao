@@ -5,24 +5,23 @@ import { PieChart } from "@/components/charts/pie-chart"
 import { RadarChart } from "@/components/charts/radar-chart"
 import { ActivityAreaChart } from "@/components/charts/activity-area-chart"
 import { TasksByStatusChart } from "@/components/charts/tasks-by-status-chart"
-import { useTaskStore } from "@/lib/store"
-import { useState, useEffect } from "react"
 import AuthRequired from "@/components/auth-required"
 import { PollingWrapper } from "@/components/polling-wrapper"
-import { Loader2, TrendingUp, BarChart } from "lucide-react"
+import { Loader2, TrendingUp, BarChart, AlertTriangle } from "lucide-react"
 import AuthenticatedLayout from "./authenticated-layout"
+import { useDashboardData } from "@/lib/hooks/use-dashboard-data"
+import { usePermissions } from "@/lib/hooks/use-permissions"
+import { useSetorNavigation } from "@/lib/hooks/use-setor-navigation"
+import { PageHeader } from "@/components/page-header"
 
 export default function DashboardPage() {
-  const tasks = useTaskStore((state) => state.tasks)
-  const [isLoading, setIsLoading] = useState(true)
-
-  // Efeito para controlar o estado de carregamento
-  useEffect(() => {
-    if (tasks.length > 0) {
-      // Quando as tarefas são carregadas, desativa o loader
-      setIsLoading(false)
-    }
-  }, [tasks])
+  const { isLoading } = useDashboardData()
+  const { canViewAllSectors } = usePermissions()
+  const { selectedSetor } = useSetorNavigation()
+  
+  // Verificar se o gráfico de movimentação deve ser habilitado
+  // Só habilita para o setor ASTI ou quando nenhum setor específico está selecionado
+  const isKanbanChartEnabled = !canViewAllSectors || !selectedSetor || selectedSetor === 'ASTI'
 
   return (
     <AuthRequired>
@@ -35,9 +34,7 @@ export default function DashboardPage() {
           ) : (
             <div className="min-h-screen w-full bg-background">
               <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Painel Kanban</h1>
-                </div>
+                <PageHeader title="Painel Kanban" />
                 
                 {/* Gráficos em grade - Distribuição por Etapa e Cards Atribuídos por Usuário */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -79,20 +76,40 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Gráfico de Movimentação no Kanban */}
-                <Card className="w-full mb-6 border-t-4 border-t-primary">
+                <Card className={`w-full mb-6 border-t-4 ${isKanbanChartEnabled ? 'border-t-primary' : 'border-t-gray-300'}`}>
                   <CardHeader className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                      <CardTitle className="text-base sm:text-lg lg:text-xl">Movimentação no Kanban</CardTitle>
+                      {isKanbanChartEnabled ? (
+                        <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                      )}
+                      <CardTitle className={`text-base sm:text-lg lg:text-xl ${!isKanbanChartEnabled ? 'text-gray-400' : ''}`}>
+                        Movimentação no Kanban
+                      </CardTitle>
                     </div>
                     <CardDescription className="text-xs sm:text-sm">
-                      Visão geral das tarefas criadas e atualizações de status nos últimos 7 dias
+                      {isKanbanChartEnabled 
+                        ? "Visão geral das tarefas criadas e atualizações de status nos últimos 30 dias"
+                        : "Este gráfico está disponível apenas para o setor ASTI"
+                      }
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="px-2 sm:px-4 pb-4">
-                    <div className="w-full h-[230px] sm:h-[270px] lg:h-[330px] xl:h-[370px]">
-                      <ActivityAreaChart />
-                    </div>
+                    {isKanbanChartEnabled ? (
+                      <div className="w-full h-[230px] sm:h-[270px] lg:h-[330px] xl:h-[370px]">
+                        <ActivityAreaChart />
+                      </div>
+                    ) : (
+                      <div className="w-full h-[230px] sm:h-[270px] lg:h-[330px] xl:h-[370px] flex flex-col items-center justify-center text-gray-400">
+                        <AlertTriangle className="h-12 w-12 mb-3" />
+                        <p className="text-sm font-medium">Dados não disponíveis para este setor</p>
+                        <p className="text-xs text-center mt-1">
+                          O gráfico de movimentação no Kanban contém dados específicos do setor ASTI.<br />
+                          Para visualizar este gráfico, selecione o setor ASTI no menu lateral.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 

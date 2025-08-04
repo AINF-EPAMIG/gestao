@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQueryFuncionarios } from '@/lib/db';
-import { Funcionario } from '@/lib/types';
-import { isExceptionEmailChefia } from '@/lib/auth-config';
+import { Funcionario, NivelHierarquico, PermissoesUsuario, AutorizacaoUsuario } from '@/lib/types';
+import { 
+  determinarNivelHierarquico, 
+  calcularPermissoes, 
+  verificarPermissao 
+} from '@/lib/auth-config';
 
 // Busca informações do usuário pelo e-mail
 async function getUserInfo(email: string) {
@@ -41,19 +45,59 @@ async function getResponsaveisBySetor(secao: string) {
   return result;
 }
 
-// Utilitários equivalentes ao rm-service
+// Utilitários equivalentes ao rm-service (mantidos para compatibilidade)
 function isUserChefe(user: Funcionario | null): boolean {
   if (!user) return false;
   
-  // Verificar se é email de exceção primeiro
-  if (isExceptionEmailChefia(user.email)) {
-    return true;
-  }
+  // Nova lógica baseada em nível hierárquico
+  const nivel = determinarNivelHierarquico(user);
+  return nivel === NivelHierarquico.CHEFE || 
+         nivel === NivelHierarquico.PRESIDENTE || 
+         nivel === NivelHierarquico.DIRETORIA;
+}
+
+// Novas funções baseadas em nível hierárquico
+function getUserNivel(user: Funcionario | null): NivelHierarquico {
+  return determinarNivelHierarquico(user);
+}
+
+function getUserPermissoes(user: Funcionario | null): PermissoesUsuario {
+  return calcularPermissoes(user);
+}
+
+function getUserAutorizacao(user: Funcionario | null): AutorizacaoUsuario | null {
+  if (!user) return null;
   
-  // Verificar se cargo contém "CHEFE"
-  const isChefeCargo = typeof user.cargo === 'string' && user.cargo.toUpperCase().includes('CHEFE');
+  const setor = user.departamento || user.divisao || user.assessoria || user.secao || '';
   
-  return isChefeCargo;
+  return {
+    email: user.email,
+    nivel: determinarNivelHierarquico(user),
+    setor,
+    permissoes: calcularPermissoes(user)
+  };
+}
+
+function isUserPresidenteOuDiretoria(user: Funcionario | null): boolean {
+  if (!user) return false;
+  const nivel = determinarNivelHierarquico(user);
+  return nivel === NivelHierarquico.PRESIDENTE || nivel === NivelHierarquico.DIRETORIA;
+}
+
+function canUserAccessAllSectors(user: Funcionario | null): boolean {
+  return verificarPermissao(user, 'visualizar_todos_setores');
+}
+
+function canUserCreateProjects(user: Funcionario | null): boolean {
+  return verificarPermissao(user, 'criar_projetos');
+}
+
+function canUserDeleteActivities(user: Funcionario | null): boolean {
+  return verificarPermissao(user, 'excluir_atividades');
+}
+
+function canUserEditAnyActivity(user: Funcionario | null): boolean {
+  return verificarPermissao(user, 'editar_qualquer_atividade');
 }
 
 function isUserEstagiario(user: Funcionario | null): boolean {
@@ -209,6 +253,57 @@ export async function GET(request: NextRequest) {
       const user = await getUserInfo(email);
       return NextResponse.json({ chapa: getUserRegistration(user) });
     }
+    
+    // Novas funções baseadas em nível hierárquico
+    if (action === 'getUserNivel') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ nivel: getUserNivel(user) });
+    }
+    if (action === 'getUserPermissoes') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ permissoes: getUserPermissoes(user) });
+    }
+    if (action === 'getUserAutorizacao') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json(getUserAutorizacao(user));
+    }
+    if (action === 'isUserPresidenteOuDiretoria') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ isPresidenteOuDiretoria: isUserPresidenteOuDiretoria(user) });
+    }
+    if (action === 'canUserAccessAllSectors') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ canAccessAllSectors: canUserAccessAllSectors(user) });
+    }
+    if (action === 'canUserCreateProjects') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ canCreateProjects: canUserCreateProjects(user) });
+    }
+    if (action === 'canUserDeleteActivities') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ canDeleteActivities: canUserDeleteActivities(user) });
+    }
+    if (action === 'canUserEditAnyActivity') {
+      const email = searchParams.get('email');
+      if (!email) return NextResponse.json({ error: 'Email não informado' }, { status: 400 });
+      const user = await getUserInfo(email);
+      return NextResponse.json({ canEditAnyActivity: canUserEditAnyActivity(user) });
+    }
+    
     return NextResponse.json({ error: 'Ação inválida' }, { status: 400 });
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno', details: String(error) }, { status: 500 });

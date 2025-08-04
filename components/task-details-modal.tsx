@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSession } from "next-auth/react"
+import { usePermissions, useIsChefePlus } from "@/lib/hooks/use-permissions"
 import { TaskAttachments } from "./task-attachments"
 import { TaskTodos } from "./task-todos"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -96,7 +97,27 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   const pathname = usePathname()
   const isChamadosPage = pathname === "/chamados"
   const [isEditing, setIsEditing] = useState(false)
-  const [canEdit, setCanEdit] = useState(false)
+  const { canEditAnyActivity } = usePermissions()
+  const isChefePlus = useIsChefePlus()
+  
+  // Calcular permissões de edição de forma estável
+  const canEdit = useMemo(() => {
+    if (!session?.user?.email) return false;
+    
+    // Se pode editar qualquer atividade (Presidente/Diretoria)
+    if (canEditAnyActivity) return true;
+    
+    // Se é responsável pela tarefa
+    const isResponsavel = task.responsaveis?.some(
+      (responsavel) => responsavel.email === session.user.email
+    );
+    if (isResponsavel) return true;
+    
+    // Se é chefe (pode editar atividades da sua equipe)
+    if (isChefePlus) return true;
+    
+    return false;
+  }, [session?.user?.email, canEditAnyActivity, task.responsaveis, isChefePlus])
   const [isDeleting, setIsDeleting] = useState(false)
   const [isFading, setIsFading] = useState(false)
   const [showLoading, setShowLoading] = useState(false)
@@ -201,47 +222,28 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
   };
 
   useEffect(() => {
-    const checkUserRole = async () => {
-      if (session?.user?.email) {
+    const fetchResponsaveis = async () => {
+      if (session?.user?.email && open) {
         try {
-          // Verificar se é admin
-          const admin = await isUserAdmin();
-          setCanEdit(admin);
-
-          // Verificar se é responsável
-          const isResponsavel = task.responsaveis?.some(
-            (responsavel) => responsavel.email === session.user.email
-          );
-          if (isResponsavel) {
-            setCanEdit(true);
-          }
-
-          // Buscar informações do usuário
+          // Buscar informações do usuário para obter setor
           const userInfo = await getUserInfo(session.user.email);
           if (userInfo) {
-            const isUserChefeResult = await isUserChefe(session.user.email);
-            if (isUserChefeResult) {
-              setCanEdit(true);
-            }
-
-            // Buscar responsáveis do setor
             const setorParaBuscar = userInfo?.departamento || userInfo?.divisao || userInfo?.assessoria || userInfo?.secao;
             const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
             if (responsaveisData) {
-              // Usar todos os responsáveis sem filtrar
               setResponsaveis(responsaveisData);
             }
           }
         } catch (error) {
-          console.error('Erro ao verificar papel do usuário:', error);
+          console.error('Erro ao buscar responsáveis:', error);
         }
       }
     };
 
     if (open) {
-      checkUserRole();
+      fetchResponsaveis();
     }
-  }, [session?.user?.email, task.responsaveis, open]);
+  }, [session?.user?.email, open]); // Removido task.responsaveis das dependências
 
   // Controlar o polling com base no estado de edição
   useEffect(() => {
@@ -1745,16 +1747,7 @@ async function getUserInfo(email: string) {
   const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
   return res.json();
 }
-async function isUserChefe(email: string) {
-  const res = await fetch(`/api/funcionarios?action=isUserChefe&email=${encodeURIComponent(email)}`);
-  const data = await res.json();
-  return data.isChefe;
-}
-async function isUserAdmin() {
-  // Adapte conforme sua lógica de admin, se necessário
-  // Exemplo: checar se o email está em uma lista de admins
-  return false;
-}
+
 async function getResponsaveisBySetor(secao: string) {
   const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
   return res.json();

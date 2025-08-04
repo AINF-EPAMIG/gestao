@@ -15,7 +15,6 @@ interface ChamadoAtendimento extends RowDataPacket {
   prioridade: string;
   descricao: string;
   data_solicitacao: string;
-  tecnico_responsavel: string;
   tecnicos_responsaveis?: string;
   data_conclusao: string | null;
   resposta_conclusao: string | null;
@@ -33,7 +32,6 @@ interface CriacaoAcesso extends RowDataPacket {
   sistemas_solicitados: string;
   observacao: string;
   data_solicitacao: string;
-  tecnico_responsavel: string;
   tecnicos_responsaveis?: string;
   data_conclusao: string | null;
   resposta_conclusao: string | null;
@@ -106,16 +104,17 @@ export async function GET() {
     await verificarECorrigirPosicoesNoBanco(kanbanPositions);
 
     // Buscar novamente as posições após possíveis correções
-    await dbAtendimento.query<KanbanPosition[]>(
-      'SELECT * FROM kanban_positions'
-    );
+    // const [kanbanPositionsAtualizadas] = await dbAtendimento.query<KanbanPosition[]>(
+    //   'SELECT * FROM kanban_positions'
+    // );
+    // Não precisamos das variáveis pois não são usadas
 
     // Carregar mapa de posições
     const positionsMap = new Map();
     const positionsResponse = await dbAtendimento.query<KanbanPosition[]>(
       `
         SELECT id, tipo_item, id_referencia, status, posicao
-        FROM u711845530_atendimento.posicoes_itens
+        FROM kanban_positions
         WHERE status IN (1, 2, 3, 4)
         ORDER BY status, posicao
       `
@@ -159,7 +158,7 @@ export async function GET() {
             if (posicaoAtual !== novaPos) {
               await dbAtendimento.execute(
                 `
-                  UPDATE u711845530_atendimento.posicoes_itens
+                  UPDATE kanban_positions
                   SET posicao = ?
                   WHERE id = ?
                 `,
@@ -174,11 +173,17 @@ export async function GET() {
     // Padronizar campos para ambos os tipos
     const normalize = (item: ChamadoAtendimento | CriacaoAcesso, origem: string): ChamadoNormalizado => {
       // Obter as informações de posição a partir do mapa
-      const posKey = `${origem}-${item.id}`;
+      const tipoItem = origem === 'chamados_atendimento' ? 'chamado' : 'acesso';
+      const posKey = `${tipoItem}-${item.id}`;
       const posInfo = positionsMap.get(posKey);
       
       if (origem === 'chamados_atendimento') {
         const chamado = item as ChamadoAtendimento;
+        // Extrair o primeiro responsável da lista de responsáveis para compatibilidade
+        const primeiroResponsavel = chamado.tecnicos_responsaveis 
+          ? chamado.tecnicos_responsaveis.split(',')[0]?.trim() || ''
+          : '';
+        
         return {
           id: chamado.id,
           nome_solicitante: chamado.nome_solicitante,
@@ -193,7 +198,7 @@ export async function GET() {
           descricao: chamado.descricao,
           data_solicitacao: chamado.data_solicitacao,
           status: posInfo?.status || 'Em fila', // Usar o status da tabela kanban_positions
-          tecnico_responsavel: chamado.tecnico_responsavel,
+          tecnico_responsavel: primeiroResponsavel,
           tecnicos_responsaveis: chamado.tecnicos_responsaveis,
           data_conclusao: chamado.data_conclusao,
           resposta_conclusao: chamado.resposta_conclusao,
@@ -202,6 +207,11 @@ export async function GET() {
         };
       } else {
         const acesso = item as CriacaoAcesso;
+        // Extrair o primeiro responsável da lista de responsáveis para compatibilidade
+        const primeiroResponsavel = acesso.tecnicos_responsaveis 
+          ? acesso.tecnicos_responsaveis.split(',')[0]?.trim() || ''
+          : '';
+        
         return {
           id: acesso.id,
           nome_solicitante: acesso.nome_solicitante,
@@ -215,7 +225,7 @@ export async function GET() {
           descricao: acesso.observacao || '',
           data_solicitacao: acesso.data_solicitacao,
           status: posInfo?.status || 'Em fila',
-          tecnico_responsavel: acesso.tecnico_responsavel,
+          tecnico_responsavel: primeiroResponsavel,
           tecnicos_responsaveis: acesso.tecnicos_responsaveis,
           data_conclusao: acesso.data_conclusao,
           resposta_conclusao: acesso.resposta_conclusao,
@@ -233,7 +243,7 @@ export async function GET() {
     // Para chamados sem entrada na tabela kanban_positions, 
     // criar entradas padrão baseado no status atual
     for (const chamado of chamados) {
-      const posKey = `chamados_atendimento-${chamado.id}`;
+      const posKey = `chamado-${chamado.id}`;
       if (!positionsMap.has(posKey)) {
         // Adicionar à tabela kanban_positions
         await dbAtendimento.execute(
@@ -244,7 +254,7 @@ export async function GET() {
     }
 
     for (const acesso of acessos) {
-      const posKey = `criacao_acessos-${acesso.id}`;
+      const posKey = `acesso-${acesso.id}`;
       if (!positionsMap.has(posKey)) {
         // Adicionar à tabela kanban_positions
         await dbAtendimento.execute(

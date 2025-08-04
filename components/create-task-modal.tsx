@@ -1,15 +1,23 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, X, Edit, Trash, Check, Loader2, FolderIcon } from 'lucide-react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Task } from "@/lib/store" // useTaskStore removido pois não é usado
+import { useSession } from "next-auth/react"
+import { useCanManageProjects, useIsChefePlus } from "@/lib/hooks/use-permissions"
+import { Plus, X, Search, FolderIcon, Edit, Check, Trash } from "lucide-react"
+import { DialogFooter } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { FileUpload } from "./file-upload"
+import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
 import { needsProcessing, processLargeFile } from "@/lib/file-utils"
+// Remover: import { toast } from "react-toastify"
 
 interface Projeto {
   id: number
@@ -42,28 +50,25 @@ export function CreateTaskModal() {
   const [titulo, setTitulo] = useState("")
   const [descricao, setDescricao] = useState("")
   const [projetoId, setProjetoId] = useState<string>("")
+  const [responsavelInput, setResponsavelInput] = useState("")
   const [selectedResponsaveis, setSelectedResponsaveis] = useState<Responsavel[]>([])
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
-  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
+  const [dataInicio, setDataInicio] = useState("")
   const [dataFim, setDataFim] = useState("")
   const [estimativaHoras, setEstimativaHoras] = useState("8")
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [modoPersonalizado, setModoPersonalizado] = useState(false)
   const [projetos, setProjetos] = useState<Projeto[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
-  const [isChefe, setIsChefe] = useState<boolean>(false)
-  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const canManageProjects = useCanManageProjects()
+  const isChefePlus = useIsChefePlus()
   const [selectedSetor, setSelectedSetor] = useState<string>("")
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // const setTasks = useTaskStore((state) => state.setTasks) // Não é usado - import removido
   const [projetoInput, setProjetoInput] = useState("")
   const [idRelease, setIdRelease] = useState<string | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showResponsavelSuggestions, setShowResponsavelSuggestions] = useState(false)
   const responsavelRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("detalhes")
   const [cachedFiles, setCachedFiles] = useState<CachedFile[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmittingProjeto, setIsSubmittingProjeto] = useState(false)
   const [projetoEditando, setProjetoEditando] = useState<Projeto | null>(null)
@@ -75,102 +80,80 @@ export function CreateTaskModal() {
   
   // Novo estado para o modal de seleção de ID Release
   const [openReleaseModal, setOpenReleaseModal] = useState(false)
-  const [allTasks, setAllTasks] = useState<any[]>([]) // eslint-disable-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [filteredTasks, setFilteredTasks] = useState<any[]>([]) // eslint-disable-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadingTasks, setLoadingTasks] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedReleaseTask, setSelectedReleaseTask] = useState<any | null>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [selectedReleaseTask, setSelectedReleaseTask] = useState<Task | null>(null)
   
   // Novo estado para o modal de seleção de projeto
   const [openProjetoModal, setOpenProjetoModal] = useState(false)
   const [projetosSearchTerm, setProjetosSearchTerm] = useState("")
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [filteredProjetos, setFilteredProjetos] = useState<Projeto[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [responsavelInput, setResponsavelInput] = useState("")
+
+  // Inicializar data de início apenas no cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setDataInicio(new Date().toISOString().split('T')[0])
+    }
+  }, [])
 
   useEffect(() => {
-    // Verificar se o usuário é chefe ou admin e pré-selecionar o próprio usuário
-    const checkUserRole = async () => {
+    // Buscar informações do usuário e configurar responsáveis
+    const fetchUserData = async () => {
       if (session?.user?.email) {
         try {
-          // Verificar se é admin
-          const admin = await isUserAdmin();
-          setIsAdmin(admin);
-
-          // Buscar informações do usuário
           const userInfo = await getUserInfo(session.user.email);
           if (userInfo) {
-            const isUserChefeResult = await isUserChefe(session.user.email);
-            setIsChefe(isUserChefeResult);
-            
-            // Apenas define o setor se não for admin
-            if (!admin) {
+            // Define o setor do usuário se não pode gerenciar projetos
+            if (!canManageProjects) {
               const setorUsuario = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
               setSelectedSetor(setorUsuario);
             }
 
-            // Se for chefe ou admin, buscar subordinados
-            if (isUserChefeResult || admin) {
-              const setorParaBuscar = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
-              const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
-              if (responsaveisData) {
-                // Usar todos os responsáveis sem filtrar
-                setResponsaveis(responsaveisData);
-              }
-            } else {
-              // Para usuários comuns, buscar todos os responsáveis do setor e auto atribuir
-              const setorParaBuscar = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
-              const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
-              if (responsaveisData) {
-                // Usar todos os responsáveis sem filtrar
-                setResponsaveis(responsaveisData);
-
-                // Pré-seleciona o próprio usuário como responsável apenas para usuários comuns
-                if (session?.user?.email) {
-                  const userResponsavel: Responsavel = {
-                    EMAIL: session.user.email,
-                    NOME: userInfo.NOME_COMPLETO,
-                    CARGO: userInfo.CARGO
-                  };
-                  
-                  // Verifica se o usuário já não está na lista antes de adicionar
-                  if (!responsaveisData.some((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)) {
-                    setResponsaveis(prev => [userResponsavel, ...prev]);
-                    setSelectedResponsaveis([userResponsavel]);
-                  } else {
-                    // Se o usuário já estiver na lista, apenas seleciona ele
-                    setSelectedResponsaveis([responsaveisData.find((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)!]);
-                  }
-                }
-              }
+            // Buscar responsáveis do setor
+            const setorParaBuscar = userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao;
+            const responsaveisData = await getResponsaveisBySetor(setorParaBuscar);
+            if (responsaveisData) {
+              setResponsaveis(responsaveisData);
             }
 
-            // Se for admin, buscar lista de setores
-            if (admin) {
-              try {
-                const setoresResponse = await fetch('/api/setor');
-                if (setoresResponse.ok) {
-                  const setoresData = await setoresResponse.json();
-                  setResponsaveis(setoresData);
+            // APENAS para colaboradores (não chefes), pré-selecionar o próprio usuário
+            if (!isChefePlus && session?.user?.email) {
+              console.log('Auto-atribuindo responsável para colaborador:', session.user.email, 'isChefePlus:', isChefePlus);
+              
+              const userResponsavel: Responsavel = {
+                EMAIL: session.user.email,
+                NOME: userInfo.NOME_COMPLETO || session.user.name || '',
+                CARGO: userInfo.CARGO || ''
+              };
+              
+              // Verifica se o usuário já não está na lista antes de adicionar
+              if (!responsaveisData?.some((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)) {
+                setResponsaveis(prev => [userResponsavel, ...prev]);
+                setSelectedResponsaveis([userResponsavel]);
+              } else {
+                // Se o usuário já estiver na lista, apenas seleciona ele
+                const existingUser = responsaveisData.find((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL);
+                if (existingUser) {
+                  setSelectedResponsaveis([existingUser]);
                 }
-              } catch (error) {
-                console.error('Erro ao carregar dados:', error);
               }
+            } else if (isChefePlus) {
+              console.log('Chefe detectado, NÃO auto-atribuindo responsável:', session.user.email);
+              // Chefes não são auto-atribuídos como responsáveis
+              // Eles devem escolher manualmente os responsáveis da equipe
             }
           }
         } catch (error) {
-          console.error('Erro ao verificar papel do usuário:', error);
+          console.error('Erro ao buscar dados do usuário:', error);
         }
       }
     };
 
-    checkUserRole();
-  }, [session?.user?.email]);
+    fetchUserData();
+  }, [session?.user?.email, session?.user?.name, canManageProjects, isChefePlus]);
 
   useEffect(() => {
     // Atualizar responsáveis quando o setor selecionado mudar (para todos os usuários)
@@ -234,7 +217,6 @@ export function CreateTaskModal() {
     }
   }, [])
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleFileSelect = async (files: File[]) => {
     try {
       // Verifica se algum arquivo é um arquivo compactado
@@ -288,6 +270,37 @@ export function CreateTaskModal() {
       alert(error instanceof Error ? error.message : "Erro ao processar arquivos grandes. Tente novamente.");
     }
   }
+
+  const handleRemoveFile = (id: string) => {
+    setCachedFiles(prev => prev.filter(file => file.id !== id))
+  }
+
+  // const uploadCachedFiles = async (taskId: number) => { // Função não é usada
+  //   if (cachedFiles.length === 0) return
+
+  //   const formData = new FormData()
+  //   formData.append("taskId", taskId.toString())
+    
+  //   cachedFiles.forEach(({file}) => {
+  //     formData.append("files", file)
+  //   })
+
+  //   try {
+  //     const response = await fetch("/api/anexos/upload", {
+  //       method: "POST",
+  //       body: formData
+  //     })
+
+  //     if (!response.ok) {
+  //       throw new Error("Erro ao fazer upload dos arquivos")
+  //     }
+
+  //     setCachedFiles([])
+  //   } catch (error) {
+  //     console.error("Erro ao fazer upload:", error)
+  //     alert("Alguns anexos podem não ter sido enviados. Por favor, verifique na tela de detalhes da tarefa.")
+  //   }
+  // }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -350,7 +363,6 @@ export function CreateTaskModal() {
           } 
         }))
 
-        alert('Tarefa criada com sucesso!')
         setOpen(false);
         handleFinish()
       } else {
@@ -400,14 +412,12 @@ export function CreateTaskModal() {
     setShowResponsavelSuggestions(false)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleProjetoSelect = (projeto: Projeto) => {
     setProjetoId(projeto.id.toString())
     setProjetoInput(projeto.nome)
     setOpenProjetoModal(false)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleResponsavelSelect = (responsavel: Responsavel) => {
     // Verifica se o responsável já está selecionado
     const isAlreadySelected = selectedResponsaveis.some(r => r.EMAIL === responsavel.EMAIL);
@@ -438,7 +448,6 @@ export function CreateTaskModal() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const removeResponsavel = (email: string) => {
     setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
@@ -579,8 +588,7 @@ export function CreateTaskModal() {
           
           // Se já tiver um ID Release selecionado, encontre a tarefa correspondente
           if (idRelease) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const selectedTask = data.find((task: any) => task.id.toString() === idRelease)
+            const selectedTask = data.find((task: Task) => task.id.toString() === idRelease)
             if (selectedTask) {
               setSelectedReleaseTask(selectedTask)
             }
@@ -627,8 +635,7 @@ export function CreateTaskModal() {
   }, [allTasks])
 
   // Função para selecionar uma tarefa como ID Release
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectTaskAsRelease = (task: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const selectTaskAsRelease = (task: Task) => {
     setIdRelease(task.id.toString())
     setSelectedReleaseTask(task)
     setOpenReleaseModal(false)
@@ -674,40 +681,8 @@ export function CreateTaskModal() {
     }
   }, [openProjetoModal, projetos])
 
-  // Garantir que o usuário logado seja pré-atribuído quando o modal for aberto
-  useEffect(() => {
-    if (open && session?.user?.email) {
-      // Buscar informações do usuário e pré-atribuir como responsável
-      const preencherUsuarioLogado = async () => {
-        try {
-          if (session.user.email) {
-            const userInfo = await getUserInfo(session.user.email);
-            if (userInfo) {
-              const userResponsavel: Responsavel = {
-                EMAIL: session.user.email,
-                NOME: userInfo.NOME_COMPLETO || '',
-                CARGO: userInfo.CARGO || ''
-              };
-              
-              // Usar função de callback para acessar o estado atual
-              setSelectedResponsaveis(prevResponsaveis => {
-                // Verificar se o usuário já não está na lista antes de adicionar
-                if (prevResponsaveis.length === 0 || !prevResponsaveis.some((r: Responsavel) => r.EMAIL === userResponsavel.EMAIL)) {
-                  return [userResponsavel];
-                }
-                return prevResponsaveis;
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Erro ao pré-atribuir usuário logado:', error);
-        }
-      };
-      
-      preencherUsuarioLogado();
-    }
-  // Remover selectedResponsaveis das dependências
-  }, [open, session?.user?.email]);
+  // Este useEffect foi removido pois estava causando auto-atribuição para chefes
+  // A lógica correta de auto-atribuição já está no useEffect principal acima (apenas para colaboradores)
 
   // Resetar estados quando o modal é fechado
   useEffect(() => {
@@ -751,7 +726,6 @@ export function CreateTaskModal() {
   }, [open, session?.user?.email]);
 
   // Define a estimativa com um valor predefinido
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const definirEstimativa = (valor: number) => {
     // Se o valor já está selecionado, desmarca (limpa o valor)
     if (Number(estimativaHoras) === valor) {
@@ -767,16 +741,7 @@ export function CreateTaskModal() {
     const res = await fetch(`/api/funcionarios?action=userInfo&email=${encodeURIComponent(email)}`);
     return res.json();
   }
-  async function isUserChefe(email: string) {
-    const res = await fetch(`/api/funcionarios?action=isUserChefe&email=${encodeURIComponent(email)}`);
-    const data = await res.json();
-    return data.isChefe;
-  }
-  async function isUserAdmin() {
-    // Adapte conforme sua lógica de admin, se necessário
-    // Exemplo: checar se o email está em uma lista de admins
-    return false;
-  }
+
   async function getResponsaveisBySetor(secao: string) {
     const res = await fetch(`/api/funcionarios?action=responsaveisSetor&secao=${encodeURIComponent(secao)}`);
     return res.json();
@@ -789,8 +754,8 @@ export function CreateTaskModal() {
           <DialogTrigger asChild>
             <Button
               className="bg-blue-600 text-white hover:bg-blue-500"
-              disabled={!isChefe && !isAdmin}
-              title={!isChefe && !isAdmin ? "Apenas chefes e administradores podem gerenciar projetos" : ""}
+              disabled={!canManageProjects}
+              title={!canManageProjects ? "Apenas usuários com permissão podem gerenciar projetos" : ""}
             >
               <FolderIcon className="w-4 h-4 mr-2" />
               Projetos
@@ -1016,8 +981,287 @@ export function CreateTaskModal() {
                             </span>
                           </div>
                         </div>
+                        
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium">Descrição</label>
+                          <Textarea
+                            value={descricao}
+                            onChange={(e) => setDescricao(e.target.value)}
+                            placeholder="Digite a descrição da tarefa"
+                            className="h-14 min-h-[56px] mt-1"
+                            maxLength={500}
+                          />
+                          <div className="flex justify-end mt-0.5">
+                            <span className={`text-xs ${descricao.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
+                              {descricao.length}/500
+                            </span>
+                          </div>
+                        </div>
                       </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Projeto *</label>
+                          <div className="flex gap-1 mt-1">
+                            <div className="relative flex-1">
+                              <Input
+                                value={projetoInput}
+                                placeholder="Selecione"
+                                className="flex-1 bg-gray-50 pr-8 h-8"
+                                readOnly
+                              />
+                              {projetoId && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                  onClick={() => {
+                                    setProjetoId("")
+                                    setProjetoInput("")
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setOpenProjetoModal(true)}
+                              className="shrink-0 h-8"
+                            >
+                              Selecionar
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Prioridade</label>
+                          <Select value={prioridade} onValueChange={setPrioridade}>
+                            <SelectTrigger className="h-8 mt-1">
+                              <SelectValue placeholder="Selecione a prioridade" />
+                            </SelectTrigger>
+                            <SelectContent position="item-aligned" side="bottom" align="start">
+                              <SelectItem value="1">Alta</SelectItem>
+                              <SelectItem value="2">Média</SelectItem>
+                              <SelectItem value="3">Baixa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Data de Início *</label>
+                          <Input
+                            type="date"
+                            value={dataInicio}
+                            onChange={(e) => setDataInicio(e.target.value)}
+                            required
+                            className="h-8 mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">Data de Fim Prevista</label>
+                          <Input
+                            type="date"
+                            value={dataFim}
+                            onChange={(e) => setDataFim(e.target.value)}
+                            className="h-8 mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">Estimativa de Horas</label>
+                          <div className="space-y-1 mt-1">
+                            <div className="grid grid-cols-5 gap-1">
+                              {[0.5, 1, 2, 8].map((valor) => (
+                                <Button
+                                  key={valor}
+                                  type="button"
+                                  variant={Number(estimativaHoras) === valor ? "default" : "outline"}
+                                  size="sm"
+                                  className={`h-7 text-xs ${Number(estimativaHoras) === valor ? "bg-emerald-800 hover:bg-emerald-700 text-white" : ""}`}
+                                  onClick={() => definirEstimativa(valor)}
+                                >
+                                  {valor < 1 ? `${valor * 60}min` : valor === 1 ? "1h" : `${valor}h`}
+                                </Button>
+                              ))}
+                              <Button
+                                type="button"
+                                variant={modoPersonalizado ? "default" : "outline"}
+                                size="sm"
+                                className={`h-7 text-xs ${modoPersonalizado ? "bg-emerald-800 hover:bg-emerald-700 text-white" : ""}`}
+                                onClick={() => setModoPersonalizado(!modoPersonalizado)}
+                              >
+                                Outro
+                              </Button>
+                            </div>
+                            
+                            {modoPersonalizado && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <div className="flex-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={estimativaHoras}
+                                    onChange={(e) => setEstimativaHoras(e.target.value)}
+                                    placeholder=""
+                                    className="h-7"
+                                  />
+                                </div>
+                                <span className="text-xs">h</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">ID Release</label>
+                          <div className="flex gap-1 mt-1">
+                            <div className="relative flex-1">
+                              <Input
+                                value={idRelease || ''}
+                                placeholder="Selecione"
+                                className="flex-1 bg-gray-50 pr-8 h-8"
+                                readOnly
+                              />
+                              {idRelease && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                                  onClick={() => {
+                                    setIdRelease(null)
+                                    setSelectedReleaseTask(null)
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setOpenReleaseModal(true)}
+                              className="shrink-0 h-8"
+                            >
+                              Selecionar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 mt-2">
+                        <label className="text-sm font-medium">Responsáveis *</label>
+                        <div className="space-y-1 mt-1">
+                          <div className="relative">
+                            <Input
+                              value={responsavelInput}
+                              onChange={(e) => {
+                                setResponsavelInput(e.target.value);
+                                setShowResponsavelSuggestions(true);
+                              }}
+                              onFocus={() => setShowResponsavelSuggestions(true)}
+                              placeholder="Digite o nome do responsável"
+                              className="h-8"
+                            />
+                            {showResponsavelSuggestions && responsavelInput && responsavelInput.length >= 3 && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                                {responsaveis
+                                  .filter(r => {
+                                    const nameMatches = !responsavelInput || 
+                                      ((r.NOME || '').toLowerCase().includes(responsavelInput.toLowerCase()));
+                                    const notAlreadySelected = !selectedResponsaveis.find((sr: Responsavel) => sr.EMAIL === r.EMAIL);
+                                    return nameMatches && notAlreadySelected;
+                                  })
+                                  .map(responsavel => (
+                                    <div
+                                      key={responsavel.EMAIL}
+                                      className="px-3 py-1.5 cursor-pointer hover:bg-gray-50 border-b last:border-0"
+                                      onClick={() => handleResponsavelSelect(responsavel)}
+                                    >
+                                      <div className="flex flex-col">
+                                        <div className="font-medium">
+                                          {responsavel.NOME}
+                                        </div>
+                                        <div className="text-xs text-gray-500">{responsavel.EMAIL}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Lista de responsáveis selecionados */}
+                          <div className="flex flex-wrap gap-1 min-h-[36px] p-1.5 bg-gray-50 rounded-md overflow-y-auto max-h-[70px] scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                            {selectedResponsaveis.map((responsavel) => (
+                              <div key={responsavel.EMAIL} className="flex items-center gap-1 bg-white rounded-md px-2 py-0.5 border shadow-sm">
+                                <span className="text-sm font-medium">
+                                  {responsavel.NOME || responsavel.EMAIL.split('@')[0].replace('.', ' ')}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 hover:bg-gray-100 rounded-full"
+                                  onClick={() => removeResponsavel(responsavel.EMAIL)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <DialogFooter className="pt-1">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-emerald-800 text-white hover:bg-emerald-700"
+                          disabled={isSubmitting || !titulo.trim() || selectedResponsaveis.length === 0 || !projetoId}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Criando...
+                            </>
+                          ) : (
+                            !titulo.trim() ? "Digite o título da tarefa" :
+                            selectedResponsaveis.length === 0 ? "Selecione pelo menos um responsável" :
+                            !projetoId ? "Selecione um projeto" : 
+                            "Criar Tarefa"
+                          )}
+                        </Button>
+                      </DialogFooter>
                     </form>
+                  </TabsContent>
+
+                  <TabsContent value="anexos" className="py-2">
+                    <div>
+                      <FileUpload 
+                        onFileSelect={handleFileSelect}
+                        onRemoveFile={handleRemoveFile}
+                        files={cachedFiles}
+                        showUploadButton={false}
+                        totalAnexos={cachedFiles.length}
+                      />
+                      
+                      {cachedFiles.length > 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-100">
+                          <p className="text-sm text-blue-700 flex items-start gap-2">
+                            <span className="flex-shrink-0">ℹ️</span>
+                            <span>Os arquivos serão enviados automaticamente quando a tarefa for criada.</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </TabsContent>
                 </div>
               </div>
@@ -1025,6 +1269,196 @@ export function CreateTaskModal() {
           </DialogContent>
         </Dialog>
       </div>
-      </>
-    )
-  }
+
+      {/* Modal de seleção de ID Release */}
+      <Dialog open={openReleaseModal} onOpenChange={setOpenReleaseModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Selecionar ID Release</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center border rounded-md mb-4">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por ID ou título..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-muted-foreground">
+                {filteredTasks.length > 0 ? `${filteredTasks.length} tarefas encontradas` : ''}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchAllTasks}
+                disabled={loadingTasks}
+              >
+                {loadingTasks ? 'Carregando...' : 'Recarregar'}
+              </Button>
+            </div>
+            
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              {loadingTasks ? (
+                <div className="p-8 flex justify-center items-center">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                  <span className="ml-2">Carregando tarefas...</span>
+                </div>
+              ) : filteredTasks.length > 0 ? (
+                <div className="divide-y">
+                  {filteredTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                        idRelease === task.id.toString() ? 'bg-primary/10' : ''
+                      }`}
+                      onClick={() => selectTaskAsRelease(task)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">
+                          <span className="inline-block min-w-[30px] text-center bg-gray-100 rounded-md mr-2">
+                            {task.id}
+                          </span>
+                          {task.titulo || 'Sem título'}
+                        </div>
+                        {task.descricao && (
+                          <div className="text-sm text-gray-500 truncate max-w-[400px] pl-[40px]">
+                            {task.descricao}
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant={idRelease === task.id.toString() ? "default" : "ghost"} 
+                        size="sm"
+                        className="ml-2 shrink-0"
+                      >
+                        {idRelease === task.id.toString() ? "Selecionada" : "Selecionar"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 mb-4">
+                    {searchTerm ? 'Nenhuma tarefa encontrada para esta busca' : 'Nenhuma tarefa encontrada'}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={fetchAllTasks}
+                    disabled={loadingTasks}
+                  >
+                    Tentar novamente
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenReleaseModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de seleção de Projeto */}
+      <Dialog open={openProjetoModal} onOpenChange={setOpenProjetoModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Selecionar Projeto</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center border rounded-md mb-4">
+              <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <Input
+                placeholder="Buscar projeto..."
+                value={projetosSearchTerm}
+                onChange={(e) => setProjetosSearchTerm(e.target.value)}
+                className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                autoFocus
+              />
+              {projetosSearchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 mr-1"
+                  onClick={() => setProjetosSearchTerm('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-muted-foreground">
+                {filteredProjetos.length > 0 ? `${filteredProjetos.length} projetos encontrados` : ''}
+                <span className="text-xs text-gray-400 block mt-0.5">Novos projetos são criados apenas pela chefia imediata</span>
+              </div>
+            </div>
+            
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              {filteredProjetos.length > 0 ? (
+                <div className="divide-y">
+                  {filteredProjetos.map((projeto) => (
+                    <div
+                      key={projeto.id}
+                      className={`p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                        projetoId === projeto.id.toString() ? 'bg-primary/10' : ''
+                      }`}
+                      onClick={() => handleProjetoSelect(projeto)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">{projeto.nome}</div>
+                        {projeto.taskCount !== undefined && (
+                          <div className="text-sm text-gray-500">
+                            {projeto.taskCount} {projeto.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant={projetoId === projeto.id.toString() ? "default" : "ghost"} 
+                        size="sm"
+                        className="ml-2 shrink-0"
+                      >
+                        {projetoId === projeto.id.toString() ? "Selecionado" : "Selecionar"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 mb-4">
+                    {projetosSearchTerm ? 'Nenhum projeto encontrado para esta busca' : 'Nenhum projeto encontrado'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenProjetoModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+} 

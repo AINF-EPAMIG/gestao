@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeQueryFuncionarios } from '@/lib/db';
-import { Funcionario } from '@/lib/types';
-import { isExceptionEmailChefia } from '@/lib/auth-config';
+import { Funcionario, NivelHierarquico } from '@/lib/types';
+import { 
+  determinarNivelHierarquico, 
+  calcularPermissoes
+} from '@/lib/auth-config';
 
 export async function GET(request: NextRequest) {
   try {
     const email = request.nextUrl.searchParams.get('email');
+    const acao = request.nextUrl.searchParams.get('acao');
 
     if (!email) {
       return NextResponse.json(
         { error: 'Email não fornecido' },
         { status: 400 }
       );
-    }
-
-    // Verificar se é email de exceção primeiro
-    if (isExceptionEmailChefia(email)) {
-      return NextResponse.json({ isChefe: true });
     }
 
     const result = await executeQueryFuncionarios<Funcionario[]>({
@@ -26,13 +25,39 @@ export async function GET(request: NextRequest) {
     const userInfo = result[0] || null;
     
     if (!userInfo) {
-      return NextResponse.json({ isChefe: false });
+      return NextResponse.json({ 
+        isChefe: false,
+        nivel: NivelHierarquico.COLABORADOR,
+        permissoes: null,
+        error: 'Usuário não encontrado'
+      });
     }
     
-    // Verificar se cargo contém "CHEFE"
-    const isChefe = typeof userInfo.cargo === 'string' && userInfo.cargo.toUpperCase().includes('CHEFE');
+    const nivel = determinarNivelHierarquico(userInfo);
+    const permissoes = calcularPermissoes(userInfo);
+    
+    // Determinar se é chefe (mantido para compatibilidade)
+    const isChefe = nivel === NivelHierarquico.CHEFE || 
+                   nivel === NivelHierarquico.PRESIDENTE || 
+                   nivel === NivelHierarquico.DIRETORIA;
 
-    return NextResponse.json({ isChefe });
+    // Resposta específica baseada na ação solicitada
+    switch (acao) {
+      case 'nivel':
+        return NextResponse.json({ nivel });
+      case 'permissoes':
+        return NextResponse.json({ permissoes });
+      case 'completo':
+        return NextResponse.json({ 
+          isChefe, 
+          nivel, 
+          permissoes,
+          setor: userInfo.departamento || userInfo.divisao || userInfo.assessoria || userInfo.secao
+        });
+      default:
+        // Resposta padrão (compatibilidade)
+        return NextResponse.json({ isChefe });
+    }
   } catch (error) {
     console.error('Erro ao verificar papel do usuário:', error);
     return NextResponse.json(

@@ -62,7 +62,7 @@ export default function AuthRequired({ children }: AuthRequiredProps) {
       <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
       <h1 className="relative z-10 text-3xl font-bold text-center text-slate-800 mt-12 mb-8">
-        Gestão de Projetos ASTI
+        Gestão de Projetos e Chamados ASTI
       </h1>
           <Card className="shadow-lg bg-white/40 backdrop-blur-sm">
             <CardHeader className="text-center space-y-8">
@@ -78,7 +78,7 @@ export default function AuthRequired({ children }: AuthRequiredProps) {
               <div>
                 <CardTitle className="text-2xl font-bold text-slate-900">Acesso ao Sistema</CardTitle>
                 <CardDescription className="text-slate-600 mt-4">
-                  Faça login para acessar o sistema de reservas
+                  Faça login para acessar o sistema
                 </CardDescription>
               </div>
             </CardHeader>

@@ -3,7 +3,6 @@ import { dbAtendimento } from '@/lib/db';
 import { OkPacket, RowDataPacket } from 'mysql2';
 
 interface ChamadoRow extends RowDataPacket {
-  tecnico_responsavel?: string | null;
   tecnicos_responsaveis?: string | null;
 }
 
@@ -36,97 +35,64 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Verificar quais colunas existem na tabela
+    // Verificar se a coluna tecnicos_responsaveis existe na tabela
     const [columnsResult] = await dbAtendimento.execute<ColumnInfo[]>(
       `DESCRIBE ${table}`
     );
     
     const columns = columnsResult.map(col => col.Field);
-    const hasTecnicoResponsavel = columns.includes('tecnico_responsavel');
     const hasTecnicosResponsaveis = columns.includes('tecnicos_responsaveis');
     
     console.log(`[ASSIGN API] Colunas disponíveis em ${table}:`, columns);
-    console.log(`[ASSIGN API] tecnico_responsavel existe: ${hasTecnicoResponsavel}`);
     console.log(`[ASSIGN API] tecnicos_responsaveis existe: ${hasTecnicosResponsaveis}`);
 
-    // Se não tiver nenhuma das colunas, criar a coluna tecnico_responsavel
-    if (!hasTecnicoResponsavel && !hasTecnicosResponsaveis) {
-      console.log(`[ASSIGN API] Criando coluna tecnico_responsavel na tabela ${table}`);
+    // Se não tiver a coluna tecnicos_responsaveis, criar ela
+    if (!hasTecnicosResponsaveis) {
+      console.log(`[ASSIGN API] Criando coluna tecnicos_responsaveis na tabela ${table}`);
       await dbAtendimento.execute(
-        `ALTER TABLE ${table} ADD COLUMN tecnico_responsavel VARCHAR(100) NULL`
+        `ALTER TABLE ${table} ADD COLUMN tecnicos_responsaveis VARCHAR(500) NULL`
       );
-      console.log(`[ASSIGN API] Coluna tecnico_responsavel criada com sucesso`);
+      console.log(`[ASSIGN API] Coluna tecnicos_responsaveis criada com sucesso`);
     }
 
-    // Verificar o técnico responsável atual (se a coluna existir)
-    if (hasTecnicoResponsavel || !hasTecnicosResponsaveis) {
-      try {
-        const selectColumn = hasTecnicoResponsavel ? 'tecnico_responsavel' : 'tecnicos_responsaveis';
-        const [rows] = await dbAtendimento.execute<ChamadoRow[]>(
-          `SELECT ${selectColumn} FROM ${table} WHERE id = ?`,
-          [chamadoIdNumber]
-        );
+    // Verificar o técnico responsável atual
+    try {
+      const [rows] = await dbAtendimento.execute<ChamadoRow[]>(
+        `SELECT tecnicos_responsaveis FROM ${table} WHERE id = ?`,
+        [chamadoIdNumber]
+      );
 
-        // Se já tiver um técnico responsável, registra a mudança
-        if (rows && Array.isArray(rows) && rows.length > 0) {
-          const row = rows[0];
-          const currentResponsavel = hasTecnicoResponsavel ? row.tecnico_responsavel : row.tecnicos_responsaveis;
-          
-          if (currentResponsavel) {
-            if (userName === null) {
-              console.log(`[ASSIGN API] Removendo técnico responsável: ${currentResponsavel}`);
-            } else {
-              console.log(`[ASSIGN API] Alterando técnico responsável de ${currentResponsavel} para ${userName}`);
-            }
+      // Se já tiver técnicos responsáveis, registra a mudança
+      if (rows && Array.isArray(rows) && rows.length > 0) {
+        const row = rows[0];
+        const currentResponsaveis = row.tecnicos_responsaveis || '';
+        
+        if (currentResponsaveis) {
+          if (userName === null) {
+            console.log(`[ASSIGN API] Removendo técnicos responsáveis: ${currentResponsaveis}`);
+          } else {
+            console.log(`[ASSIGN API] Alterando técnicos responsáveis de "${currentResponsaveis}" para "${emailsResponsaveis || userName}"`);
           }
         }
-      } catch (selectError) {
-        console.log(`[ASSIGN API] Erro ao verificar responsável atual (ignorando):`, selectError);
       }
+    } catch (selectError) {
+      console.log(`[ASSIGN API] Erro ao verificar responsáveis atuais (ignorando):`, selectError);
     }
 
-    // Atribui ou remove o técnico responsável
+    // Atribui ou remove os técnicos responsáveis
     if (userName === null) {
       // Remover todos os responsáveis
-      if (hasTecnicoResponsavel) {
-        await dbAtendimento.execute<OkPacket>(
-          `UPDATE ${table} SET tecnico_responsavel = NULL WHERE id = ?`,
-          [chamadoIdNumber]
-        );
-      }
-      if (hasTecnicosResponsaveis) {
-        await dbAtendimento.execute<OkPacket>(
-          `UPDATE ${table} SET tecnicos_responsaveis = NULL WHERE id = ?`,
-          [chamadoIdNumber]
-        );
-      }
+      await dbAtendimento.execute<OkPacket>(
+        `UPDATE ${table} SET tecnicos_responsaveis = NULL WHERE id = ?`,
+        [chamadoIdNumber]
+      );
     } else {
       // Atribuir responsáveis
-      if (emailsResponsaveis) {
-        // Múltiplos responsáveis
-        if (hasTecnicosResponsaveis) {
-          await dbAtendimento.execute<OkPacket>(
-            `UPDATE ${table} SET tecnicos_responsaveis = ? WHERE id = ?`,
-            [emailsResponsaveis, chamadoIdNumber]
-          );
-        }
-        if (hasTecnicoResponsavel) {
-          // Manter compatibilidade - primeiro responsável
-          const primeiroEmail = emailsResponsaveis.split(',')[0].trim();
-          const primeiroUserName = primeiroEmail.includes('@') ? primeiroEmail.split('@')[0] : primeiroEmail;
-          await dbAtendimento.execute<OkPacket>(
-            `UPDATE ${table} SET tecnico_responsavel = ? WHERE id = ?`,
-            [primeiroUserName, chamadoIdNumber]
-          );
-        }
-      } else {
-        // Responsável único (compatibilidade)
-        const updateColumn = hasTecnicoResponsavel ? 'tecnico_responsavel' : 'tecnicos_responsaveis';
-        await dbAtendimento.execute<OkPacket>(
-          `UPDATE ${table} SET ${updateColumn} = ? WHERE id = ?`,
-          [userName, chamadoIdNumber]
-        );
-      }
+      const responsaveisValue = emailsResponsaveis || userName;
+      await dbAtendimento.execute<OkPacket>(
+        `UPDATE ${table} SET tecnicos_responsaveis = ? WHERE id = ?`,
+        [responsaveisValue, chamadoIdNumber]
+      );
     }
     
     if (userName === null) {

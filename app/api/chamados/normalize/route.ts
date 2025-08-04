@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { dbAtendimento } from '@/lib/db';
+import { dbAtendimento, executeQueryAtendimento } from '@/lib/db';
 import { RowDataPacket, OkPacket } from 'mysql2';
 
 interface KanbanPositionRow extends RowDataPacket {
@@ -99,27 +99,31 @@ async function normalizarPosicoesDoStatus(status: string): Promise<number> {
 export async function POST() {
   try {
     // Buscar todos os status únicos
-    const [statusResult] = await dbAtendimento.execute<RowDataPacket[]>(
-      `SELECT DISTINCT status 
-       FROM u711845530_atendimento.posicoes_itens 
-       WHERE status IN (1, 2, 3, 4)
-       ORDER BY status`
-    );
+        const statusResult = await executeQueryAtendimento<{ status: number }[]>({
+      query: `
+        SELECT DISTINCT status
+        FROM kanban_positions 
+        WHERE status IN (1, 2, 3, 4)
+        ORDER BY status
+      `
+    });
 
-    const statusList = statusResult.map((row: RowDataPacket) => row.status as number);
+    const statusList = statusResult.map((row) => row.status);
 
     let totalCorrecoes = 0;
 
     // Para cada status, normalizar as posições
     for (const status of statusList) {
       // Buscar todos os itens para este status
-      const [items] = await dbAtendimento.execute<KanbanPositionRow[]>(
-        `SELECT id, tipo_item, id_referencia, posicao
-         FROM u711845530_atendimento.posicoes_itens
-         WHERE status = ?
-         ORDER BY posicao`,
-        [status]
-      );
+      const items = await executeQueryAtendimento<KanbanPositionRow[]>({
+        query: `
+          SELECT id, tipo_item, id_referencia, posicao
+          FROM kanban_positions
+          WHERE status = ?
+          ORDER BY posicao
+        `,
+        values: [status]
+      });
 
       if (items.length === 0) continue;
 
@@ -139,12 +143,14 @@ export async function POST() {
       for (let i = 0; i < items.length; i++) {
         const novaPos = i + 1;
         if (items[i].posicao !== novaPos) {
-          await dbAtendimento.execute<OkPacket>(
-            `UPDATE u711845530_atendimento.posicoes_itens
-             SET posicao = ?
-             WHERE id = ?`,
-            [novaPos, items[i].id]
-          );
+          await executeQueryAtendimento({
+            query: `
+              UPDATE kanban_positions
+              SET posicao = ?
+              WHERE id = ?
+            `,
+            values: [novaPos, items[i].id]
+          });
           correcoes++;
         }
       }

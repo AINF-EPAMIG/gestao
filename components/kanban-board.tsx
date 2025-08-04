@@ -329,7 +329,7 @@ const Column = memo(function Column({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 min-h-[200px] xl:min-h-[250px] 2xl:min-h-[300px] w-full"
+            className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 w-full"
           >
             {tasks.map((task, index) => {
               const uniqueTaskId = `${task.origem || 'default'}-${task.id}`;
@@ -362,9 +362,10 @@ interface KanbanBoardProps {
   columnsOverride?: { id: Status; title: string }[];
   onTaskMove?: (taskId: number, newStatusId: number, position?: number) => void;
   disableAutoSync?: boolean;
+  tasksPerColumn?: number;
 }
 
-export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSync = false }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSync = false, tasksPerColumn }: KanbanBoardProps) {
   const updateTaskPosition = useTaskStore((state) => state.updateTaskPosition)
   const updateTaskDataFim = useTaskStore((state) => state.updateTaskDataFim)
   const [localTasks, setLocalTasks] = useState<Task[]>([])
@@ -492,12 +493,15 @@ export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSyn
 
   const columnTasks = useMemo(() => {
     return columnsToUse.reduce((acc, column) => {
-      acc[column.id] = localTasks
+      const allTasksInColumn = localTasks
         .filter(task => getStatusName(task.status_id) === column.id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
+      
+      // Se tasksPerColumn está definido, limita o número de tarefas por coluna
+      acc[column.id] = tasksPerColumn ? allTasksInColumn.slice(0, tasksPerColumn) : allTasksInColumn;
       return acc;
     }, {} as Record<Status, Task[]>);
-  }, [localTasks, columnsToUse]);
+  }, [localTasks, columnsToUse, tasksPerColumn]);
 
   // Se estiver carregando, mostra um estado de loading
   if (tasks.length === 0) {
@@ -519,7 +523,7 @@ export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSyn
                 "text-emerald-700"
               )}>{column.title}</h3>
             </div>
-            <div className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 min-h-[200px] xl:min-h-[250px] 2xl:min-h-[300px] animate-pulse bg-gray-100 rounded-lg w-full" />
+            <div className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 animate-pulse bg-gray-100 rounded-lg w-full" />
           </div>
         ))}
       </div>
@@ -528,7 +532,7 @@ export function KanbanBoard({ tasks, columnsOverride, onTaskMove, disableAutoSyn
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 min-w-[min-content] w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-2 xl:gap-3 2xl:gap-4 w-full">
         {columnsToUse.map((column) => (
           <Column 
             key={column.id}

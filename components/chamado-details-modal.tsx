@@ -181,7 +181,8 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
     async function fetchAnexos() {
       if (!chamado?.id) return;
       try {
-        const res = await fetch(`/api/chamados/anexos?chamadoId=${chamado.id}`);
+        const url = `/api/chamados/anexos?chamadoId=${chamado.id}&origem=${chamado.origem}`;
+        const res = await fetch(url);
         const data = await res.json();
         setAnexos(data);
       } catch (e) {
@@ -267,7 +268,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error(errorData.error || 'Erro ao atualizar responsáveis');
       }
 
-      await response.json();
+      // const data = await response.json(); // Resposta não é usada
 
       // Atualiza o estado local
       if (chamado) {
@@ -314,7 +315,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error(errorData.error || 'Erro ao remover responsável');
       }
 
-      await response.json();
+      // const data = await response.json(); // Resposta não é usada
 
       // Atualiza o estado local
       if (chamado) {
@@ -373,7 +374,7 @@ export function ChamadoDetailsModal({ chamado: chamadoBase, open, onOpenChange }
         throw new Error('Erro ao atualizar resposta de conclusão')
       }
 
-      await response.json()
+      // const data = await response.json() // Resposta não é usada
 
       // Atualiza o estado local
       chamado.resposta_conclusao = respostaConclusao

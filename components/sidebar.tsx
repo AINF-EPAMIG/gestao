@@ -10,70 +10,42 @@ import { Footer } from "./footer"
 import { useSession, signOut } from "next-auth/react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { useTaskStore } from "@/lib/store"
+
 import { useUserSector } from "@/lib/user-sector-context"
-
-interface Setor {
-  id: number;
-  sigla: string;
-  nome: string;
-}
-
-// Helper para verificar admin
-async function isUserAdmin() {
-  // Adapte conforme sua lógica de admin, se necessário
-  // Exemplo: checar se o email está em uma lista de admins
-  return false;
-}
+import { usePermissions } from "@/lib/hooks/use-permissions"
+import { useSetorNavigation } from "@/lib/hooks/use-setor-navigation"
 
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const { data: session } = useSession()
   const { userSector } = useUserSector()
-  const [isAdmin, setIsAdmin] = useState<boolean | undefined>(undefined)
-  const [setores, setSetores] = useState<Setor[]>([])
-  const selectedSetor = useTaskStore((state) => state.selectedSetor)
-  const setSelectedSetor = useTaskStore((state) => state.setSelectedSetor)
+  const { isLoading: permissionsLoading } = usePermissions()
+  const { setores, selectedSetor, changeSetor, canViewAllSectors } = useSetorNavigation()
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      if (session?.user?.email) {
-        // Verificar se é admin
-        const admin = await isUserAdmin();
-        setIsAdmin(admin);
-
-        if (!admin && userSector) {
-          // Só definir o setor selecionado se o userSector não for nulo
-          setSelectedSetor(userSector);
-        }
+    if (!permissionsLoading && session?.user?.email) {
+      // Se não pode ver todos os setores, define o setor do usuário como selecionado
+      if (!canViewAllSectors && userSector) {
+        changeSetor(userSector);
       }
-    };
+    }
+  }, [session?.user?.email, userSector, changeSetor, canViewAllSectors, permissionsLoading]);
 
-    checkAdmin();
-  }, [session?.user?.email, userSector, setSelectedSetor]);
-
+  // Reset dropdown state when permissions change
   useEffect(() => {
-    // Buscar setores do banco apenas se for admin
-    const fetchSetores = async () => {
-      if (isAdmin) {
-        try {
-          const response = await fetch('/api/setor');
-          if (response.ok) {
-            const data = await response.json();
-            setSetores(data);
-          }
-        } catch (error) {
-          console.error('Erro ao buscar setores:', error);
-        }
-      }
-    };
-
-    fetchSetores();
-  }, [isAdmin]);
+    if (!permissionsLoading) {
+      setDropdownOpen(false);
+    }
+  }, [permissionsLoading]);
 
   const handleSetorSelect = (setor: string | null) => {
-    setSelectedSetor(setor);
+    changeSetor(setor);
+    // Pequeno delay para garantir que o estado seja atualizado antes de fechar
+    setTimeout(() => {
+      setDropdownOpen(false);
+    }, 100);
   };
 
   const navigation = [
@@ -103,7 +75,7 @@ export function Sidebar() {
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
         <div className="px-3 sm:px-4 flex justify-between items-center">
-          <h1 className="text-lg sm:text-xl font-semibold">Painel Gestão</h1>
+          <h1 className="text-lg sm:text-xl font-semibold">Gestão</h1>
           {/* Botão de Logout */}
           {session && (
             <button
@@ -115,47 +87,63 @@ export function Sidebar() {
             </button>
           )}
         </div>
-        {isAdmin === true && (
+        {canViewAllSectors && (
           <div className="px-3 sm:px-4 flex items-center gap-2">
             <span className="text-sm text-white/80">Setor:</span>
-            <DropdownMenu>
+            <DropdownMenu 
+              open={dropdownOpen} 
+              onOpenChange={setDropdownOpen}
+            >
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
                   className="flex-1 h-8 text-white hover:bg-emerald-700/50 justify-between"
                 >
-                  {selectedSetor || "Todos os Setores"}
-                  <ChevronDown className="h-4 w-4 ml-2" />
+                  <span className="truncate">
+                    {selectedSetor ? 
+                      (setores.find(s => s.sigla === selectedSetor)?.nome || selectedSetor) : 
+                      "Todos os Setores"
+                    }
+                  </span>
+                  <ChevronDown className="h-4 w-4 ml-2 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="start" 
-                className="w-56 bg-white max-h-[250px] overflow-y-auto"
+                className="w-72 bg-white max-h-[300px] overflow-y-auto z-[9999]"
                 style={{ 
                   scrollbarWidth: 'thin',
                   scrollbarColor: '#10b981 transparent'
                 }}
+                sideOffset={8}
+                collisionPadding={8}
               >
                 <DropdownMenuItem 
                   onClick={() => handleSetorSelect(null)}
-                  className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                  className={`text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800 ${!selectedSetor ? 'bg-emerald-100 text-emerald-900 font-medium' : ''}`}
                 >
-                  Todos os Setores
+                  🌐 Todos os Setores
                 </DropdownMenuItem>
+                <div className="h-px bg-gray-200 my-1" />
                 {setores.map((setor) => (
                   <DropdownMenuItem 
-                    key={setor.id}
+                    key={setor.sigla}
                     onClick={() => handleSetorSelect(setor.sigla)}
-                    className="text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800"
+                    className={`text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800 ${selectedSetor === setor.sigla ? 'bg-emerald-100 text-emerald-900 font-medium' : ''}`}
                   >
-                    {setor.sigla}{setor.nome ? ` ${setor.nome}` : ''}
+                    <div className="flex flex-col">
+                      <div className="font-medium">{setor.sigla}</div>
+                      <div className="text-xs text-gray-500 capitalize">
+                        {setor.tipo} • {setor.count} funcionário{setor.count > 1 ? 's' : ''}
+                      </div>
+                    </div>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
-        {isAdmin === false && userSector && (
+        {!canViewAllSectors && userSector && (
           <div className="px-3 sm:px-4 text-sm text-white/80">
             Setor: {userSector}
           </div>

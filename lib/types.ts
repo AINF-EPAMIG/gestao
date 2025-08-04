@@ -23,4 +23,30 @@ export interface Funcionario {
   filial?: string; // pode ser mapeado para regional
   secao?: string;  // pode ser mapeado para departamento/divisao
   chefia?: string; // pode ser mapeado para chefe
+}
+
+// Enum para níveis hierárquicos
+export enum NivelHierarquico {
+  COLABORADOR = 'Colaborador',
+  CHEFE = 'Chefe',
+  PRESIDENTE = 'Presidente',
+  DIRETORIA = 'Diretoria'
+}
+
+// Interface para permissões baseadas em nível
+export interface PermissoesUsuario {
+  nivel: NivelHierarquico;
+  podeVisualizarTodosSetores: boolean;
+  podeCriarProjetos: boolean;
+  podeExcluirAtividades: boolean;
+  podeEditarQualquerAtividade: boolean;
+  setoresPermitidos: string[];
+}
+
+// Interface para verificações de autorização
+export interface AutorizacaoUsuario {
+  email: string;
+  nivel: NivelHierarquico;
+  setor: string;
+  permissoes: PermissoesUsuario;
 } 
