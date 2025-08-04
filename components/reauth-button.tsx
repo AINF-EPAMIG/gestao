@@ -19,12 +19,26 @@ export function ReauthButton() {
       if (!isManualLogout) {
         setOpen(true)
       } else {
-        // Remove a flag após verificar
+        // Remove a flag após verificar e força o logout
         localStorage.removeItem('manual-logout')
+        // Executa logout automaticamente quando há erro e foi logout manual
+        console.log('Executando logout automático devido a RefreshAccessTokenError após logout manual')
+        logout()
       }
     } else if (!session?.error) {
       // Se não há erro, fecha o diálogo
       setOpen(false)
+    }
+  }, [session, logout])
+
+  // Efeito adicional para detectar mudanças no status da sessão
+  useEffect(() => {
+    // Se a sessão foi perdida completamente, limpa qualquer estado residual
+    if (!session) {
+      setOpen(false)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('manual-logout')
+      }
     }
   }, [session])
 

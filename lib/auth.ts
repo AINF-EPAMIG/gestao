@@ -107,5 +107,11 @@ export const authOptions: NextAuthOptions = {
       }
     }
   },
+  events: {
+    async signOut(message) {
+      // Evento disparado quando o usuário faz logout
+      console.log('User signed out:', message.token?.email || 'unknown user');
+    }
+  },
   debug: process.env.NODE_ENV === 'development',
 } 
