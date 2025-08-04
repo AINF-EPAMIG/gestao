@@ -15,6 +15,9 @@ export function ReauthButton() {
     // Mas não mostra o diálogo se estivermos fazendo logout
     if (session?.error === "RefreshAccessTokenError" && !isLoggingOut) {
       setOpen(true)
+    } else if (!session?.error) {
+      // Se não há erro, fecha o diálogo e reseta o estado de logout
+      setOpen(false)
     }
   }, [session, isLoggingOut])
 
