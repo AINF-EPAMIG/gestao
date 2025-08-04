@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { useUserSector } from "@/lib/user-sector-context"
 import { usePermissions } from "@/lib/hooks/use-permissions"
 import { useSetorNavigation } from "@/lib/hooks/use-setor-navigation"
-import { useManualLogout } from "@/lib/hooks/use-manual-logout"
+import { useSimpleLogout } from "@/lib/hooks/use-simple-logout"
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -24,7 +24,7 @@ export function Sidebar() {
   const { userSector } = useUserSector()
   const { isLoading: permissionsLoading } = usePermissions()
   const { setores, selectedSetor, changeSetor, canViewAllSectors } = useSetorNavigation()
-  const { logout } = useManualLogout()
+  const { logout } = useSimpleLogout()
 
   useEffect(() => {
     if (!permissionsLoading && session?.user?.email) {
@@ -73,6 +73,12 @@ export function Sidebar() {
     },
   ]
 
+  const handleLogout = () => {
+    // Marca como logout manual no localStorage
+    localStorage.setItem('manual-logout', 'true')
+    logout()
+  }
+
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
@@ -81,7 +87,7 @@ export function Sidebar() {
           {/* Botão de Logout */}
           {session && (
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="flex items-center justify-center w-6 h-6 text-white/50 hover:text-white/80 transition-colors rounded-full"
               title="Sair"
             >

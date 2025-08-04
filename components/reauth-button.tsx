@@ -1,33 +1,43 @@
 "use client"
 
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useLogout } from "@/lib/logout-context"
+import { useSimpleLogout } from "@/lib/hooks/use-simple-logout"
 
 export function ReauthButton() {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
-  const { isLoggingOut } = useLogout()
+  const { logout } = useSimpleLogout()
 
   useEffect(() => {
     // Verifica se há erro de autenticação na sessão
-    // Mas não mostra o diálogo se estivermos fazendo logout
-    if (session?.error === "RefreshAccessTokenError" && !isLoggingOut) {
-      setOpen(true)
+    if (session?.error === "RefreshAccessTokenError") {
+      // Verifica se o usuário não fez logout manual recentemente
+      const isManualLogout = localStorage.getItem('manual-logout')
+      
+      if (!isManualLogout) {
+        setOpen(true)
+      } else {
+        // Remove a flag após verificar
+        localStorage.removeItem('manual-logout')
+      }
     } else if (!session?.error) {
-      // Se não há erro, fecha o diálogo e reseta o estado de logout
+      // Se não há erro, fecha o diálogo
       setOpen(false)
     }
-  }, [session, isLoggingOut])
+  }, [session])
 
   const handleReauth = () => {
+    setOpen(false)
     signIn("google", { callbackUrl: window.location.href })
   }
 
   const handleCancel = () => {
     setOpen(false)
-    signOut({ callbackUrl: "/" })
+    // Marca como logout manual antes de fazer logout
+    localStorage.setItem('manual-logout', 'true')
+    logout()
   }
 
   if (!session?.error) {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { FcGoogle } from "react-icons/fc"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
-import { useManualLogout } from "@/lib/hooks/use-manual-logout"
+import { useSimpleLogout } from "@/lib/hooks/use-simple-logout"
 
 interface AuthButtonProps {
   showLogout?: boolean
@@ -14,7 +14,13 @@ interface AuthButtonProps {
 export function AuthButton({ showLogout = true }: AuthButtonProps) {
   const { data: session } = useSession()
   const [isLoading, setIsLoading] = useState(false)
-  const { logout } = useManualLogout()
+  const { logout } = useSimpleLogout()
+
+  const handleLogout = () => {
+    // Marca como logout manual no localStorage
+    localStorage.setItem('manual-logout', 'true')
+    logout()
+  }
 
   const handleSignIn = async () => {
     setIsLoading(true)
@@ -28,7 +34,7 @@ export function AuthButton({ showLogout = true }: AuthButtonProps) {
           {session.user?.name}
         </p>
         <Button
-          onClick={logout}
+          onClick={handleLogout}
           className="gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
         >
           Sair
