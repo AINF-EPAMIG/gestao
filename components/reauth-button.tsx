@@ -3,17 +3,20 @@
 import { useSession, signIn, signOut } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { useLogout } from "@/lib/logout-context"
 
 export function ReauthButton() {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
+  const { isLoggingOut } = useLogout()
 
   useEffect(() => {
     // Verifica se há erro de autenticação na sessão
-    if (session?.error === "RefreshAccessTokenError") {
+    // Mas não mostra o diálogo se estivermos fazendo logout
+    if (session?.error === "RefreshAccessTokenError" && !isLoggingOut) {
       setOpen(true)
     }
-  }, [session])
+  }, [session, isLoggingOut])
 
   const handleReauth = () => {
     signIn("google", { callbackUrl: window.location.href })

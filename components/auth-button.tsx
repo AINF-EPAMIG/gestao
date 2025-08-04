@@ -1,10 +1,11 @@
 "use client"
 
-import { signIn, signOut, useSession } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { FcGoogle } from "react-icons/fc"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { useManualLogout } from "@/lib/hooks/use-manual-logout"
 
 interface AuthButtonProps {
   showLogout?: boolean
@@ -13,6 +14,7 @@ interface AuthButtonProps {
 export function AuthButton({ showLogout = true }: AuthButtonProps) {
   const { data: session } = useSession()
   const [isLoading, setIsLoading] = useState(false)
+  const { logout } = useManualLogout()
 
   const handleSignIn = async () => {
     setIsLoading(true)
@@ -26,7 +28,7 @@ export function AuthButton({ showLogout = true }: AuthButtonProps) {
           {session.user?.name}
         </p>
         <Button
-          onClick={() => signOut()}
+          onClick={logout}
           className="gap-2 bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
         >
           Sair
