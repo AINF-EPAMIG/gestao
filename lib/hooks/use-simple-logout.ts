@@ -5,8 +5,9 @@ import { signOut } from "next-auth/react"
 export function useSimpleLogout() {
   const logout = async () => {
     try {
-      // Limpa o localStorage completamente antes do logout
-      localStorage.removeItem('manual-logout')
+      // Marca explicitamente que o logout foi manual para evitar abrir o diálogo de reautenticação
+      localStorage.setItem('manual-logout', 'true')
+      // Limpa demais informações de sessão antes do logout
       localStorage.removeItem('userSector')
       localStorage.removeItem('isAuthorized')
       localStorage.removeItem('userLevel')
@@ -21,7 +22,15 @@ export function useSimpleLogout() {
       // Se o signOut falhar, força o redirecionamento manual
       console.error("Erro no logout:", error)
       // Limpa o localStorage mesmo em caso de erro
-      localStorage.clear()
+      // Mantém a flag de logout manual para evitar o modal de reautenticação na próxima navegação
+      const shouldKeepManualLogout = true
+      if (shouldKeepManualLogout) {
+        localStorage.setItem('manual-logout', 'true')
+      }
+      localStorage.removeItem('userSector')
+      localStorage.removeItem('isAuthorized')
+      localStorage.removeItem('userLevel')
+      localStorage.removeItem('userPermissions')
       window.location.href = "/"
     }
   }
