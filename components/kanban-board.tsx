@@ -329,7 +329,7 @@ const Column = memo(function Column({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 w-full"
+            className="flex flex-col gap-2 sm:gap-1.5 xl:gap-2 2xl:gap-3 w-full min-h-[200px]"
           >
             {tasks.map((task, index) => {
               const uniqueTaskId = `${task.origem || 'default'}-${task.id}`;

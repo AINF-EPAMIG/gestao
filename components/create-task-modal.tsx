@@ -363,6 +363,10 @@ export function CreateTaskModal() {
           } 
         }))
 
+        // Aguarda 3 segundos para dar tempo da nova tarefa aparecer na tela
+        // e dar um feedback visual melhor para o usuário
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
         setOpen(false);
         handleFinish()
       } else {
