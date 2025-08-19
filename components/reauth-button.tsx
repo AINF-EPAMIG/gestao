@@ -13,18 +13,13 @@ export function ReauthButton() {
   useEffect(() => {
     // Verifica se há erro de autenticação na sessão
     if (session?.error === "RefreshAccessTokenError") {
-      // Verifica se o usuário não fez logout manual recentemente
+      // Sempre mostra o diálogo de reautenticação quando há erro de token
+      // Remove a flag de logout manual se existir, pois agora precisamos de nova autenticação
       const isManualLogout = localStorage.getItem('manual-logout')
-      
-      if (!isManualLogout) {
-        setOpen(true)
-      } else {
-        // Remove a flag após verificar e força o logout
+      if (isManualLogout) {
         localStorage.removeItem('manual-logout')
-        // Executa logout automaticamente quando há erro e foi logout manual
-        console.log('Executando logout automático devido a RefreshAccessTokenError após logout manual')
-        logout()
       }
+      setOpen(true)
     } else if (!session?.error) {
       // Se não há erro, fecha o diálogo
       setOpen(false)
@@ -44,7 +39,8 @@ export function ReauthButton() {
 
   const handleReauth = () => {
     setOpen(false)
-    signIn("google", { callbackUrl: window.location.href })
+    // Redireciona para a página de login
+    signIn("google", { callbackUrl: "/" })
   }
 
   const handleCancel = () => {
@@ -76,4 +72,4 @@ export function ReauthButton() {
       </AlertDialogContent>
     </AlertDialog>
   )
-} 
+}
