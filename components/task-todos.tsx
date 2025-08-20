@@ -338,7 +338,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         {todos.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             <div className="text-sm">Nenhuma Etapa adicionada ainda</div>
-            <div className="text-xs mt-1">Clique no botão abaixo para adicionar o primeiro</div>
+            <div className="text-xs mt-1">Clique no botão abaixo para adicionar a primeira</div>
           </div>
         )}
       </div>
