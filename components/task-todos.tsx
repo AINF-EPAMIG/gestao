@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Trash2, Edit2, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface Todo {
+interface Etapa {
   id: number;
   atividade_id: number;
   titulo: string;
@@ -28,7 +28,7 @@ interface TaskTodosProps {
 }
 
 export function TaskTodos({ taskId }: TaskTodosProps) {
-  const [todos, setTodos] = useState<Todo[]>([])
+  const [todos, setTodos] = useState<Etapa[]>([])
   const [loading, setLoading] = useState(true)
   const [newTodoTitle, setNewTodoTitle] = useState("")
   const [newTodoDescription, setNewTodoDescription] = useState("")
@@ -38,7 +38,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
   const [isAddingTodo, setIsAddingTodo] = useState(false)
   const [deletingTodo, setDeletingTodo] = useState<number | null>(null)
 
-  // Buscar To Dos da tarefa
+  // Buscar Etapas da tarefa
   const fetchTodos = useCallback(async () => {
     try {
       setLoading(true)
@@ -48,7 +48,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         setTodos(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar To Dos:', error)
+      console.error('Erro ao buscar Etapas:', error)
     } finally {
       setLoading(false)
     }
@@ -58,7 +58,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
     fetchTodos()
   }, [fetchTodos])
 
-  // Adicionar novo To Do
+  // Adicionar nova Etapa
   const handleAddTodo = async () => {
     if (!newTodoTitle.trim()) return
 
@@ -75,18 +75,18 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
       })
 
       if (response.ok) {
-        const novoTodo = await response.json()
-        setTodos(prev => [...prev, novoTodo])
+        const novaEtapa = await response.json()
+        setTodos(prev => [...prev, novaEtapa])
         setNewTodoTitle("")
         setNewTodoDescription("")
         setIsAddingTodo(false)
       }
     } catch (error) {
-      console.error('Erro ao adicionar To Do:', error)
+      console.error('Erro ao adicionar Etapa:', error)
     }
   }
 
-  // Marcar/desmarcar To Do como concluído
+  // Marcar/desmarcar Etapa como concluída
   const handleToggleTodo = async (todoId: number, concluido: boolean) => {
     try {
       const response = await fetch(`/api/atividades/${taskId}/todos?todoId=${todoId}`, {
@@ -98,17 +98,17 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
       })
 
       if (response.ok) {
-        const todoAtualizado = await response.json()
+        const etapaAtualizada = await response.json()
         setTodos(prev => prev.map(todo => 
-          todo.id === todoId ? todoAtualizado : todo
+          todo.id === todoId ? etapaAtualizada : todo
         ))
       }
     } catch (error) {
-      console.error('Erro ao atualizar To Do:', error)
+      console.error('Erro ao atualizar Etapa:', error)
     }
   }
 
-  // Editar To Do
+  // Editar Etapa
   const handleEditTodo = async (todoId: number) => {
     if (!editTitle.trim()) return
 
@@ -125,20 +125,20 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
       })
 
       if (response.ok) {
-        const todoAtualizado = await response.json()
+        const etapaAtualizada = await response.json()
         setTodos(prev => prev.map(todo => 
-          todo.id === todoId ? todoAtualizado : todo
+          todo.id === todoId ? etapaAtualizada : todo
         ))
         setEditingTodo(null)
         setEditTitle("")
         setEditDescription("")
       }
     } catch (error) {
-      console.error('Erro ao editar To Do:', error)
+      console.error('Erro ao editar Etapa:', error)
     }
   }
 
-  // Deletar To Do
+  // Deletar Etapa
   const handleDeleteTodo = async (todoId: number) => {
     try {
       setDeletingTodo(todoId)
@@ -147,17 +147,17 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
       })
 
       if (response.ok) {
-        setTodos(prev => prev.filter(todo => todo.id !== todoId))
+        setTodos(prev => prev.filter(etapa => etapa.id !== todoId))
       }
     } catch (error) {
-      console.error('Erro ao deletar To Do:', error)
+      console.error('Erro ao deletar Etapa:', error)
     } finally {
       setDeletingTodo(null)
     }
   }
 
   // Iniciar edição
-  const startEditing = (todo: Todo) => {
+  const startEditing = (todo: Etapa) => {
     setEditingTodo(todo.id)
     setEditTitle(todo.titulo)
     setEditDescription(todo.descricao || "")
@@ -178,7 +178,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
   if (loading) {
     return (
       <div className="p-4 text-center text-muted-foreground">
-        Carregando To Dos...
+        Carregando Etapas...
       </div>
     )
   }
@@ -188,7 +188,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
       {/* Header com progresso */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">To Do List</h3>
+          <h3 className="text-lg font-semibold">Lista de Etapas</h3>
           <Badge variant="outline" className={cn(
             "text-sm",
             progressPercentage === 100 ? "bg-green-50 text-green-600 border-green-200" : 
@@ -214,7 +214,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         )}
       </div>
 
-      {/* Lista de To Dos */}
+      {/* Lista de Etapas */}
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {todos.map((todo) => (
           <Card key={todo.id} className={cn(
@@ -228,7 +228,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
                   <Input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Título do To Do"
+                    placeholder="Título da Etapa"
                     className="text-sm"
                   />
                   <Textarea
@@ -311,7 +311,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o To Do &ldquo;{todo.titulo}&rdquo;? Esta ação não pode ser desfeita.
+                            Tem certeza que deseja excluir a Etapa &ldquo;{todo.titulo}&rdquo;? Esta ação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -337,20 +337,20 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
 
         {todos.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
-            <div className="text-sm">Nenhum To Do adicionado ainda</div>
+            <div className="text-sm">Nenhuma Etapa adicionada ainda</div>
             <div className="text-xs mt-1">Clique no botão abaixo para adicionar o primeiro</div>
           </div>
         )}
       </div>
 
-      {/* Formulário para adicionar novo To Do */}
+      {/* Formulário para adicionar nova Etapa */}
       {isAddingTodo ? (
         <Card className="border-dashed border-2 border-gray-300">
           <CardContent className="p-3 space-y-2">
             <Input
               value={newTodoTitle}
               onChange={(e) => setNewTodoTitle(e.target.value)}
-              placeholder="Título do To Do"
+              placeholder="Título da Etapa"
               className="text-sm"
               autoFocus
             />
@@ -388,8 +388,8 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
           className="w-full border-dashed border-2 border-gray-300 hover:border-gray-400"
           onClick={() => setIsAddingTodo(true)}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar To Do
+                          <Plus className="h-4 w-4 mr-2" />
+                Adicionar Etapa
         </Button>
       )}
     </div>

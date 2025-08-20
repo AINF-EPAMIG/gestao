@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Task } from "@/lib/store" // useTaskStore removido pois não é usado
@@ -52,6 +53,7 @@ export function CreateTaskModal() {
   const [projetoId, setProjetoId] = useState<string>("")
   const [responsavelInput, setResponsavelInput] = useState("")
   const [selectedResponsaveis, setSelectedResponsaveis] = useState<Responsavel[]>([])
+  const [selectAllChecked, setSelectAllChecked] = useState(false)
   const [prioridade, setPrioridade] = useState("2") // Média como padrão
   const [dataInicio, setDataInicio] = useState("")
   const [dataFim, setDataFim] = useState("")
@@ -433,7 +435,10 @@ export function CreateTaskModal() {
         NOME: responsavel.NOME,
         CARGO: responsavel.CARGO
       };
-      setSelectedResponsaveis(prev => [...prev, novoResponsavel]);
+      const newSelected = [...selectedResponsaveis, novoResponsavel];
+      setSelectedResponsaveis(newSelected);
+      // Atualizar o estado do checkbox "selecionar todos"
+      updateSelectAllState(newSelected);
     }
     setResponsavelInput("");
     setShowResponsavelSuggestions(false);
@@ -454,7 +459,36 @@ export function CreateTaskModal() {
 
   const removeResponsavel = (email: string) => {
     setSelectedResponsaveis(selectedResponsaveis.filter(r => r.EMAIL !== email));
+    // Atualizar o estado do checkbox "selecionar todos"
+    updateSelectAllState(selectedResponsaveis.filter(r => r.EMAIL !== email));
   }
+
+  const handleSelectAll = () => {
+    if (selectAllChecked) {
+      // Desselecionar todos
+      setSelectedResponsaveis([]);
+      setSelectAllChecked(false);
+    } else {
+      // Selecionar todos os responsáveis disponíveis
+      setSelectedResponsaveis(responsaveis);
+      setSelectAllChecked(true);
+    }
+  }
+
+  const handleClearAll = () => {
+    setSelectedResponsaveis([]);
+    setSelectAllChecked(false);
+    setResponsavelInput("");
+  }
+
+  const updateSelectAllState = (currentSelected: Responsavel[]) => {
+    setSelectAllChecked(currentSelected.length === responsaveis.length && responsaveis.length > 0);
+  }
+
+  // Atualizar o estado do checkbox quando os responsáveis disponíveis mudarem
+  useEffect(() => {
+    updateSelectAllState(selectedResponsaveis);
+  }, [responsaveis, selectedResponsaveis]);
 
   const handleCreateProjeto = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1165,6 +1199,31 @@ export function CreateTaskModal() {
                       <div className="col-span-2 mt-2">
                         <label className="text-sm font-medium">Responsáveis *</label>
                         <div className="space-y-1 mt-1">
+                          {/* Controles de seleção */}
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="select-all"
+                                checked={selectAllChecked}
+                                onCheckedChange={handleSelectAll}
+                                disabled={responsaveis.length === 0}
+                              />
+                              <label htmlFor="select-all" className="text-sm text-gray-600 cursor-pointer">
+                                Selecionar todos ({responsaveis.length})
+                              </label>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleClearAll}
+                              disabled={selectedResponsaveis.length === 0}
+                              className="h-7 px-2 text-xs"
+                            >
+                              Limpar
+                            </Button>
+                          </div>
+                          
                           <div className="relative">
                             <Input
                               value={responsavelInput}

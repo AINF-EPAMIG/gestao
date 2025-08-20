@@ -894,7 +894,7 @@ export function TaskDetailsModal({ task, open, onOpenChange }: TaskDetailsModalP
                   <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
                   {!isChamadosPage && (
                     <>
-                      <TabsTrigger value="todos">To Do</TabsTrigger>
+                      <TabsTrigger value="todos">Etapas</TabsTrigger>
                       <TabsTrigger value="anexos">Anexos</TabsTrigger>
                     </>
                   )}
