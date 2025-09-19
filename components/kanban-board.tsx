@@ -69,7 +69,7 @@ const TaskCard = memo(function TaskCard({
   const previousUpdateRef = useRef<string | null>(task.ultima_atualizacao)
   
   // Hook para buscar progresso das etapas
-  const { progress, hasEtapas, loading: progressLoading } = useTaskProgress(task.id)
+  const { progress, hasEtapas, loading: progressLoading, refreshProgress } = useTaskProgress(task.id)
 
   // Efeito para detectar mudanças de status e mostrar o loader
   useEffect(() => {
@@ -81,6 +81,9 @@ const TaskCard = memo(function TaskCard({
       if (previousUpdateRef.current !== task.ultima_atualizacao) {
         setIsLoading(true)
         setShowDateTime(false) // Oculta a data temporariamente
+        
+        // Atualiza o progresso das etapas quando há mudança na atividade
+        refreshProgress()
         
         // Simula um tempo de carregamento de 2 segundos para o loader
         const loaderTimer = setTimeout(() => {
@@ -102,7 +105,7 @@ const TaskCard = memo(function TaskCard({
       previousStatusRef.current = task.status_id
       previousUpdateRef.current = task.ultima_atualizacao
     }
-  }, [task.status_id, task.ultima_atualizacao])
+  }, [task.status_id, task.ultima_atualizacao, refreshProgress])
 
   const formatDateTimeCompact = (dateTime: string | null) => {
     if (!dateTime) return null;

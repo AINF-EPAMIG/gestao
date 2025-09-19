@@ -12,6 +12,7 @@ import { Plus, Trash2, Edit2, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { invalidateTaskEtapasCache } from "@/lib/etapas-utils"
 import { useTaskStore } from "@/lib/store"
+import { taskEventEmitter, TASK_EVENTS } from "@/lib/task-events"
 
 interface Etapa {
   id: number;
@@ -53,6 +54,8 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
   // Função para invalidar cache e atualizar timestamp
   const invalidateCacheAndUpdateTimestamp = useCallback(() => {
     invalidateTaskEtapasCache(taskId)
+    // Emite evento de atualização das etapas
+    taskEventEmitter.emit(TASK_EVENTS.ETAPAS_UPDATED, taskId)
     updateTaskTimestamp(taskId)
   }, [taskId, updateTaskTimestamp])
 
