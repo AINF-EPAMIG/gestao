@@ -481,14 +481,14 @@ export function CreateTaskModal() {
     setResponsavelInput("");
   }
 
-  const updateSelectAllState = (currentSelected: Responsavel[]) => {
+  const updateSelectAllState = useCallback((currentSelected: Responsavel[]) => {
     setSelectAllChecked(currentSelected.length === responsaveis.length && responsaveis.length > 0);
-  }
+  }, [responsaveis.length])
 
   // Atualizar o estado do checkbox quando os responsáveis disponíveis mudarem
   useEffect(() => {
     updateSelectAllState(selectedResponsaveis);
-  }, [responsaveis, selectedResponsaveis]);
+  }, [responsaveis, selectedResponsaveis, updateSelectAllState]);
 
   const handleCreateProjeto = async (e: React.FormEvent) => {
     e.preventDefault()

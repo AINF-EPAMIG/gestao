@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Plus, Trash2, Edit2, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { invalidateTaskEtapasCache } from "@/lib/etapas-utils"
+import { useTaskStore } from "@/lib/store"
 
 interface Etapa {
   id: number;
@@ -27,6 +29,12 @@ interface TaskTodosProps {
   taskId: number;
 }
 
+interface UpdateEtapaData {
+  titulo: string;
+  descricao?: string;
+  data_conclusao?: string;
+}
+
 export function TaskTodos({ taskId }: TaskTodosProps) {
   const [todos, setTodos] = useState<Etapa[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,8 +43,18 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
   const [editingTodo, setEditingTodo] = useState<number | null>(null)
   const [editTitle, setEditTitle] = useState("")
   const [editDescription, setEditDescription] = useState("")
+  const [editDataConclusao, setEditDataConclusao] = useState("")
   const [isAddingTodo, setIsAddingTodo] = useState(false)
   const [deletingTodo, setDeletingTodo] = useState<number | null>(null)
+  
+  // Hook para atualizar timestamp da task
+  const updateTaskTimestamp = useTaskStore((state) => state.updateTaskTimestamp)
+  
+  // Função para invalidar cache e atualizar timestamp
+  const invalidateCacheAndUpdateTimestamp = useCallback(() => {
+    invalidateTaskEtapasCache(taskId)
+    updateTaskTimestamp(taskId)
+  }, [taskId, updateTaskTimestamp])
 
   // Buscar Etapas da tarefa
   const fetchTodos = useCallback(async () => {
@@ -80,6 +98,8 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         setNewTodoTitle("")
         setNewTodoDescription("")
         setIsAddingTodo(false)
+        // Invalidar cache e atualizar timestamp da atividade pai
+        invalidateCacheAndUpdateTimestamp()
       }
     } catch (error) {
       console.error('Erro ao adicionar Etapa:', error)
@@ -102,6 +122,8 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         setTodos(prev => prev.map(todo => 
           todo.id === todoId ? etapaAtualizada : todo
         ))
+        // Invalidar cache e atualizar timestamp da atividade pai
+        invalidateCacheAndUpdateTimestamp()
       }
     } catch (error) {
       console.error('Erro ao atualizar Etapa:', error)
@@ -113,15 +135,22 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
     if (!editTitle.trim()) return
 
     try {
+      const updateData: UpdateEtapaData = {
+        titulo: editTitle.trim(),
+        descricao: editDescription.trim() || undefined
+      }
+
+      // Incluir data de conclusão se fornecida
+      if (editDataConclusao) {
+        updateData.data_conclusao = editDataConclusao
+      }
+
       const response = await fetch(`/api/atividades/${taskId}/todos?todoId=${todoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          titulo: editTitle.trim(),
-          descricao: editDescription.trim() || undefined
-        })
+        body: JSON.stringify(updateData)
       })
 
       if (response.ok) {
@@ -132,6 +161,9 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         setEditingTodo(null)
         setEditTitle("")
         setEditDescription("")
+        setEditDataConclusao("")
+        // Invalidar cache e atualizar timestamp da atividade pai
+        invalidateCacheAndUpdateTimestamp()
       }
     } catch (error) {
       console.error('Erro ao editar Etapa:', error)
@@ -148,6 +180,8 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
 
       if (response.ok) {
         setTodos(prev => prev.filter(etapa => etapa.id !== todoId))
+        // Invalidar cache e atualizar timestamp da atividade pai
+        invalidateCacheAndUpdateTimestamp()
       }
     } catch (error) {
       console.error('Erro ao deletar Etapa:', error)
@@ -161,6 +195,14 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
     setEditingTodo(todo.id)
     setEditTitle(todo.titulo)
     setEditDescription(todo.descricao || "")
+    // Formatar data para input date (YYYY-MM-DD)
+    if (todo.data_conclusao) {
+      const date = new Date(todo.data_conclusao)
+      const formattedDate = date.toISOString().split('T')[0]
+      setEditDataConclusao(formattedDate)
+    } else {
+      setEditDataConclusao("")
+    }
   }
 
   // Cancelar edição
@@ -168,6 +210,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
     setEditingTodo(null)
     setEditTitle("")
     setEditDescription("")
+    setEditDataConclusao("")
   }
 
   // Calcular progresso
@@ -200,7 +243,7 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
         </div>
         
         {/* Barra de progresso */}
-        {totalTodos > 0 && (
+        {totalTodos > 0 ? (
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className={cn(
@@ -211,11 +254,11 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Lista de Etapas */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+       {/* Lista de Etapas */}
+       <div className="space-y-2 max-h-40 sm:max-h-24 md:max-h-32 lg:max-h-36 xl:max-h-40 2xl:max-h-44 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
         {todos.map((todo) => (
           <Card key={todo.id} className={cn(
             "transition-all duration-200",
@@ -237,6 +280,19 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
                     placeholder="Descrição (opcional)"
                     className="text-sm min-h-[60px]"
                   />
+                  {todo.concluido ? (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Data de Conclusão
+                      </label>
+                      <Input
+                        type="date"
+                        value={editDataConclusao}
+                        onChange={(e) => setEditDataConclusao(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  ) : null}
                   <div className="flex gap-2 justify-end">
                     <Button
                       size="sm"
@@ -272,19 +328,19 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
                     )}>
                       {todo.titulo}
                     </div>
-                    {todo.descricao && (
+                    {todo.descricao ? (
                       <div className={cn(
                         "text-xs text-muted-foreground mt-1",
                         todo.concluido && "line-through"
                       )}>
                         {todo.descricao}
                       </div>
-                    )}
-                    {todo.data_conclusao && (
+                    ) : null}
+                    {todo.data_conclusao ? (
                       <div className="text-xs text-green-600 mt-1">
                         Concluído em {new Date(todo.data_conclusao).toLocaleDateString('pt-BR')}
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex gap-1">
@@ -335,12 +391,12 @@ export function TaskTodos({ taskId }: TaskTodosProps) {
           </Card>
         ))}
 
-        {todos.length === 0 && (
+        {todos.length === 0 ? (
           <div className="text-center p-8 text-muted-foreground">
             <div className="text-sm">Nenhuma Etapa adicionada ainda</div>
             <div className="text-xs mt-1">Clique no botão abaixo para adicionar a primeira</div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Formulário para adicionar nova Etapa */}

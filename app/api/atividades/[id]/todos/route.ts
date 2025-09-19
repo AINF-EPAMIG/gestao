@@ -3,6 +3,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+// Função utilitária para atualizar o timestamp da atividade pai
+async function updateParentActivityTimestamp(atividadeId: number) {
+  try {
+    await executeQuery({
+      query: `
+        UPDATE u711845530_gestao.atividades 
+        SET ultima_atualizacao = NOW() 
+        WHERE id = ?
+      `,
+      values: [atividadeId]
+    });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar timestamp da atividade pai:', error);
+    // Não falha a operação principal se falhar ao atualizar timestamp
+  }
+}
+
 interface Todo {
   id: number;
   atividade_id: number;
@@ -25,6 +42,7 @@ interface UpdateTodoRequest {
   descricao?: string;
   concluido?: boolean;
   ordem?: number;
+  data_conclusao?: string;
 }
 
 // GET - Buscar todos os To Dos de uma atividade
@@ -131,6 +149,9 @@ export async function POST(
       values: [result.insertId]
     }) as Todo[];
 
+    // Atualizar timestamp da atividade pai
+    await updateParentActivityTimestamp(atividadeId);
+
     return NextResponse.json(novoTodo[0], { status: 201 });
   } catch (error) {
     console.error('❌ Erro ao criar To Do:', error);
@@ -185,7 +206,21 @@ export async function PUT(
       updateValues.push(body.concluido ? 1 : 0);
       
       if (body.concluido) {
-        updateFields.push('data_conclusao = NOW()');
+        // Se uma data de conclusão específica foi fornecida, use ela
+        if (body.data_conclusao) {
+          updateFields.push('data_conclusao = ?');
+          updateValues.push(body.data_conclusao);
+        } else {
+          updateFields.push('data_conclusao = NOW()');
+        }
+      } else {
+        updateFields.push('data_conclusao = NULL');
+      }
+    } else if (body.data_conclusao !== undefined) {
+      // Permitir atualizar apenas a data de conclusão sem alterar o status
+      if (body.data_conclusao) {
+        updateFields.push('data_conclusao = ?');
+        updateValues.push(body.data_conclusao);
       } else {
         updateFields.push('data_conclusao = NULL');
       }
@@ -223,6 +258,11 @@ export async function PUT(
       values: [parseInt(todoId)]
     }) as Todo[];
 
+    // Atualizar timestamp da atividade pai
+    if (todoAtualizado[0]) {
+      await updateParentActivityTimestamp(todoAtualizado[0].atividade_id);
+    }
+
     return NextResponse.json(todoAtualizado[0]);
   } catch (error) {
     console.error('❌ Erro ao atualizar To Do:', error);
@@ -256,6 +296,15 @@ export async function DELETE(
       );
     }
 
+    // Buscar o ID da atividade antes de deletar
+    const todoParaDeletar = await executeQuery({
+      query: `
+        SELECT atividade_id FROM u711845530_gestao.atividades_todos 
+        WHERE id = ?
+      `,
+      values: [parseInt(todoId)]
+    }) as { atividade_id: number }[];
+
     await executeQuery({
       query: `
         DELETE FROM u711845530_gestao.atividades_todos 
@@ -263,6 +312,11 @@ export async function DELETE(
       `,
       values: [parseInt(todoId)]
     });
+
+    // Atualizar timestamp da atividade pai
+    if (todoParaDeletar[0]) {
+      await updateParentActivityTimestamp(todoParaDeletar[0].atividade_id);
+    }
 
     return NextResponse.json({ message: 'To Do deletado com sucesso' });
   } catch (error) {

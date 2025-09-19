@@ -15,6 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ProgressCircle } from "@/components/progress-circle"
+import { useTaskProgress } from "@/hooks/use-task-progress"
 
 type Task = TaskBase & { origem?: string };
 
@@ -62,8 +64,12 @@ const TaskCard = memo(function TaskCard({
 }) {
   const [showDetails, setShowDetails] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [showDateTime, setShowDateTime] = useState(true)
   const previousStatusRef = useRef<number>(task.status_id)
   const previousUpdateRef = useRef<string | null>(task.ultima_atualizacao)
+  
+  // Hook para buscar progresso das etapas
+  const { progress, hasEtapas, loading: progressLoading } = useTaskProgress(task.id)
 
   // Efeito para detectar mudanças de status e mostrar o loader
   useEffect(() => {
@@ -74,13 +80,22 @@ const TaskCard = memo(function TaskCard({
       // Só mostra o loader se a data de atualização mudou (indicando mudança real de status)
       if (previousUpdateRef.current !== task.ultima_atualizacao) {
         setIsLoading(true)
+        setShowDateTime(false) // Oculta a data temporariamente
         
-        // Simula um tempo de carregamento de 2 segundos
-        const timer = setTimeout(() => {
+        // Simula um tempo de carregamento de 1 segundo para o loader
+        const loaderTimer = setTimeout(() => {
           setIsLoading(false)
         }, 1000)
         
-        return () => clearTimeout(timer)
+        // Delay adicional para mostrar a data formatada corretamente (1.5 segundos total)
+        const dateTimer = setTimeout(() => {
+          setShowDateTime(true)
+        }, 1500)
+        
+        return () => {
+          clearTimeout(loaderTimer)
+          clearTimeout(dateTimer)
+        }
       }
       
       // Atualiza as referências
@@ -155,7 +170,7 @@ const TaskCard = memo(function TaskCard({
         )}
         onClick={() => setShowDetails(true)}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Badge
             className={cn(
               getPriorityName(task.prioridade_id) === "Alta"
@@ -163,13 +178,13 @@ const TaskCard = memo(function TaskCard({
                 : getPriorityName(task.prioridade_id) === "Média"
                 ? "bg-yellow-50 text-yellow-600 border-yellow-100"
                 : "bg-green-50 text-green-600 border-green-100",
-              "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5"
+              "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5 flex-shrink-0"
             )}
           >
             {getPriorityName(task.prioridade_id)}
           </Badge>
           <Badge variant="outline" title={task.projeto_nome || (!task.projeto_id ? (task.origem ? 'Seção Indefinida' : 'Projeto Indefinido') : (task.origem ? `Seção` : `Projeto ${task.projeto_id}`))}
-            className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5"
+            className="text-xs sm:text-[10px] xl:text-xs 2xl:text-sm px-1.5 py-0 sm:px-1 sm:py-0 xl:px-1.5 xl:py-0.5 2xl:px-2 2xl:py-0.5 flex-shrink-0"
           >
             <span className="hidden sm:inline xl:hidden 2xl:hidden">
               {!task.projeto_id ? (task.origem ? 'S' : 'P') : (task.origem ? 'S' : `P${task.projeto_id}`)}
@@ -185,21 +200,51 @@ const TaskCard = memo(function TaskCard({
         <p className="text-sm sm:text-xs xl:text-sm 2xl:text-sm text-gray-500 line-clamp-2 sm:line-clamp-1 xl:line-clamp-2 2xl:line-clamp-3 w-full" title={task.descricao}>
           {task.descricao}
         </p>
-        {/* Estimativa de horas - sempre na mesma posição */}
-        {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
-          <div className="flex items-center">
-            <span className={cn(
-              "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm font-medium px-2 py-0.5 sm:px-1.5 sm:py-0 xl:px-2 xl:py-0.5 2xl:px-2.5 2xl:py-1 rounded-full flex items-center gap-1",
-              getStatusName(task.status_id) === "Não iniciada" ? "bg-red-50 text-red-700" :
-              getStatusName(task.status_id) === "Em desenvolvimento" ? "bg-blue-50 text-blue-700" :
-              getStatusName(task.status_id) === "Em testes" ? "bg-yellow-50 text-yellow-700" :
-              "bg-emerald-50 text-emerald-700"
-            )}>
-              <Clock className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 2xl:w-3.5 2xl:h-3.5" />
-              {formatHours(task.estimativa_horas)}
-            </span>
+        {/* Estimativa de horas e indicador de progresso */}
+        {(task.estimativa_horas && Number(task.estimativa_horas) > 0) || (hasEtapas && !progressLoading) ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {task.estimativa_horas && Number(task.estimativa_horas) > 0 && (
+                <span className={cn(
+                  "text-xs sm:text-[10px] xl:text-xs 2xl:text-sm font-medium px-2 py-0.5 sm:px-1.5 sm:py-0 xl:px-2 xl:py-0.5 2xl:px-2.5 2xl:py-1 rounded-full flex items-center gap-1",
+                  getStatusName(task.status_id) === "Não iniciada" ? "bg-red-50 text-red-700" :
+                  getStatusName(task.status_id) === "Em desenvolvimento" ? "bg-blue-50 text-blue-700" :
+                  getStatusName(task.status_id) === "Em testes" ? "bg-yellow-50 text-yellow-700" :
+                  "bg-emerald-50 text-emerald-700"
+                )}>
+                  <Clock className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 2xl:w-3.5 2xl:h-3.5" />
+                  {formatHours(task.estimativa_horas)}
+                </span>
+              )}
+            </div>
+            {/* Indicador de progresso das etapas */}
+            {hasEtapas && !progressLoading && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex-shrink-0 relative top-1">
+                      <ProgressCircle 
+                        percentage={progress} 
+                        size={16} 
+                        strokeWidth={2.5}
+                        variant="minimal"
+                        className="hover:scale-110 transition-transform duration-200"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-48">
+                    <div className="text-center">
+                      <p className="font-semibold text-sm">{progress}%</p>
+                      <p className="text-xs text-muted-foreground">
+                        Nível de conclusão das etapas desta atividade
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
-        )}
+        ) : null}
         
         {/* Rodapé do card com responsáveis e data de atualização */}
         <div className="flex items-center justify-between pt-2 sm:pt-1 xl:pt-2 2xl:pt-3 border-t w-full">
@@ -274,7 +319,7 @@ const TaskCard = memo(function TaskCard({
           {/* Mostrar data de solicitação para chamados e última atualização para o Kanban original */}
           {((task.origem && task.data_solicitacao) || (!task.origem && task.ultima_atualizacao)) && (task.responsaveis ?? []).length < 4 && (
             <div className="flex items-center">
-              {isLoading ? (
+              {isLoading || !showDateTime ? (
                 <div className="flex items-center text-xs text-gray-500">
                   <Loader2 className="w-3 h-3 sm:w-2.5 sm:h-2.5 xl:w-3 xl:h-3 2xl:w-3.5 2xl:h-3.5 animate-spin" />
                 </div>
@@ -297,6 +342,17 @@ const TaskCard = memo(function TaskCard({
         onOpenChange={setShowDetails}
       />
     </>
+  );
+}, (prevProps, nextProps) => {
+  // Memoização customizada para evitar re-renders desnecessários
+  return (
+    prevProps.task.id === nextProps.task.id &&
+    prevProps.task.status_id === nextProps.task.status_id &&
+    prevProps.task.ultima_atualizacao === nextProps.task.ultima_atualizacao &&
+    prevProps.task.titulo === nextProps.task.titulo &&
+    prevProps.task.descricao === nextProps.task.descricao &&
+    prevProps.task.prioridade_id === nextProps.task.prioridade_id &&
+    prevProps.snapshot.isDragging === nextProps.snapshot.isDragging
   );
 });
 
