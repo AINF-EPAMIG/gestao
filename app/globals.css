@@ -79,9 +79,24 @@
 
 .dragging-card {
   opacity: 0.8;
-  transform: scale(1.02);
+  transform: scale(1.02) rotate(2deg);
   transition: transform 0.2s ease;
   will-change: transform;
+  z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Garantir que o drag and drop funcione */
+[data-rbd-draggable-context-id] {
+  pointer-events: auto !important;
+}
+
+[data-rbd-drag-handle-context-id] {
+  cursor: grab !important;
+}
+
+[data-rbd-drag-handle-context-id]:active {
+  cursor: grabbing !important;
 }
 
 /* Scrollbar styles */

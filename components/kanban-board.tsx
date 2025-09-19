@@ -163,12 +163,17 @@ const TaskCard = memo(function TaskCard({
         {...provided.draggableProps}
         {...provided.dragHandleProps}
         className={cn(
-          "p-3 sm:p-2 xl:p-3 2xl:p-4 space-y-2 sm:space-y-1.5 xl:space-y-2 2xl:space-y-3 border-l-4 cursor-pointer",
+          "p-3 sm:p-2 xl:p-3 2xl:p-4 space-y-2 sm:space-y-1.5 xl:space-y-2 2xl:space-y-3 border-l-4 cursor-grab",
           "max-w-full sm:max-w-full md:max-w-full lg:max-w-full xl:max-w-full 2xl:max-w-full w-full",
           snapshot.isDragging && "dragging-card",
           statusColors[getStatusName(task.status_id) as keyof typeof statusColors]
         )}
-        onClick={() => setShowDetails(true)}
+        onClick={() => {
+          // Só abre o modal se não estiver arrastando
+          if (!snapshot.isDragging) {
+            setShowDetails(true);
+          }
+        }}
       >
         <div className="flex items-center justify-between gap-2">
           <Badge
@@ -342,17 +347,6 @@ const TaskCard = memo(function TaskCard({
         onOpenChange={setShowDetails}
       />
     </>
-  );
-}, (prevProps, nextProps) => {
-  // Memoização customizada para evitar re-renders desnecessários
-  return (
-    prevProps.task.id === nextProps.task.id &&
-    prevProps.task.status_id === nextProps.task.status_id &&
-    prevProps.task.ultima_atualizacao === nextProps.task.ultima_atualizacao &&
-    prevProps.task.titulo === nextProps.task.titulo &&
-    prevProps.task.descricao === nextProps.task.descricao &&
-    prevProps.task.prioridade_id === nextProps.task.prioridade_id &&
-    prevProps.snapshot.isDragging === nextProps.snapshot.isDragging
   );
 });
 
