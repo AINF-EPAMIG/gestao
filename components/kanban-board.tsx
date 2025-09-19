@@ -82,15 +82,15 @@ const TaskCard = memo(function TaskCard({
         setIsLoading(true)
         setShowDateTime(false) // Oculta a data temporariamente
         
-        // Simula um tempo de carregamento de 1 segundo para o loader
+        // Simula um tempo de carregamento de 2 segundos para o loader
         const loaderTimer = setTimeout(() => {
           setIsLoading(false)
-        }, 1000)
+        }, 2000)
         
-        // Delay adicional para mostrar a data formatada corretamente (1.5 segundos total)
+        // Delay adicional para mostrar a data formatada corretamente (4 segundos total)
         const dateTimer = setTimeout(() => {
           setShowDateTime(true)
-        }, 1500)
+        }, 4000)
         
         return () => {
           clearTimeout(loaderTimer)
