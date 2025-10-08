@@ -36,7 +36,6 @@ export default function DashboardPage() {
               <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
                 <PageHeader title="Painel Kanban" />
                 
-                {/* Gráficos em grade - Distribuição por Etapa e Cards Atribuídos por Usuário */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <Card className="w-full overflow-hidden">
                     <CardHeader className="px-4 py-3">
