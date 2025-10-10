@@ -36,7 +36,7 @@ export default function ChamadosPage() {
       <AuthenticatedLayout>
         <PollingWrapper>
           <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-            <PageHeader title="Chamadoss" />
+            <PageHeader title="Chamados" />
 
             {isLoading && chamados.length === 0 ? (
               <div className="flex items-center justify-center min-h-[500px] w-full">
