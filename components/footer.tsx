@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 export function Footer() {
   return (
-    <div className="p-4 text-sm text-emerald-100/80">
+    <div className="p-3 text-sm text-emerald-100/80">
       <div className="flex flex-col items-center gap-2 border-t border-emerald-700/50 pt-4">
         <Image 
           src="/logo_epamig_branca.svg" 

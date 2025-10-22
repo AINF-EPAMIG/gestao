@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown, Ticket, LogOut,  Globe } from "lucide-react"
+import { Menu, ChevronDown, LogOut, Notebook, Package, Receipt, ShoppingCart, Monitor, ClipboardPen, Globe, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -17,11 +17,12 @@ import { usePermissions } from "@/lib/hooks/use-permissions"
 import { useSetorNavigation } from "@/lib/hooks/use-setor-navigation"
 import { useSimpleLogout } from "@/lib/hooks/use-simple-logout"
 
-export function Sidebar() {
+export function SidebarSistema() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  
+  // accordion behavior: only one submenu open at a time
+  const [openItem, setOpenItem] = useState<string | null>(null)
   const { data: session } = useSession()
   const { userSector } = useUserSector()
   const { isLoading: permissionsLoading } = usePermissions()
@@ -53,31 +54,74 @@ export function Sidebar() {
   };
   //Aqui adiciona os itens do menu***************
   const navigation = [
-    {
-      href: "/",
-      icon: LayoutDashboard,
-      label: "Painel",
-    },
 
     {
-      href: "/kanban",
-      icon: KanbanSquare,
-      label: "Kanban",
-    },
-    {
-      href: "/chamados",
-      icon: Ticket,
-      label: "Chamados",
-    },
-    {
-      href: "/planilha",
-      icon: FileSpreadsheet,
-      label: "Planilha",
-    },
-    {
       href: "/sistema-asti",
+      icon: Home,
+      label: "Início",
+    },
+    {
+      href: "/area-conhecimento",
+      icon: Notebook,
+      label: "Área de conhecimento",
+      children: [
+        { href: "/area-conhecimento/cadastrar-tutorial", label: "Cadastrar Tutoriais" },
+        { href: "/area-conhecimento/consultar-tutoriais", label: "Consultar Tutoriais" },
+      ],
+    },
+    {
+      href: "/contratos",
+      icon: ClipboardPen,
+      label: "Contratos",
+      children: [
+        { href: "/contratos/cadastrar", label: "Cadastrar Contrato" },
+        { href: "/contratos/consultar", label: "Consultar Contrato" },
+        { href: "/contratos/proximos-vencimentos", label: "Próximo do Vencimento" },
+        { href: "/contratos/aditivar", label: "Aditivar Contrato" },
+      ],
+    },
+    {
+      href: "/controle-estoque",
+      icon: Package,
+      label: "Controle de estoque",
+      children: [
+        { href: "/controle-estoque/cadastrar", label: "Cadastrar Estoque" },
+        { href: "/controle-estoque/consultar", label: "Consultar Estoque" },
+        { href: "/controle-estoque/movimentacao", label: "Movimentação de Estoque" },
+      ],
+    },
+    {
+      href: "/faturamento",
+      icon: Receipt,
+      label: "Faturamento",
+      children: [
+        { href: "/faturamento/atualizar", label: "Atualizar Status" },
+        { href: "/faturamento/cadastrar", label: "Cadastrar faturamento" },
+        { href: "/faturamento/consultar", label: "Cosultar faturamento" },
+      ],
+    },
+    {
+      href: "/compras",
+      icon: ShoppingCart,
+      label: "Gestão de compras",
+      children: [
+        { href: "/compras/cadastrar", label: "Cadastrar Orçamento" },
+        { href: "/compras/consultar", label: "Consultar Orçamento" },
+      ],
+    },
+    {
+      href: "/gestao-ips",
+      icon: Monitor,
+      label: "Gestão de IPs",
+      children: [
+        { href: "/gestao-ips/cadastrar", label: "Cadastrar IPs" },
+        { href: "/gestao-ips/consultar", label: "Consultar IPs" },
+      ],
+    },
+    {
+      href: "/",
       icon: Globe,
-      label: "Sistema ASTI",
+      label: "Sistema Gestão",
     },
  
   ]
@@ -92,7 +136,7 @@ export function Sidebar() {
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
         <div className="px-3 sm:px-4 flex justify-between items-center">
-          <h1 className="text-lg sm:text-xl font-semibold">Sistema de Gestão</h1> {/* Aqui muda o título************/}
+          <h1 className="text-lg sm:text-xl font-semibold">Sistema ASTI</h1> {/* Aqui muda o título************/}
           {/* Botão de Logout */}
           {session && (
             <button
@@ -120,6 +164,7 @@ export function Sidebar() {
                   className="h-10 w-10 rounded-full object-cover"
                 />
               ) : (
+                // Fallback: tenta buscar avatar do banco via API usando o componente Avatar
                 <Avatar>
                   <AvatarImage email={session.user?.email || ''} />
                   <AvatarFallback>{session.user?.name ? session.user.name.charAt(0) : '?'}</AvatarFallback>
@@ -196,22 +241,73 @@ export function Sidebar() {
           </div>
         )}
         <nav className="mt-4 sm:mt-6">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors",
-                "hover:bg-[#01432D] active:bg-emerald-700/70",
-                "touch-target-auto",
-                pathname === item.href && "bg-emerald-900",
-              )}
-              onClick={() => setOpen(false)}
-            >
-              <item.icon size={18} className="shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
-            </Link>
-          ))}
+          {navigation.map((item) => {
+            const hasChildren = Array.isArray(item.children) && item.children.length > 0
+            const isParentActive = hasChildren && item.children!.some(c => pathname === c.href || pathname.startsWith(c.href))
+            const isOpen = openItem === item.href || isParentActive
+
+            if (hasChildren) {
+              return (
+                <div key={item.href} className="mb-0">
+                  <button
+                    onClick={() => setOpenItem(prev => (prev === item.href ? null : item.href))}
+                    aria-expanded={isOpen}
+                    //Aqui muda a cor do item do menu pai**********
+                    className={cn(
+                      "flex w-full items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors justify-between",
+                      "hover:bg-[#01432D] active:bg-emerald-900/70",
+                      "touch-target-auto",
+                      (isOpen || isParentActive) && "bg-emerald-900/70"
+                    )}
+                    type="button"
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon size={18} className="shrink-0" />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+                  </button>
+
+                  <div className={cn("overflow-hidden transition-[max-height] duration-200", !isOpen && "max-h-0", isOpen && "max-h-[240px]")}> 
+                    <div className="flex flex-col">
+                      {item.children!.map(child => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          //Aq muda a cor do sub menu***************
+                          className={cn(
+                            "flex items-center gap-3 px-6 py-3 text-sm transition-colors hover:bg-emerald-900/50",
+                            pathname === child.href && "bg-emerald-900"
+                          )}
+                          onClick={() => setOpen(false)}
+                        >
+                          <span className="ml-[2px]">{child.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                //Aqui muda a cor do item do menu s/ o subitem**********
+                className={cn(
+                  "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors",
+                  "hover:bg-[#01432D] active:bg-emerald-700/70",
+                  "touch-target-auto", // Melhor área de toque para mobile
+                  pathname === item.href && "bg-emerald-900",
+                )}
+                onClick={() => setOpen(false)}
+              >
+                <item.icon size={18} className="shrink-0" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
       </div>
       
