@@ -1,4 +1,4 @@
-import { Plus, Search, ArrowRight, Clock, FilePenLine, ArrowLeftRight, RefreshCw } from "lucide-react"
+import { Plus, Search, Clock, FilePenLine, ArrowLeftRight, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
 export default function CardsButton({ type }: { type: string }) {
@@ -210,43 +210,3 @@ export default function CardsButton({ type }: { type: string }) {
         )
         }
 }
-        /*
-    } else if (type === 'ip2') {
-        return (
-            <div className="max-w-6xl mx-auto">
-                <div className="flex flex-wrap justify-center gap-8 gap-y-16">
-
-                    <div className="group relative overflow-hidden bg-white/95 text-foreground rounded-lg p-6 shadow-md border border-gray-100 hover:bg-gradient-to-br from-emerald-200/15 to-white/90 hover:border-emerald-200 transition-all duration-200 hover:-translate-y-1 w-full max-w-[560px]">
-                        <div className="flex flex-col gap-3">
-                            <div className="h-10 w-10 rounded-md bg-gradient-to-br from-emerald-900 to-emerald-700 flex items-center justify-center text-white self-start">
-                                <Plus className="h-5 w-5" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-0 group-hover:text-emerald-700">Cadastrar IP</h3>
-                            <p className="text-sm text-muted-foreground text-grey-200 mb-4">Cadastro de novos endereços de ips</p>
-                            <div>
-                                <Link href="/gestao-ips/cadastrar" className="inline-flex justify-center items-center gap-2 rounded-md bg-emerald-50 text-emerald-900 w-full py-3 text-sm shadow-sm hover:bg-emerald-100">
-                                    Acessar
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="group relative overflow-hidden bg-white/95 text-foreground rounded-lg p-6 shadow-md border border-gray-100 hover:bg-gradient-to-br from-emerald-200/15 to-white/90 hover:border-emerald-200 transition-all duration-200 hover:-translate-y-1 w-full max-w-[560px]">
-                        <div className="flex flex-col gap-3">
-                            <div className="h-10 w-10 rounded-md bg-gradient-to-br from-emerald-900 to-emerald-700 flex items-center justify-center text-white self-start">
-                                <Search className="h-5 w-5" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-0 group-hover:text-emerald-700">Consultar IP</h3>
-                            <p className="text-sm text-muted-foreground text-grey-200 mb-4">Consulte e visualize os endereços de IP cadastrados.</p>
-                            <div>
-                                <Link href="/gestao-ips/cadastrar" className="inline-flex justify-center items-center gap-2 rounded-md bg-emerald-50 text-emerald-900 w-full py-3 text-sm shadow-sm hover:bg-emerald-100">
-                                    Acessar
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )
-        */
