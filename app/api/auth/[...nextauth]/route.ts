@@ -45,7 +45,7 @@ const handler = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, user }) {
       // Inicialização: salva o token de acesso e refresh token no JWT
       if (account) {
         return {
@@ -53,6 +53,8 @@ const handler = NextAuth({
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : 0,
+          // Preserve the user's image (from provider) in the token so it can be restored into session
+          picture: (user as any)?.image || token.picture || null,
         };
       }
 
@@ -72,6 +74,10 @@ const handler = NextAuth({
       // Passa o token de acesso e possíveis erros para a sessão
       session.accessToken = token.accessToken;
       session.error = token.error;
+      // Ensure user's image is available on the session (use token.picture if present)
+      if (session.user) {
+        session.user.image = (token as any).picture || session.user.image || null;
+      }
       
       return session;
     },
