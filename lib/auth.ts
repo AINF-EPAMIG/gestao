@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
           refreshToken: account.refresh_token,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : 0,
           // Preserve the user's image (from provider) in the token so it can be restored into session
-          picture: (user as any)?.image || token.picture || null,
+          picture: (user as { image?: string })?.image || token.picture || null,
         };
       }
 
@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
       session.error = token.error;
       // Ensure user's image is available on the session (use token.picture if present)
       if (session.user) {
-        session.user.image = (token as any).picture || session.user.image || null;
+        session.user.image =(token as { picture?: string })?.picture || session.user.image || null;
       }
       
       return session;
