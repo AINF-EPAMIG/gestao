@@ -75,7 +75,7 @@ export function Sidebar() {
       label: "Planilha",
     },
     {
-      href: "/sistema-asti",
+      href: "/asti/home",
       icon: Globe,
       label: "Sistema ASTI",
     },
