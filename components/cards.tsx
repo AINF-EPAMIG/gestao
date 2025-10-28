@@ -8,12 +8,12 @@ type Card = {
 }
 
 const cards: Card[] = [
-    { title: 'Área de conhecimento', description: 'Reúne e organiza informações e procedimentos do setor.', href: '/area-conhecimento' },
-    { title: 'Contratos', description: 'Controla dados, prazos e status de contratos.', href: '/contratos' },
-    { title: 'Controle de estoque', description: 'Registra entradas, saídas e quantidades de itens.', href: '/controle-estoque' },
-    { title: 'Gestão de IPs', description: 'Administra a distribuição e uso de endereços de rede.', href: '/gestao-ips' },
-    { title: 'Faturamento', description: 'Gera e gerencia cobranças e notas fiscais.', href: '/faturamento' },
-    { title: 'Gestão de compras', description: 'Registra solicitações e pedidos de compra.', href: '/compras' },
+    { title: 'Área de conhecimento', description: 'Reúne e organiza informações e procedimentos do setor.', href: '/asti/area-conhecimento' },
+    { title: 'Contratos', description: 'Controla dados, prazos e status de contratos.', href: '/asti/contratos' },
+    { title: 'Controle de estoque', description: 'Registra entradas, saídas e quantidades de itens.', href: '/asti/controle-estoque' },
+    { title: 'Gestão de IPs', description: 'Administra a distribuição e uso de endereços de rede.', href: '/asti/gestao-ips' },
+    { title: 'Faturamento', description: 'Gera e gerencia cobranças e notas fiscais.', href: '/asti/faturamento' },
+    { title: 'Gestão de compras', description: 'Registra solicitações e pedidos de compra.', href: '/asti/compras' },
 ]
 
 export default function Cards() {
