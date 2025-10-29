@@ -56,7 +56,7 @@ export function SidebarSistema() {
   const navigation = [
 
     {
-      href: "/sistema-asti",
+      href: "/asti/home",
       icon: Home,
       label: "Início",
     },
@@ -97,7 +97,7 @@ export function SidebarSistema() {
       children: [
         { href: "/faturamento/atualizar", label: "Atualizar Status" },
         { href: "/faturamento/cadastrar", label: "Cadastrar faturamento" },
-        { href: "/faturamento/consultar", label: "Cosultar faturamento" },
+        { href: "/faturamento/consultar", label: "Consultar faturamento" },
       ],
     },
     {
