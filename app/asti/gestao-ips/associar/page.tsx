@@ -1,15 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Link2 } from "lucide-react"
 
 import { SidebarSistema } from "@/components/sidebar-sistema"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+
+interface IpDisponivel {
+	id: number
+	endereco_ip: string
+}
+
+interface SetorItem {
+	id: number
+	nome: string
+	sigla: string
+}
 
 const equipamentosMock = [
 	{ id: "1", nome: "Servidor ASTI" },
@@ -17,28 +28,71 @@ const equipamentosMock = [
 	{ id: "3", nome: "Notebook Suporte" }
 ]
 
-const ipsDisponiveisMock = [
-	{ id: "ip-1", endereco: "10.0.0.15" },
-	{ id: "ip-2", endereco: "10.0.0.27" },
-	{ id: "ip-3", endereco: "2001:db8::1" }
-]
-
 export default function AssociarIpPage() {
 	const [equipamentoSelecionado, setEquipamentoSelecionado] = useState<string>("")
 	const [ipSelecionado, setIpSelecionado] = useState<string>("")
 	const [responsavel, setResponsavel] = useState<string>("")
+	const [setorSelecionado, setSetorSelecionado] = useState<string>("")
+	const [ipsDisponiveis, setIpsDisponiveis] = useState<IpDisponivel[]>([])
+	const [setores, setSetores] = useState<SetorItem[]>([])
+	const [isLoadingIps, setIsLoadingIps] = useState<boolean>(false)
+	const [isLoadingSetores, setIsLoadingSetores] = useState<boolean>(false)
+	const [erroCarregarIps, setErroCarregarIps] = useState<string | null>(null)
+	const [erroCarregarSetores, setErroCarregarSetores] = useState<string | null>(null)
+
+	useEffect(() => {
+		const fetchIps = async () => {
+			try {
+				setIsLoadingIps(true)
+				const response = await fetch("/api/gestao-ip?status=Disponível")
+				if (!response.ok) {
+					throw new Error("Falha ao carregar IPs")
+				}
+				const data = (await response.json()) as IpDisponivel[]
+				setIpsDisponiveis(data)
+				setErroCarregarIps(null)
+			} catch (error) {
+				console.error("Erro ao carregar IPs disponíveis:", error)
+				setErroCarregarIps("Não foi possível carregar os IPs disponíveis.")
+			} finally {
+				setIsLoadingIps(false)
+			}
+		}
+
+		const fetchSetores = async () => {
+			try {
+				setIsLoadingSetores(true)
+				const response = await fetch("/api/setor")
+				if (!response.ok) {
+					throw new Error("Falha ao carregar setores")
+				}
+				const data = (await response.json()) as SetorItem[]
+				setSetores(data)
+				setErroCarregarSetores(null)
+			} catch (error) {
+				console.error("Erro ao carregar setores:", error)
+				setErroCarregarSetores("Não foi possível carregar os setores.")
+			} finally {
+				setIsLoadingSetores(false)
+			}
+		}
+
+		fetchIps()
+		fetchSetores()
+	}, [])
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 
-		if (!equipamentoSelecionado || !ipSelecionado) {
-			console.warn("Selecione um equipamento e um IP disponível antes de continuar.")
+		if (!equipamentoSelecionado || !ipSelecionado || !setorSelecionado) {
+			console.warn("Selecione um equipamento, um setor e um IP disponível antes de continuar.")
 			return
 		}
 
 		console.log("Associando IP ao equipamento", {
 			equipamento: equipamentoSelecionado,
 			ip: ipSelecionado,
+			setor: setorSelecionado,
 			responsavel
 		})
 	}
@@ -97,19 +151,53 @@ export default function AssociarIpPage() {
 									</div>
 
 									<div className="space-y-2">
+										<Label htmlFor="setor">Setor</Label>
+										<div className="relative">
+											<Select
+												value={setorSelecionado}
+												onValueChange={setSetorSelecionado}
+												disabled={isLoadingSetores || !!erroCarregarSetores || setores.length === 0}
+											>
+												<SelectTrigger id="setor">
+													<SelectValue
+														placeholder={isLoadingSetores ? "Carregando setores..." : "Selecione um setor"}
+													/>
+												</SelectTrigger>
+												<SelectContent className="max-h-64 overflow-y-auto">
+													{setores.map((setor) => (
+														<SelectItem key={setor.id} value={String(setor.id)}>
+															{setor.sigla || setor.nome}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+										{erroCarregarSetores && <p className="text-sm text-red-600">{erroCarregarSetores}</p>}
+									</div>
+
+									<div className="space-y-2">
 										<Label htmlFor="ip">IP disponível</Label>
-										<Select value={ipSelecionado} onValueChange={setIpSelecionado}>
-											<SelectTrigger id="ip">
-												<SelectValue placeholder="Selecione um IP" />
-											</SelectTrigger>
-											<SelectContent>
-												{ipsDisponiveisMock.map((ip) => (
-													<SelectItem key={ip.id} value={ip.id}>
-														{ip.endereco}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
+										<div className="relative">
+											<Select
+												value={ipSelecionado}
+												onValueChange={setIpSelecionado}
+												disabled={isLoadingIps || !!erroCarregarIps || ipsDisponiveis.length === 0}
+											>
+												<SelectTrigger id="ip">
+													<SelectValue
+														placeholder={isLoadingIps ? "Carregando IPs..." : "Selecione um IP"}
+													/>
+												</SelectTrigger>
+												<SelectContent className="max-h-64 overflow-y-auto">
+													{ipsDisponiveis.map((ip) => (
+														<SelectItem key={ip.id} value={String(ip.id)}>
+															{ip.endereco_ip}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+										{erroCarregarIps && <p className="text-sm text-red-600">{erroCarregarIps}</p>}
 									</div>
 								</div>
 
