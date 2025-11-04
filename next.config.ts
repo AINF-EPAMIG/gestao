@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
     DB_FUNCIONARIOS_USER: process.env.DB_FUNCIONARIOS_USER,
     DB_FUNCIONARIOS_PASSWORD: process.env.DB_FUNCIONARIOS_PASSWORD,
     DB_FUNCIONARIOS_DATABASE: process.env.DB_FUNCIONARIOS_DATABASE,
+    
+    DB_ASTI_HOST: process.env.DB_ASTI_HOST,
+    DB_ASTI_USER: process.env.DB_ASTI_USER,
+    DB_ASTI_PASSWORD: process.env.DB_ASTI_PASSWORD,
+    DB_ASTI_DATABASE: process.env.DB_ASTI_DATABASE,
   },
 };
 

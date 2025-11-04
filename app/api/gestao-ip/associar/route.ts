@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { DB_ASTI_DATABASE, executeQuery, qualifyTable } from "@/lib/db"
+import { DB_ASTI_DATABASE, executeQueryAsti, qualifyTable } from "@/lib/db"
 
 const OPTIONAL_COLUMNS = ["responsavel", "setor", "equipamento"] as const
 type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
@@ -15,7 +15,7 @@ const IPS_TABLE = qualifyTable(ASTI_SCHEMA, "ips")
 
 const fetchAvailableOptionalColumns = async () => {
 	try {
-		const rows = await executeQuery<{ column_name: OptionalColumn }[]>({
+		const rows = await executeQueryAsti<{ column_name: OptionalColumn }[]>({
 			query: `
 				SELECT COLUMN_NAME AS column_name
 				FROM INFORMATION_SCHEMA.COLUMNS
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
 
 		values.push(id)
 
-		const result = await executeQuery<UpdateResult>({
+		const result = await executeQueryAsti<UpdateResult>({
 			query,
 			values
 		})

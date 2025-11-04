@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { DB_ASTI_DATABASE, executeQuery, qualifyTable } from "@/lib/db"
+import { DB_ASTI_DATABASE, executeQueryAsti, qualifyTable } from "@/lib/db"
 
 const ASTI_SCHEMA = DB_ASTI_DATABASE
 
@@ -23,7 +23,7 @@ interface InsertResult {
 
 export async function GET() {
 	try {
-		const faixas = await executeQuery<FaixaRecord[]>({
+		const faixas = await executeQueryAsti<FaixaRecord[]>({
 			query: `
 				SELECT id, faixa, descricao, data_criacao
 				FROM ${TABLE_NAME}
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 			)
 		}
 
-		const result = await executeQuery<InsertResult>({
+		const result = await executeQueryAsti<InsertResult>({
 			query: `
 				INSERT INTO ${TABLE_NAME} (faixa, descricao, data_criacao)
 				VALUES (?, ?, NOW())
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 			values: [faixaValor, descricaoValor]
 		})
 
-		const faixaCriada = await executeQuery<FaixaRecord[]>({
+		const faixaCriada = await executeQueryAsti<FaixaRecord[]>({
 			query: `
 				SELECT id, faixa, descricao, data_criacao
 				FROM ${TABLE_NAME}

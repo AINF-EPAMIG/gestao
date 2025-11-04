@@ -51,9 +51,21 @@ export const dbAtendimento = mysql.createPool({
   queueLimit: 0
 });
 
+// Nova conexão para o banco de dados ASTI
+export const dbAsti = mysql.createPool({
+  host: process.env.DB_ASTI_HOST,
+  user: process.env.DB_ASTI_USER,
+  password: process.env.DB_ASTI_PASSWORD,
+  database: process.env.DB_ASTI_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
 console.log('🔌 Pool de conexão MySQL principal configurado');
 console.log('🔌 Pool de conexão MySQL funcionários configurado');
 console.log('🔌 Pool de conexão MySQL atendimento configurado');
+console.log('🔌 Pool de conexão MySQL ASTI configurado');
 
 export const DB_MAIN_DATABASE = mainDatabase;
 export const DB_ASTI_DATABASE = astiDatabase;
@@ -110,5 +122,22 @@ export async function executeQueryAtendimento<T>({
   } catch (error) {
     console.error('❌ Erro na execução da query no banco de atendimento:', error);
     throw new Error(`Erro ao executar query no banco de atendimento: ${error}`);
+  }
+}
+
+// Função para executar queries no banco ASTI
+export async function executeQueryAsti<T>({ 
+  query, 
+  values 
+}: { 
+  query: string; 
+  values?: (string | number)[] 
+}): Promise<T> {
+  try {
+    const [results] = await dbAsti.execute(query, values);
+    return results as T;
+  } catch (error) {
+    console.error('❌ Erro na execução da query no banco ASTI:', error);
+    throw new Error(`Erro ao executar query no banco ASTI: ${error}`);
   }
 } 
