@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 type IpStatus = "Disponível" | "Em Uso" | "Reservado" | "Manutenção"
@@ -214,19 +213,24 @@ export default function ConsultarIpsPage() {
 	}, [ips])
 
 	const ipsFiltrados = useMemo(() => {
+		const responsavelFiltroNormalizado = responsavelFiltro.trim().toLowerCase()
+		const setorFiltroLabelLower = setorFiltroLabel?.toLowerCase()
+
 		return ips.filter((ip) => {
 			const correspondeBusca = ip.endereco_ip.toLowerCase().includes(busca.toLowerCase())
 			const correspondeStatus = status === "todos" || ip.status === status
-			const responsavelFiltroNormalizado = responsavelFiltro.trim().toLowerCase()
 			const correspondeResponsavel =
 				!responsavelFiltroNormalizado ||
 				(ip.responsavel ? ip.responsavel.toLowerCase().includes(responsavelFiltroNormalizado) : false)
+
+			const setorLabel = ip.setor ? setorLabelMap.get(String(ip.setor)) ?? ip.setor : null
 			const correspondeSetor =
 				setorFiltro === "todos" ||
 				(ip.setor ? String(ip.setor) === setorFiltro : false) ||
-				(ip.setor && setorFiltroLabel
-					? obterSetorLabel(ip.setor)?.toLowerCase() === setorFiltroLabel.toLowerCase()
+				(setorLabel && setorFiltroLabelLower
+					? setorLabel.toLowerCase() === setorFiltroLabelLower
 					: false)
+
 			const correspondeEquipamento =
 				equipamentoFiltro === "todos" || (ip.equipamento ? ip.equipamento === equipamentoFiltro : false)
 			const correspondeFaixa =
@@ -241,7 +245,17 @@ export default function ConsultarIpsPage() {
 				correspondeFaixa
 			)
 		})
-	}, [busca, status, responsavelFiltro, setorFiltro, equipamentoFiltro, faixaSelecionada, ips])
+	}, [
+		busca,
+		status,
+		responsavelFiltro,
+		setorFiltro,
+		setorFiltroLabel,
+		setorLabelMap,
+		equipamentoFiltro,
+		faixaSelecionada,
+		ips
+	])
 
 	useEffect(() => {
 		setCurrentPage(1)
