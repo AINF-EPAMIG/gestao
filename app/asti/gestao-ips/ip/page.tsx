@@ -169,20 +169,32 @@ export default function CadastroIPPage() {
                     <Select
                       value={faixaSelecionada}
                       onValueChange={setFaixaSelecionada}
-                      disabled={isLoadingFaixas || !!faixaErro || faixas.length === 0}
+                      disabled={isLoadingFaixas || !!faixaErro}
                     >
                       <SelectTrigger id="faixa">
                         <SelectValue
-                          placeholder={isLoadingFaixas ? "Carregando faixas..." : "Selecione a faixa"}
+                          placeholder={
+                            isLoadingFaixas
+                              ? "Carregando faixas..."
+                              : faixas.length === 0
+                                ? "Nenhuma faixa encontrada"
+                                : "Selecione a faixa"
+                          }
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {faixas.map((faixaItem) => (
-                          <SelectItem key={faixaItem.id} value={String(faixaItem.id)}>
-                            {faixaItem.descricao}
-                            {!!faixaItem.faixa && ` (${faixaItem.faixa})`}
+                        {faixas.length === 0 ? (
+                          <SelectItem disabled value="__nenhuma_faixa__">
+                            Nenhuma faixa encontrada
                           </SelectItem>
-                        ))}
+                        ) : (
+                          faixas.map((faixaItem) => (
+                            <SelectItem key={faixaItem.id} value={String(faixaItem.id)}>
+                              {faixaItem.descricao}
+                              {!!faixaItem.faixa && ` (${faixaItem.faixa})`}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     {faixaErro && <p className="text-sm text-red-600">{faixaErro}</p>}

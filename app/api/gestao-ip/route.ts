@@ -14,6 +14,9 @@ interface IpRecord {
 	status: IpStatus
 	descricao: string | null
 	data_cadastro: string
+	responsavel?: string | null
+	setor?: string | null
+	equipamento?: string | null
 }
 
 interface InsertResult {
@@ -22,6 +25,36 @@ interface InsertResult {
 
 const isValidStatus = (status: string | null): status is IpStatus =>
 	!!status && (IP_STATUSES as readonly string[]).includes(status)
+const OPTIONAL_COLUMNS = ["responsavel", "setor", "equipamento"] as const
+type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
+
+const buildSelectColumns = (availableColumns: Set<string>) => {
+	const baseColumns = ["id", "endereco_ip", "status", "descricao"]
+	const optionalColumns = OPTIONAL_COLUMNS.map((column) =>
+		availableColumns.has(column) ? column : `NULL AS ${column}`
+	)
+	return [...baseColumns, ...optionalColumns, "data_cadastro"].join(", ")
+}
+
+const fetchAvailableOptionalColumns = async () => {
+	try {
+		const rows = await executeQuery<{ column_name: OptionalColumn }[]>({
+			query: `
+				SELECT COLUMN_NAME AS column_name
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_SCHEMA = ?
+					AND TABLE_NAME = ?
+					AND COLUMN_NAME IN (${OPTIONAL_COLUMNS.map(() => "?").join(", ")})
+			`,
+			values: ["u711845530_asti", "ips", ...OPTIONAL_COLUMNS]
+		})
+
+		return new Set(rows.map((row) => row.column_name))
+	} catch (error) {
+		console.error("❌ Erro ao verificar colunas opcionais:", error)
+		return new Set<OptionalColumn>()
+	}
+}
 
 export async function GET(request: Request) {
 	const { searchParams } = new URL(request.url)
@@ -47,7 +80,10 @@ export async function GET(request: Request) {
 		values.push(`%${searchParam}%`)
 	}
 
-	let query = `SELECT id, endereco_ip, status, descricao, data_cadastro FROM ${TABLE_NAME}`
+	const availableColumns = await fetchAvailableOptionalColumns()
+	const selectColumns = buildSelectColumns(availableColumns)
+
+	let query = `SELECT ${selectColumns} FROM ${TABLE_NAME}`
 	if (filters.length) {
 		query += ` WHERE ${filters.join(" AND ")}`
 	}
@@ -89,9 +125,11 @@ export async function POST(request: Request) {
 			values: [rawEndereco, status, descricao]
 		})
 
+		const availableColumns = await fetchAvailableOptionalColumns()
+		const selectColumns = buildSelectColumns(availableColumns)
 		const novoIp = await executeQuery<IpRecord[]>({
 			query: `
-				SELECT id, endereco_ip, status, descricao, data_cadastro
+				SELECT ${selectColumns}
 				FROM ${TABLE_NAME}
 				WHERE id = ?
 			`,

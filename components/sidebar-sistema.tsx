@@ -110,12 +110,15 @@ export function SidebarSistema() {
       ],
     },
     {
-      href: "/gestao-ips",
+      href: "/asti/gestao-ips",
       icon: Monitor,
       label: "Gestão de IPs",
       children: [
-        { href: "/gestao-ips/cadastrar", label: "Cadastrar IPs" },
-        { href: "/gestao-ips/consultar", label: "Consultar IPs" },
+        { href: "/asti/gestao-ips", label: "Home" },
+        { href: "/asti/gestao-ips/ip", label: "Cadastrar IPs" },
+        { href: "/asti/gestao-ips/consultar", label: "Consultar IPs" },
+        { href: "/asti/gestao-ips/associar", label: "Associar IPs" },
+        { href: "/asti/gestao-ips/faixa/cadastrar", label: "Cadastrar Faixa" },
       ],
     },
     {
