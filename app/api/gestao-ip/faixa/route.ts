@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
 
-import { executeQuery } from "@/lib/db"
+import { DB_ASTI_DATABASE, executeQuery, qualifyTable } from "@/lib/db"
 
-const TABLE_NAME = "u711845530_asti.faixa"
+const ASTI_SCHEMA = DB_ASTI_DATABASE
+
+if (!ASTI_SCHEMA) {
+	throw new Error("Variável de ambiente DB_ASTI_DATABASE ou DB_DATABASE deve estar configurada para ASTI.")
+}
+
+const TABLE_NAME = qualifyTable(ASTI_SCHEMA, "faixa")
 
 interface FaixaRecord {
 	id: number

@@ -1,11 +1,29 @@
 import mysql from 'mysql2/promise';
 
+const trimEnv = (value?: string | null) => value?.trim() ?? '';
+
+const mainDatabase = trimEnv(process.env.DB_DATABASE);
+const astiDatabase = trimEnv(process.env.DB_ASTI_DATABASE) || mainDatabase;
+const gestaoDatabase = trimEnv(process.env.DB_GESTAO_DATABASE) || mainDatabase;
+
+if (!mainDatabase) {
+  console.warn('⚠️  Variável de ambiente DB_DATABASE não definida.');
+}
+
+if (!astiDatabase) {
+  console.warn('⚠️  Variável de ambiente DB_ASTI_DATABASE não definida e nenhum fallback disponível.');
+}
+
+if (!gestaoDatabase) {
+  console.warn('⚠️  Variável de ambiente DB_GESTAO_DATABASE não definida e nenhum fallback disponível.');
+}
+
 // Conexão principal do sistema
 export const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
+  database: mainDatabase || undefined,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -36,6 +54,13 @@ export const dbAtendimento = mysql.createPool({
 console.log('🔌 Pool de conexão MySQL principal configurado');
 console.log('🔌 Pool de conexão MySQL funcionários configurado');
 console.log('🔌 Pool de conexão MySQL atendimento configurado');
+
+export const DB_MAIN_DATABASE = mainDatabase;
+export const DB_ASTI_DATABASE = astiDatabase;
+export const DB_GESTAO_DATABASE = gestaoDatabase;
+
+export const qualifyTable = (schema: string, table: string) =>
+  schema ? `\`${schema}\`.\`${table}\`` : `\`${table}\``;
 
 // Função para executar queries no banco principal
 export async function executeQuery<T>({ 

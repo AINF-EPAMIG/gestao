@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { executeQuery } from "@/lib/db"
+import { DB_ASTI_DATABASE, executeQuery, qualifyTable } from "@/lib/db"
 
 const OPTIONAL_COLUMNS = ["responsavel", "setor", "equipamento"] as const
 type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number]
+
+const ASTI_SCHEMA = DB_ASTI_DATABASE
+
+if (!ASTI_SCHEMA) {
+	throw new Error("Variável de ambiente DB_ASTI_DATABASE ou DB_DATABASE deve estar configurada para ASTI.")
+}
+
+const IPS_TABLE = qualifyTable(ASTI_SCHEMA, "ips")
 
 const fetchAvailableOptionalColumns = async () => {
 	try {
@@ -15,7 +23,7 @@ const fetchAvailableOptionalColumns = async () => {
 					AND TABLE_NAME = ?
 					AND COLUMN_NAME IN (${OPTIONAL_COLUMNS.map(() => "?").join(", ")})
 			`,
-			values: ["u711845530_asti", "ips", ...OPTIONAL_COLUMNS]
+			values: [ASTI_SCHEMA, "ips", ...OPTIONAL_COLUMNS]
 		})
 
 		return new Set(rows.map((row) => row.column_name))
@@ -59,7 +67,7 @@ export async function PUT(request: NextRequest) {
 		assignments.push("status = 'Em Uso'")
 
 		const query = `
-			UPDATE u711845530_asti.ips
+			UPDATE ${IPS_TABLE}
 			SET ${assignments.join(", ")}
 			WHERE id = ?
 		`
