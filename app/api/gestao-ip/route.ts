@@ -29,6 +29,14 @@ interface InsertResult {
 	insertId: number
 }
 
+interface UpdateResult {
+	affectedRows: number
+}
+
+interface DeleteResult {
+	affectedRows: number
+}
+
 const isValidStatus = (status: string | null): status is IpStatus =>
 	!!status && (IP_STATUSES as readonly string[]).includes(status)
 const OPTIONAL_COLUMNS = ["responsavel", "setor", "equipamento"] as const
@@ -155,5 +163,151 @@ export async function POST(request: Request) {
 		}
 
 		return NextResponse.json({ error: "Erro ao cadastrar IP" }, { status: 500 })
+	}
+}
+
+export async function PUT(request: Request) {
+	try {
+		const body = await request.json()
+		const rawId = body?.id
+		const id = typeof rawId === "number" ? rawId : Number.parseInt(String(rawId ?? ""), 10)
+
+		if (!Number.isInteger(id) || id <= 0) {
+			return NextResponse.json({ error: "ID inválido." }, { status: 400 })
+		}
+
+		const sanitizeNullableString = (value: unknown) => {
+			if (typeof value === "string") {
+				const trimmed = value.trim()
+				return trimmed.length ? trimmed : null
+			}
+			return value == null ? null : String(value).trim() || null
+		}
+
+		const availableColumns = await fetchAvailableOptionalColumns()
+		const updates: string[] = []
+		const values: (string | number | null)[] = []
+
+		if (Object.prototype.hasOwnProperty.call(body, "endereco_ip")) {
+			const endereco = typeof body?.endereco_ip === "string" ? body.endereco_ip.trim() : ""
+			if (!endereco) {
+				return NextResponse.json({ error: "O endereço IP não pode ser vazio." }, { status: 400 })
+			}
+			updates.push("endereco_ip = ?")
+			values.push(endereco)
+		}
+
+		if (Object.prototype.hasOwnProperty.call(body, "status")) {
+			const rawStatus = typeof body?.status === "string" ? body.status.trim() : null
+			if (!isValidStatus(rawStatus)) {
+				return NextResponse.json(
+					{ error: "Status inválido. Utilize Disponível, Em Uso, Reservado ou Manutenção." },
+					{ status: 400 }
+				)
+			}
+			updates.push("status = ?")
+			values.push(rawStatus)
+		}
+
+		if (Object.prototype.hasOwnProperty.call(body, "descricao")) {
+			updates.push("descricao = ?")
+			values.push(sanitizeNullableString(body?.descricao))
+		}
+
+		if (availableColumns.has("responsavel") && Object.prototype.hasOwnProperty.call(body, "responsavel")) {
+			updates.push("responsavel = ?")
+			values.push(sanitizeNullableString(body?.responsavel))
+		}
+
+		if (availableColumns.has("setor") && Object.prototype.hasOwnProperty.call(body, "setor")) {
+			updates.push("setor = ?")
+			values.push(sanitizeNullableString(body?.setor))
+		}
+
+		if (availableColumns.has("equipamento") && Object.prototype.hasOwnProperty.call(body, "equipamento")) {
+			updates.push("equipamento = ?")
+			values.push(sanitizeNullableString(body?.equipamento))
+		}
+
+		if (!updates.length) {
+			return NextResponse.json({ error: "Nenhum campo para atualizar." }, { status: 400 })
+		}
+
+		const updateResult = await executeQueryAsti<UpdateResult>({
+			query: `
+				UPDATE ${TABLE_NAME}
+				SET ${updates.join(", ")}
+				WHERE id = ?
+			`,
+			values: [...values, id]
+		})
+
+		if (!updateResult.affectedRows) {
+			return NextResponse.json({ error: "IP não encontrado." }, { status: 404 })
+		}
+
+		const selectColumns = buildSelectColumns(availableColumns)
+		const registrosAtualizados = await executeQueryAsti<IpRecord[]>({
+			query: `
+				SELECT ${selectColumns}
+				FROM ${TABLE_NAME}
+				WHERE id = ?
+			`,
+			values: [id]
+		})
+
+		if (!registrosAtualizados.length) {
+			return NextResponse.json({ error: "IP não encontrado." }, { status: 404 })
+		}
+
+		return NextResponse.json(registrosAtualizados[0])
+	} catch (error) {
+		const errorMessage = (error as Error)?.message ?? "Erro desconhecido"
+		console.error("❌ Erro ao atualizar IP:", error)
+
+		if (errorMessage.includes("ER_DUP_ENTRY")) {
+			return NextResponse.json(
+				{ error: "Este endereço IP já está cadastrado." },
+				{ status: 409 }
+			)
+		}
+
+		return NextResponse.json({ error: "Erro ao atualizar IP" }, { status: 500 })
+	}
+}
+
+export async function DELETE(request: Request) {
+	try {
+		let body: { id?: unknown } | null = null
+		try {
+			body = await request.json()
+		} catch {
+			body = null
+		}
+
+		const url = new URL(request.url)
+		const rawId = body?.id ?? url.searchParams.get("id")
+		const id = typeof rawId === "number" ? rawId : Number.parseInt(String(rawId ?? ""), 10)
+
+		if (!Number.isInteger(id) || id <= 0) {
+			return NextResponse.json({ error: "ID inválido." }, { status: 400 })
+		}
+
+		const result = await executeQueryAsti<DeleteResult>({
+			query: `
+				DELETE FROM ${TABLE_NAME}
+				WHERE id = ?
+			`,
+			values: [id]
+		})
+
+		if (!result.affectedRows) {
+			return NextResponse.json({ error: "IP não encontrado." }, { status: 404 })
+		}
+
+		return NextResponse.json({ message: "IP excluído com sucesso." })
+	} catch (error) {
+		console.error("❌ Erro ao excluir IP:", error)
+		return NextResponse.json({ error: "Erro ao excluir IP" }, { status: 500 })
 	}
 }

@@ -1,4 +1,4 @@
-import { Notebook, Package, Receipt, ShoppingCart, Monitor, ClipboardPen, ArrowRight, Book } from "lucide-react"
+import { Notebook, Package, Receipt, ShoppingCart, Monitor, ClipboardPen, ArrowRight, Book, Mail } from "lucide-react"
 import Link from "next/link"
 
 type Card = {
@@ -14,6 +14,7 @@ const cards: Card[] = [
     { title: 'Gestão de IPs', description: 'Administra a distribuição e uso de endereços de rede.', href: '/asti/gestao-ips' },
     { title: 'Faturamento', description: 'Gera e gerencia cobranças e notas fiscais.', href: '/asti/faturamento' },
     { title: 'Gestão de compras', description: 'Registra solicitações e pedidos de compra.', href: '/asti/compras' },
+    { title: 'E-mails', description: 'Consulta e filtra funcionários com emails e informações.', href: '/asti/email' },
 ]
 
 export default function Cards() {
@@ -29,6 +30,7 @@ export default function Cards() {
                                             if (title.includes('IP')) return Monitor
                                             if (title.includes('Faturamento')) return Receipt
                                             if (title.includes('compras')) return ShoppingCart
+                                            if (title.includes('E-mail')) return Mail
                                             return Book
                                         }
                                     )(c.title)
