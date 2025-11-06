@@ -27,8 +27,8 @@ export default function CardsButton({ type }: { type: string }) {
                             <div className="h-10 w-10 rounded-md bg-gradient-to-br from-emerald-900 to-emerald-700 flex items-center justify-center text-white self-start">
                                 <Search className="h-5 w-5" />
                             </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-0 group-hover:text-emerald-700">Consultar IP</h3>
-                            <p className="text-sm text-muted-foreground text-grey-200 mb-4">Busque e visualize endereços IP cadastrados.</p>
+                            <h3 className="text-lg font-semibold text-foreground mb-0 group-hover:text-emerald-700">Consultar IP / Faixa</h3>
+                            <p className="text-sm text-muted-foreground text-grey-200 mb-4">Busque e visualize endereços IP e Faixas de IP cadastradas.</p>
                             <div>
                                 <Link href="/asti/gestao-ips/consultar" className="inline-flex justify-center items-center gap-2 rounded-md bg-emerald-50 text-emerald-900 w-full py-3 text-sm shadow-sm hover:bg-emerald-100">
                                     Acessar
@@ -285,6 +285,29 @@ export default function CardsButton({ type }: { type: string }) {
                             <p className="text-sm text-muted-foreground text-grey-200 mb-4">Atualize o status de faturamentos existentes.</p>
                             <div>
                                 <Link href="/asti/faturamento/atualizar-status" className="inline-flex justify-center items-center gap-2 rounded-md bg-emerald-50 text-emerald-900 w-full py-3 text-sm shadow-sm hover:bg-emerald-100">
+                                    Acessar
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        }else if (type === 'email') {
+        return (
+            <div className="max-w-full mx-auto">
+                <div className="grid w-full max-w-3xl mx-auto grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="group relative overflow-hidden bg-white/95 text-foreground rounded-lg p-6 shadow-md border border-gray-100 hover:bg-gradient-to-br from-emerald-200/15 to-white/90 hover:border-emerald-200 transition-all duration-200 hover:-translate-y-1">
+                        <div className="flex flex-col gap-3">
+                            <div className="h-10 w-10 rounded-md bg-gradient-to-br from-emerald-900 to-emerald-700 flex items-center justify-center text-white self-start">
+                                <Search className="h-5 w-5" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-foreground mb-0 group-hover:text-emerald-700">Consultar funcionários</h3>
+                            <p className="text-sm text-muted-foreground text-grey-200 mb-4">Visualize e filtre funcionários com emails e informações.</p>
+                            <div>
+                                <Link href="/asti/email" className="inline-flex justify-center items-center gap-2 rounded-md bg-emerald-50 text-emerald-900 w-full py-3 text-sm shadow-sm hover:bg-emerald-100">
                                     Acessar
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
