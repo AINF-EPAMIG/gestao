@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
           WHEN departamento IS NOT NULL AND TRIM(departamento) <> '' THEN TRIM(departamento)
           WHEN (departamento IS NULL OR TRIM(departamento) = '') AND divisao IS NOT NULL AND TRIM(divisao) <> '' THEN TRIM(divisao)
           WHEN (departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND assessoria IS NOT NULL AND TRIM(assessoria) <> '' THEN TRIM(assessoria)
+          WHEN (departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND (assessoria IS NULL OR TRIM(assessoria) = '') AND fazenda IS NOT NULL AND TRIM(fazenda) <> '' THEN TRIM(fazenda)
+          WHEN (departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND (assessoria IS NULL OR TRIM(assessoria) = '') AND (fazenda IS NULL OR TRIM(fazenda) = '') AND gabinete IS NOT NULL AND TRIM(gabinete) <> '' THEN TRIM(gabinete)
           ELSE ''
         END AS setor,
         regional,
@@ -45,9 +47,11 @@ export async function GET(request: NextRequest) {
       query += ` AND (
         (departamento IS NOT NULL AND TRIM(departamento) <> '' AND UPPER(TRIM(departamento)) = UPPER(TRIM(?))) OR
         ((departamento IS NULL OR TRIM(departamento) = '') AND divisao IS NOT NULL AND TRIM(divisao) <> '' AND UPPER(TRIM(divisao)) = UPPER(TRIM(?))) OR
-        ((departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND assessoria IS NOT NULL AND TRIM(assessoria) <> '' AND UPPER(TRIM(assessoria)) = UPPER(TRIM(?)))
+        ((departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND assessoria IS NOT NULL AND TRIM(assessoria) <> '' AND UPPER(TRIM(assessoria)) = UPPER(TRIM(?))) OR
+        ((departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND (assessoria IS NULL OR TRIM(assessoria) = '') AND fazenda IS NOT NULL AND TRIM(fazenda) <> '' AND UPPER(TRIM(fazenda)) = UPPER(TRIM(?))) OR
+        ((departamento IS NULL OR TRIM(departamento) = '') AND (divisao IS NULL OR TRIM(divisao) = '') AND (assessoria IS NULL OR TRIM(assessoria) = '') AND (fazenda IS NULL OR TRIM(fazenda) = '') AND gabinete IS NOT NULL AND TRIM(gabinete) <> '' AND UPPER(TRIM(gabinete)) = UPPER(TRIM(?)))
       )`;
-      values.push(setor, setor, setor);
+      values.push(setor, setor, setor, setor, setor);
     }
 
     // Filtro por regional

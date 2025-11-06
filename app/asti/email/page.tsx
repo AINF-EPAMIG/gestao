@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Loader2, Search, Users, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react"
 import AuthRequired from "@/components/auth-required"
 import AuthenticatedLayout from "../../authenticated-layout"
@@ -33,7 +34,7 @@ export default function EmailPage() {
   // Estados para filtros
   const [searchFilter, setSearchFilter] = useState("")
   const [setorFilter, setSetorFilter] = useState("todos")
-  const [regionalFilter, setRegionalFilter] = useState("todos")
+  const [regionalFilter, setRegionalFilter] = useState("SEDE")
   const [cargoFilter, setCargoFilter] = useState("todos")
 
   // Estados para ordenação
@@ -70,7 +71,11 @@ export default function EmailPage() {
 
   const uniqueRegionais = useMemo(() => {
     const regionais = new Set(funcionarios.map(f => f.regional).filter(Boolean))
-    return Array.from(regionais).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+    const regionaisArray = Array.from(regionais)
+    // Separar SEDE do resto e ordenar
+    const sede = regionaisArray.find(r => r === "SEDE")
+    const outras = regionaisArray.filter(r => r !== "SEDE").sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+    return sede ? [sede, ...outras] : outras
   }, [funcionarios])
 
   const uniqueCargos = useMemo(() => {
@@ -184,14 +189,15 @@ export default function EmailPage() {
   return (
     <AuthRequired>
       <AuthenticatedLayout>
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <TooltipProvider delayDuration={300}>
+          <div className="flex-1 overflow-auto p-4 pt-20 sm:pt-20 md:pt-20 lg:p-8 lg:pt-8">
           <PageHeader
             title="Funcionários"
             subtitle="Visualização e filtros de funcionários"
           />
 
           {/* Cards de resumo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total de Funcionários</CardTitle>
@@ -225,12 +231,12 @@ export default function EmailPage() {
           </div>
 
           {/* Filtros */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Filtros</CardTitle>
+          <Card className="mb-4 sm:mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base sm:text-lg">Filtros</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="search">Buscar</Label>
                   <div className="relative">
@@ -266,15 +272,15 @@ export default function EmailPage() {
                   <Label htmlFor="regional">Regional</Label>
                   <Select value={regionalFilter} onValueChange={setRegionalFilter}>
                     <SelectTrigger id="regional">
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder="SEDE" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
                       {uniqueRegionais.map((regional) => (
                         <SelectItem key={regional} value={regional}>
                           {regional}
                         </SelectItem>
                       ))}
+                      <SelectItem value="todos">Todos</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -293,10 +299,10 @@ export default function EmailPage() {
                         <Search className="ml-2 h-4 w-4 shrink-0" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md mx-4">
                       <DialogHeader>
-                        <DialogTitle>Selecionar Cargo</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-base sm:text-lg">Selecionar Cargo</DialogTitle>
+                        <DialogDescription className="text-sm">
                           Pesquise e selecione um cargo para filtrar
                         </DialogDescription>
                       </DialogHeader>
@@ -307,10 +313,10 @@ export default function EmailPage() {
                             placeholder="Pesquisar cargo..."
                             value={cargoSearchQuery}
                             onChange={(e) => setCargoSearchQuery(e.target.value)}
-                            className="pl-8"
+                            className="pl-8 text-sm sm:text-base"
                           />
                         </div>
-                        <div className="max-h-[300px] overflow-y-auto space-y-1">
+                        <div className="max-h-[50vh] sm:max-h-[300px] overflow-y-auto space-y-1">
                           <Button
                             variant={cargoFilter === "todos" ? "secondary" : "ghost"}
                             className="w-full justify-start"
@@ -353,85 +359,104 @@ export default function EmailPage() {
             </CardContent>
           </Card>
 
-          {/* Tabela */}
+          {/* Tabela - Desktop */}
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <div className="relative w-full overflow-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-[#00714B]">
-                      <TableRow className="border-b-0 hover:bg-[#00714B]">
-                        <TableHead 
-                          className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
-                          onClick={() => handleSort('chapa')}
-                        >
-                          <div className="flex items-center">
-                            Chapa
-                            {getSortIcon('chapa')}
-                          </div>
-                        </TableHead>
-                        <TableHead 
-                          className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
-                          onClick={() => handleSort('nome')}
-                        >
-                          <div className="flex items-center">
-                            Nome
-                            {getSortIcon('nome')}
-                          </div>
-                        </TableHead>
-                        <TableHead 
-                          className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
-                          onClick={() => handleSort('email')}
-                        >
-                          <div className="flex items-center">
-                            Email
-                            {getSortIcon('email')}
-                          </div>
-                        </TableHead>
-                        <TableHead className="text-white font-medium">
-                          Setor
-                        </TableHead>
-                        <TableHead className="text-white font-medium">
-                          Regional
-                        </TableHead>
-                        <TableHead className="text-white font-medium">
-                          Cargo
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedFuncionarios.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            Nenhum funcionário encontrado
-                          </TableCell>
+            <>
+              {/* Tabela Desktop - oculta em mobile */}
+              <Card className="rounded-lg overflow-hidden hidden lg:block">
+                <CardContent className="p-0">
+                  <div className="relative w-full overflow-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-[#00714B]">
+                        <TableRow className="border-b-0 hover:bg-[#00714B]">
+                          <TableHead 
+                            className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
+                            onClick={() => handleSort('chapa')}
+                          >
+                            <div className="flex items-center">
+                              Chapa
+                              {getSortIcon('chapa')}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
+                            onClick={() => handleSort('nome')}
+                          >
+                            <div className="flex items-center">
+                              Nome
+                              {getSortIcon('nome')}
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
+                            onClick={() => handleSort('email')}
+                          >
+                            <div className="flex items-center">
+                              Email
+                              {getSortIcon('email')}
+                            </div>
+                          </TableHead>
+                          <TableHead className="text-white font-medium text-center">
+                            Setor
+                          </TableHead>
+                          <TableHead className="text-white font-medium">
+                            Regional
+                          </TableHead>
+                          <TableHead className="text-white font-medium">
+                            Cargo
+                          </TableHead>
                         </TableRow>
-                      ) : (
-                        sortedFuncionarios.map((funcionario, index) => (
-                          <TableRow key={`${funcionario.chapa}-${index}`} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">{funcionario.chapa}</TableCell>
-                            <TableCell>{funcionario.nome}</TableCell>
-                            <TableCell>{funcionario.email}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{funcionario.setor || "-"}</Badge>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedFuncionarios.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              Nenhum funcionário encontrado
                             </TableCell>
-                            <TableCell>{funcionario.regional || "-"}</TableCell>
-                            <TableCell className="text-sm">{funcionario.cargo}</TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+                        ) : (
+                          sortedFuncionarios.map((funcionario, index) => (
+                            <TableRow key={`${funcionario.chapa}-${index}`} className="hover:bg-gray-50">
+                              <TableCell className="font-medium">{funcionario.chapa}</TableCell>
+                              <TableCell>{funcionario.nome}</TableCell>
+                              <TableCell className="break-all">{funcionario.email}</TableCell>
+                              <TableCell className="text-center">
+                                {!funcionario.setor || funcionario.setor.trim() === '' ? (
+                                  <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-block cursor-help">
+                                        <Badge variant="outline">-</Badge>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent 
+                                      side="top" 
+                                      className="z-[100] bg-gray-900 text-white border-gray-700"
+                                    >
+                                      <p>Este funcionário não possui setor cadastrado</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Badge variant="outline">{funcionario.setor}</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{funcionario.regional || "-"}</TableCell>
+                              <TableCell className="text-sm">{funcionario.cargo}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
 
-          {/* Responsive Cards para mobile */}
+          {/* Cards para mobile e tablet */}
           {!isLoading && (
             <div className="lg:hidden mt-4 space-y-3">
               {sortedFuncionarios.length === 0 ? (
@@ -442,27 +467,52 @@ export default function EmailPage() {
                 </Card>
               ) : (
                 sortedFuncionarios.map((funcionario, index) => (
-                  <Card key={`mobile-${funcionario.chapa}-${index}`}>
+                  <Card key={`mobile-${funcionario.chapa}-${index}`} className="rounded-lg">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">{funcionario.nome}</CardTitle>
-                      <Badge variant="outline" className="w-fit">{funcionario.chapa}</Badge>
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base font-semibold leading-tight">{funcionario.nome}</CardTitle>
+                        <Badge variant="outline" className="shrink-0">{funcionario.chapa}</Badge>
+                      </div>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Email: </span>
-                        {funcionario.email}
+                    <CardContent className="space-y-3 text-sm">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-muted-foreground text-xs">Email</span>
+                        <a 
+                          href={`mailto:${funcionario.email}`}
+                          className="text-primary break-all hover:underline"
+                        >
+                          {funcionario.email}
+                        </a>
                       </div>
-                      <div>
-                        <span className="font-medium">Setor: </span>
-                        {funcionario.setor || "-"}
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-muted-foreground text-xs">Setor</span>
+                        <div>
+                          {!funcionario.setor || funcionario.setor.trim() === '' ? (
+                            <Tooltip delayDuration={0}>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help inline-block">
+                                  <Badge variant="outline">-</Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="top" 
+                                className="z-[100] bg-gray-900 text-white border-gray-700"
+                              >
+                                <p>Este funcionário não possui setor cadastrado</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Badge variant="outline">{funcionario.setor}</Badge>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">Regional: </span>
-                        {funcionario.regional || "-"}
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-muted-foreground text-xs">Regional</span>
+                        <span>{funcionario.regional || "-"}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Cargo: </span>
-                        {funcionario.cargo}
+                      <div className="flex flex-col gap-1">
+                        <span className="font-semibold text-muted-foreground text-xs">Cargo</span>
+                        <span className="break-words">{funcionario.cargo}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -470,7 +520,8 @@ export default function EmailPage() {
               )}
             </div>
           )}
-        </div>
+          </div>
+        </TooltipProvider>
       </AuthenticatedLayout>
     </AuthRequired>
   )
