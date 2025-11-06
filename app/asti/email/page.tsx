@@ -23,7 +23,7 @@ interface Funcionario {
   cargo: string
 }
 
-type SortField = 'chapa' | 'nome' | 'email' | 'regional' | 'cargo'
+type SortField = 'chapa' | 'nome' | 'email'
 type SortOrder = 'asc' | 'desc' | null
 
 export default function EmailPage() {
@@ -101,10 +101,11 @@ export default function EmailPage() {
   // Aplicar filtros
   const filteredFuncionarios = useMemo(() => {
     return funcionarios.filter(funcionario => {
+      const searchLower = searchFilter.toLowerCase()
       const matchSearch = !searchFilter || 
-        funcionario.nome.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        funcionario.email.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        funcionario.chapa.toLowerCase().includes(searchFilter.toLowerCase())
+        (funcionario.nome || '').toLowerCase().includes(searchLower) ||
+        (funcionario.email || '').toLowerCase().includes(searchLower) ||
+        (funcionario.chapa || '').toLowerCase().includes(searchLower)
       
       const matchSetor = setorFilter === "todos" || funcionario.setor === setorFilter
       const matchRegional = regionalFilter === "todos" || funcionario.regional === regionalFilter
@@ -394,23 +395,11 @@ export default function EmailPage() {
                         <TableHead className="text-white font-medium">
                           Setor
                         </TableHead>
-                        <TableHead 
-                          className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
-                          onClick={() => handleSort('regional')}
-                        >
-                          <div className="flex items-center">
-                            Regional
-                            {getSortIcon('regional')}
-                          </div>
+                        <TableHead className="text-white font-medium">
+                          Regional
                         </TableHead>
-                        <TableHead 
-                          className="text-white font-medium cursor-pointer hover:bg-emerald-700 transition-colors"
-                          onClick={() => handleSort('cargo')}
-                        >
-                          <div className="flex items-center">
-                            Cargo
-                            {getSortIcon('cargo')}
-                          </div>
+                        <TableHead className="text-white font-medium">
+                          Cargo
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -426,14 +415,7 @@ export default function EmailPage() {
                           <TableRow key={`${funcionario.chapa}-${index}`} className="hover:bg-gray-50">
                             <TableCell className="font-medium">{funcionario.chapa}</TableCell>
                             <TableCell>{funcionario.nome}</TableCell>
-                            <TableCell>
-                              <a 
-                                href={`mailto:${funcionario.email}`}
-                                className="text-blue-600 hover:underline"
-                              >
-                                {funcionario.email}
-                              </a>
-                            </TableCell>
+                            <TableCell>{funcionario.email}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{funcionario.setor || "-"}</Badge>
                             </TableCell>
@@ -468,12 +450,7 @@ export default function EmailPage() {
                     <CardContent className="space-y-2 text-sm">
                       <div>
                         <span className="font-medium">Email: </span>
-                        <a 
-                          href={`mailto:${funcionario.email}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {funcionario.email}
-                        </a>
+                        {funcionario.email}
                       </div>
                       <div>
                         <span className="font-medium">Setor: </span>
