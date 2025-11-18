@@ -10,7 +10,7 @@ export default function Faturamento() {
             <SidebarSistema />
             <main className="lg:ml-[280px] p-6 min-h-screen flex flex-col">
                 <div className="p-4 pt-8 lg:pt-6 max-w-[100vw] overflow-x-hidden flex gap-4">
-                    <Link href="/sistema-asti" className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2">
+                    <Link href="/asti/home" className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2">
                     <ArrowLeft/>
                     </Link>
                     <PageHeader title="Gestão de faturamentos" subtitle="O que deseja?" />

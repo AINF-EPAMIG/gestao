@@ -56,48 +56,48 @@ export function SidebarSistema() {
   const navigation = [
 
     {
-      href: "/sistema-asti",
+      href: "/asti/home",
       icon: Home,
       label: "Início",
     },
     {
-      href: "/area-conhecimento",
+      href: "/asti/area-conhecimento",
       icon: Notebook,
       label: "Área de conhecimento",
       children: [
-        { href: "/area-conhecimento/cadastrar-tutorial", label: "Cadastrar Tutoriais" },
-        { href: "/area-conhecimento/consultar-tutoriais", label: "Consultar Tutoriais" },
+        { href: "/asti/area-conhecimento/cadastrar", label: "Cadastrar Tutoriais" },
+        { href: "/asti/area-conhecimento/consultar", label: "Consultar Tutoriais" },
       ],
     },
     {
-      href: "/contratos",
+      href: "/asti/contratos",
       icon: ClipboardPen,
       label: "Contratos",
       children: [
-        { href: "/contratos/cadastrar", label: "Cadastrar Contrato" },
-        { href: "/contratos/consultar", label: "Consultar Contrato" },
-        { href: "/contratos/proximos-vencimentos", label: "Próximo do Vencimento" },
-        { href: "/contratos/aditivar", label: "Aditivar Contrato" },
+        { href: "/asti/contratos/cadastrar", label: "Cadastrar Contrato" },
+        { href: "/asti/contratos/consultar", label: "Consultar Contrato" },
+        { href: "/asti/contratos/proximos-vencimentos", label: "Próximo do Vencimento" },
+        { href: "/asti/contratos/aditivar", label: "Aditivar Contrato" },
       ],
     },
     {
-      href: "/controle-estoque",
+      href: "/asti/controle-estoque",
       icon: Package,
       label: "Controle de estoque",
       children: [
-        { href: "/controle-estoque/cadastrar", label: "Cadastrar Estoque" },
-        { href: "/controle-estoque/consultar", label: "Consultar Estoque" },
-        { href: "/controle-estoque/movimentacao", label: "Movimentação de Estoque" },
+        { href: "/asti/controle-estoque/cadastrar", label: "Cadastrar Estoque" },
+        { href: "/asti/controle-estoque/consultar", label: "Consultar Estoque" },
+        { href: "/asti/controle-estoque/movimentacao", label: "Movimentação de Estoque" },
       ],
     },
     {
-      href: "/faturamento",
+      href: "/asti/faturamento",
       icon: Receipt,
       label: "Faturamento",
       children: [
-        { href: "/faturamento/atualizar", label: "Atualizar Status" },
-        { href: "/faturamento/cadastrar", label: "Cadastrar faturamento" },
-        { href: "/faturamento/consultar", label: "Cosultar faturamento" },
+        { href: "/asti/faturamento/atualizar", label: "Atualizar Status" },
+        { href: "/asti/faturamento/cadastrar", label: "Cadastrar faturamento" },
+        { href: "/asti/faturamento/consultar", label: "Cosultar faturamento" },
       ],
     },
     {
@@ -110,12 +110,12 @@ export function SidebarSistema() {
       ],
     },
     {
-      href: "/gestao-ips",
+      href: "/asti/gestao-ips",
       icon: Monitor,
       label: "Gestão de IPs",
       children: [
-        { href: "/gestao-ips/cadastrar", label: "Cadastrar IPs" },
-        { href: "/gestao-ips/consultar", label: "Consultar IPs" },
+        { href: "/asti/gestao-ips/cadastrar", label: "Cadastrar IPs" },
+        { href: "/asti/gestao-ips/consultar", label: "Consultar IPs" },
       ],
     },
     {
