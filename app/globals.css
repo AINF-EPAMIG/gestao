@@ -104,6 +104,25 @@
   scrollbar-width: thin;
 }
 
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thumb-emerald-700::-webkit-scrollbar-thumb {
+  background-color: #047857;
+  border-radius: 4px;
+}
+
+.scrollbar-thumb-emerald-700:hover::-webkit-scrollbar-thumb {
+  background-color: #059669;
+}
+
+.scrollbar-track-emerald-900\/50::-webkit-scrollbar-track {
+  background-color: rgba(6, 78, 59, 0.5);
+  border-radius: 4px;
+}
+
 .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
   background-color: #D1D5DB;
   border-radius: 6px;
@@ -112,10 +131,5 @@
 .scrollbar-track-gray-100::-webkit-scrollbar-track {
   background-color: #F3F4F6;
   border-radius: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
 }
 

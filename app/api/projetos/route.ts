@@ -1,13 +1,20 @@
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const includeTaskCount = url.searchParams.get('includeTaskCount') === 'true';
+    const type = url.searchParams.get('type'); // 'full' para trazer todos os campos
 
-    const query = includeTaskCount
-      ? `
+    let query = '';
+
+    if (type === 'full') {
+      // Buscar todos os campos da tabela projetos
+      query = 'SELECT * FROM u711845530_gestao.projetos ORDER BY nome';
+    } else if (includeTaskCount) {
+      query = `
         SELECT 
           p.*,
           COUNT(a.id) as taskCount
@@ -15,8 +22,10 @@ export async function GET(request: NextRequest) {
         LEFT JOIN u711845530_gestao.atividades a ON p.id = a.projeto_id
         GROUP BY p.id, p.nome
         ORDER BY p.nome
-      `
-      : 'SELECT * FROM u711845530_gestao.projetos ORDER BY nome';
+      `;
+    } else {
+      query = 'SELECT * FROM u711845530_gestao.projetos ORDER BY nome';
+    }
 
     const projetos = await executeQuery({ query });
     
@@ -40,20 +49,82 @@ function capitalizeFirstLetter(string: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { nome } = await request.json();
-    const nomeCapitalizado = capitalizeFirstLetter(nome);
+    const session = await getServerSession();
+    const body = await request.json();
     
-    const result = await executeQuery({
-      query: 'INSERT INTO u711845530_gestao.projetos (nome) VALUES (?)',
-      values: [nomeCapitalizado],
-    }) as QueryResult;
+    // Se for um POST simples (compatibilidade com versão antiga)
+    if (body.nome && !body.tipo) {
+      const nomeCapitalizado = capitalizeFirstLetter(body.nome);
+      
+      const result = await executeQuery({
+        query: 'INSERT INTO u711845530_gestao.projetos (nome) VALUES (?)',
+        values: [nomeCapitalizado],
+      }) as QueryResult;
 
-    const novoProjeto = {
-      id: result.insertId,
-      nome: nomeCapitalizado
-    };
-    
-    return NextResponse.json(novoProjeto);
+      const novoProjeto = {
+        id: result.insertId,
+        nome: nomeCapitalizado
+      };
+      
+      return NextResponse.json(novoProjeto);
+    }
+
+    // POST completo com todos os campos
+    const {
+      nome,
+      sigla,
+      tipo,
+      status,
+      objetivo,
+      setor_id,
+      tecnologia_principal,
+      repositorio_git,
+      url_producao,
+      url_homologacao,
+      servidor,
+      banco_dados,
+      sistemas_integrados,
+      rotinas_principais,
+      url_documentacao,
+      observacoes,
+      data_inicio,
+    } = body;
+
+    const quem_cadastrou = session?.user?.name || 'Sistema';
+
+    const query = `
+      INSERT INTO u711845530_gestao.projetos (
+        nome, sigla, tipo, status, objetivo, setor_id,
+        tecnologia_principal, repositorio_git, url_producao, url_homologacao,
+        servidor, banco_dados, sistemas_integrados, rotinas_principais,
+        url_documentacao, observacoes, quem_cadastrou, data_inicio
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      nome,
+      sigla || null,
+      tipo || 1, // Default: Sistema
+      status || 2, // Default: Em Desenvolvimento
+      objetivo || null,
+      setor_id || null,
+      tecnologia_principal || null,
+      repositorio_git || null,
+      url_producao || null,
+      url_homologacao || null,
+      servidor || null,
+      banco_dados || null,
+      sistemas_integrados || null,
+      rotinas_principais || null,
+      url_documentacao || null,
+      observacoes || null,
+      quem_cadastrou,
+      data_inicio || null,
+    ];
+
+    const result = await executeQuery({ query, values }) as QueryResult;
+
+    return NextResponse.json({ id: result.insertId, ...body });
   } catch (error) {
     console.error('Erro ao criar projeto:', error);
     return NextResponse.json(
@@ -65,20 +136,100 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, nome } = await request.json();
-    const nomeCapitalizado = capitalizeFirstLetter(nome);
-    
-    await executeQuery({
-      query: 'UPDATE u711845530_gestao.projetos SET nome = ? WHERE id = ?',
-      values: [nomeCapitalizado, id],
-    });
+    const session = await getServerSession();
+    const body = await request.json();
+    const { id } = body;
 
-    const projetoAtualizado = {
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do projeto não fornecido' },
+        { status: 400 }
+      );
+    }
+
+    // Se for um PUT simples (compatibilidade com versão antiga)
+    if (body.nome && !body.tipo) {
+      const nomeCapitalizado = capitalizeFirstLetter(body.nome);
+      
+      await executeQuery({
+        query: 'UPDATE u711845530_gestao.projetos SET nome = ? WHERE id = ?',
+        values: [nomeCapitalizado, id],
+      });
+
+      return NextResponse.json({ id, nome: nomeCapitalizado });
+    }
+
+    // PUT completo com todos os campos
+    const {
+      nome,
+      sigla,
+      tipo,
+      status,
+      objetivo,
+      setor_id,
+      tecnologia_principal,
+      repositorio_git,
+      url_producao,
+      url_homologacao,
+      servidor,
+      banco_dados,
+      sistemas_integrados,
+      rotinas_principais,
+      url_documentacao,
+      observacoes,
+      data_inicio,
+    } = body;
+
+    const quem_editou = session?.user?.name || 'Sistema';
+
+    const query = `
+      UPDATE u711845530_gestao.projetos SET
+        nome = ?,
+        sigla = ?,
+        tipo = ?,
+        status = ?,
+        objetivo = ?,
+        setor_id = ?,
+        tecnologia_principal = ?,
+        repositorio_git = ?,
+        url_producao = ?,
+        url_homologacao = ?,
+        servidor = ?,
+        banco_dados = ?,
+        sistemas_integrados = ?,
+        rotinas_principais = ?,
+        url_documentacao = ?,
+        observacoes = ?,
+        quem_editou = ?,
+        data_inicio = ?
+      WHERE id = ?
+    `;
+
+    const values = [
+      nome,
+      sigla || null,
+      tipo || 1, // Default: Sistema
+      status || 2, // Default: Em Desenvolvimento
+      objetivo || null,
+      setor_id || null,
+      tecnologia_principal || null,
+      repositorio_git || null,
+      url_producao || null,
+      url_homologacao || null,
+      servidor || null,
+      banco_dados || null,
+      sistemas_integrados || null,
+      rotinas_principais || null,
+      url_documentacao || null,
+      observacoes || null,
+      quem_editou,
+      data_inicio || null,
       id,
-      nome: nomeCapitalizado
-    };
+    ];
+
+    await executeQuery({ query, values });
     
-    return NextResponse.json(projetoAtualizado);
+    return NextResponse.json({ id, ...body });
   } catch (error) {
     console.error('Erro ao atualizar projeto:', error);
     return NextResponse.json(

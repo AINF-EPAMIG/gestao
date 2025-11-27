@@ -24,10 +24,16 @@ Avatar.displayName = AvatarPrimitive.Root.displayName
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> & { email?: string }
->(({ className, email, ...props }, ref) => {
+>(({ className, email, src, ...props }, ref) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
+    // Se src foi passado diretamente, usa ele
+    if (src) {
+      setAvatarUrl(src as string)
+      return
+    }
+
     if (!email) {
       setAvatarUrl(null)
       return
@@ -49,7 +55,7 @@ const AvatarImage = React.forwardRef<
     }
 
     fetchAvatar()
-  }, [email])
+  }, [email, src])
 
   return (
     <AvatarPrimitive.Image

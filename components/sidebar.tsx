@@ -2,63 +2,33 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, ChevronDown, Ticket, LogOut,  Globe } from "lucide-react"
+import { LayoutDashboard, KanbanSquare, FileSpreadsheet, Menu, Ticket, LogOut, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Footer } from "./footer"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useSession } from "next-auth/react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
 
-import { useUserSector } from "@/lib/user-sector-context"
-import { usePermissions } from "@/lib/hooks/use-permissions"
-import { useSetorNavigation } from "@/lib/hooks/use-setor-navigation"
 import { useSimpleLogout } from "@/lib/hooks/use-simple-logout"
 
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
   
   const { data: session } = useSession()
-  const { userSector } = useUserSector()
-  const { isLoading: permissionsLoading } = usePermissions()
-  const { setores, selectedSetor, changeSetor, canViewAllSectors } = useSetorNavigation()
   const { logout } = useSimpleLogout()
-
-  useEffect(() => {
-    if (!permissionsLoading && session?.user?.email) {
-      // Se não pode ver todos os setores, define o setor do usuário como selecionado
-      if (!canViewAllSectors && userSector) {
-        changeSetor(userSector);
-      }
-    }
-  }, [session?.user?.email, userSector, changeSetor, canViewAllSectors, permissionsLoading]);
-
-  // Reset dropdown state when permissions change
-  useEffect(() => {
-    if (!permissionsLoading) {
-      setDropdownOpen(false);
-    }
-  }, [permissionsLoading]);
-
-  const handleSetorSelect = (setor: string | null) => {
-    changeSetor(setor);
-    // Pequeno delay para garantir que o estado seja atualizado antes de fechar
-    setTimeout(() => {
-      setDropdownOpen(false);
-    }, 100);
-  };
-  //Aqui adiciona os itens do menu***************
   const navigation = [
     {
       href: "/",
       icon: LayoutDashboard,
-      label: "Painel",
+      label: "Início",
     },
-
+    {
+      href: "/asti/home",
+      icon: Globe,
+      label: "Sistema ASTI",
+    },
     {
       href: "/kanban",
       icon: KanbanSquare,
@@ -74,12 +44,6 @@ export function Sidebar() {
       icon: FileSpreadsheet,
       label: "Planilha",
     },
-    {
-      href: "/asti/home",
-      icon: Globe,
-      label: "Sistema ASTI",
-    },
- 
   ]
 
   const handleLogout = () => {
@@ -134,67 +98,7 @@ export function Sidebar() {
             <div className="py-2 text-sm text-white/80">Não autenticado</div>
           )}
         </div>
-        {canViewAllSectors && (
-          <div className="px-3 sm:px-4 flex items-center gap-2">
-            <span className="text-sm text-white/80">Setor:</span>
-            <DropdownMenu 
-              open={dropdownOpen} 
-              onOpenChange={setDropdownOpen}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="flex-1 h-8 text-white hover:bg-emerald-700/50 justify-between"
-                >
-                  <span className="truncate">
-                    {selectedSetor ? 
-                      (setores.find(s => s.sigla === selectedSetor)?.nome || selectedSetor) : 
-                      "Todos os Setores"
-                    }
-                  </span>
-                  <ChevronDown className="h-4 w-4 ml-2 shrink-0" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="start" 
-                className="w-72 bg-white max-h-[300px] overflow-y-auto z-[9999]"
-                style={{ 
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#10b981 transparent'
-                }}
-                sideOffset={8}
-                collisionPadding={8}
-              >
-                <DropdownMenuItem 
-                  onClick={() => handleSetorSelect(null)}
-                  className={`text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800 ${!selectedSetor ? 'bg-emerald-100 text-emerald-900 font-medium' : ''}`}
-                >
-                  🌐 Todos os Setores
-                </DropdownMenuItem>
-                <div className="h-px bg-gray-200 my-1" />
-                {setores.map((setor) => (
-                  <DropdownMenuItem 
-                    key={setor.sigla}
-                    onClick={() => handleSetorSelect(setor.sigla)}
-                    className={`text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800 ${selectedSetor === setor.sigla ? 'bg-emerald-100 text-emerald-900 font-medium' : ''}`}
-                  >
-                    <div className="flex flex-col">
-                      <div className="font-medium">{setor.sigla}</div>
-                      <div className="text-xs text-gray-500 capitalize">
-                        {setor.tipo} • {setor.count} funcionário{setor.count > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-        {!canViewAllSectors && userSector && (
-          <div className="px-3 sm:px-4 text-sm text-white/80">
-            Setor: {userSector}
-          </div>
-        )}
+
         <nav className="mt-4 sm:mt-6">
           {navigation.map((item) => (
             <Link
@@ -250,4 +154,3 @@ export function Sidebar() {
     </>
   )
 }
-

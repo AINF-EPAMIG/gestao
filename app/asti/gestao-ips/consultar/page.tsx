@@ -649,7 +649,7 @@ export default function ConsultarIpsPage() {
             </Link>
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-gray-900">Consulta de IPs</h1>
-              <p className="text-sm text-muted-foreground">Gerencie os endereços IP cadastrados no sistema ASTI.</p>
+              <p className="text-sm text-muted-foreground">Gerencie os endereços IP cadastrados no Gestão de Projetos.</p>
             </div>
           </div>
 
