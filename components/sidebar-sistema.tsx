@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, LogOut, Notebook, Package, Receipt, ShoppingCart, Monitor, ClipboardPen, Globe, Home } from "lucide-react"
+import { Menu, LogOut, Globe, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -30,36 +30,6 @@ export function SidebarSistema() {
       icon: Globe,
       label: "Sistema ASTI",
     },
-    {
-      href: "/area-conhecimento",
-      icon: Notebook,
-      label: "Área de conhecimento",
-    },
-    {
-      href: "/contratos",
-      icon: ClipboardPen,
-      label: "Contratos",
-    },
-    {
-      href: "/controle-estoque",
-      icon: Package,
-      label: "Controle de estoque",
-    },
-    {
-      href: "/faturamento",
-      icon: Receipt,
-      label: "Faturamento",
-    },
-    {
-      href: "/compras",
-      icon: ShoppingCart,
-      label: "Gestão de compras",
-    },
-    {
-      href: "/asti/gestao-ips",
-      icon: Monitor,
-      label: "Gestão de IPs",
-    },
   ]
 
   const handleLogout = () => {
@@ -72,21 +42,11 @@ export function SidebarSistema() {
     <div className="flex flex-col h-full">
       <div className="flex-1 pt-4 sm:pt-6">
         <div className="px-3 sm:px-4 flex justify-between items-center">
-          <h1 className="text-lg sm:text-xl font-semibold">Sistema ASTI</h1> {/* Aqui muda o título************/}
-          {/* Botão de Logout */}
-          {session && (
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center w-6 h-6 text-white/50 hover:text-white/80 transition-colors rounded-full"
-              title="Sair"
-            >
-              <LogOut size={14} className="shrink-0" />
-            </button>
-          )}
+          <h1 className="text-lg sm:text-xl font-semibold">Sistema de Gestão</h1> {/* Aqui muda o título************/}
         </div>
-        {/* Linha horizontal logo abaixo do título */}
+        {/* Linha horizontal logo abaixo do título - BRANCA */}
         <div className="px-3 sm:px-4">
-          <div className="h-px bg-red-600 my-2" />
+          <div className="h-px bg-white/40 my-2" />
         </div>
         {/* Perfil do usuário abaixo da linha */}
         <div className="px-3 sm:px-4">
@@ -128,7 +88,6 @@ export function SidebarSistema() {
               className={cn(
                 "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors",
                 "hover:bg-[#01432D] active:bg-emerald-700/70",
-                "touch-target-auto",
                 pathname === item.href && "bg-emerald-900",
               )}
               onClick={() => setOpen(false)}
@@ -137,6 +96,21 @@ export function SidebarSistema() {
               <span className="text-sm font-medium">{item.label}</span>
             </Link>
           ))}
+          
+          {/* Botão Sair */}
+          {session && (
+            <button
+              onClick={handleLogout}
+              className={cn(
+                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors w-full",
+                "hover:bg-red-700/50 active:bg-red-700/70",
+                "text-left"
+              )}
+            >
+              <LogOut size={18} className="shrink-0" />
+              <span className="text-sm font-medium">Sair</span>
+            </button>
+          )}
         </nav>
       </div>
       
@@ -166,11 +140,11 @@ export function SidebarSistema() {
 
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <div className="fixed top-4 bottom-4 left-4 w-64 bg-emerald-800 text-white rounded-2xl shadow-lg">{/*Aqui mudo a cor do fundo do menu****************** */}
+        <div className="fixed top-0 bottom-0 left-0 w-[240px] bg-emerald-800 text-white shadow-lg z-40">{/*Aqui mudo a cor do fundo do menu****************** */}
           <NavContent />
         </div>
         {/* Spacer div para empurrar o conteúdo principal */}
-        <div className="w-[280px] shrink-0" /> {/* 256px (sidebar) + 24px (left margin) */}
+        <div className="w-[240px] shrink-0" /> {/* 240px (sidebar) */}
       </div>
     </>
   )

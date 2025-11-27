@@ -6,10 +6,10 @@ import { ArrowLeft } from "lucide-react";
 
 export default function GestaoIps(){
    return (
-           <>
+           <div className="flex min-h-screen bg-white overflow-x-hidden">
                 <SidebarSistema />
-                <main className="lg:ml-[280px] min-h-screen flex flex-col">
-                    <div className="px-6 pt-10 lg:pt-8 flex items-center gap-4">
+                <main className="flex-1 min-w-0 w-full min-h-screen flex flex-col">
+                    <div className="px-4 sm:px-6 pt-16 lg:pt-6 flex items-center gap-4">
                         <Link href="/asti/home" className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2">
                             <ArrowLeft/>
                         </Link>
@@ -22,6 +22,6 @@ export default function GestaoIps(){
                         </div>
                     </div>
                 </main>
-            </>
+            </div>
             )
 }

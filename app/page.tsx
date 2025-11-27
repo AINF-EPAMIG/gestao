@@ -32,8 +32,8 @@ export default function DashboardPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="min-h-screen w-full bg-background">
-              <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+            <div className="min-h-screen w-full bg-background overflow-x-hidden">
+              <div className="p-3 sm:p-4 pt-16 lg:pt-4 w-full">
                 <PageHeader title="Painel Kanban" />
                 
                 {/* Gráficos em grade - Distribuição por Etapa e Cards Atribuídos por Usuário */}

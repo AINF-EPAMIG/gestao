@@ -635,10 +635,10 @@ export default function ConsultarIpsPage() {
     : "Nenhum IP encontrado com os filtros selecionados."
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
       <SidebarSistema />
-      <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 xl:px-12 2xl:max-w-[1920px]">
+      <main className="flex-1 min-w-0 overflow-x-hidden pt-16 lg:pt-0">
+        <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
               href="/asti/gestao-ips"

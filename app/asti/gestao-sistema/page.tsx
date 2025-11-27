@@ -222,10 +222,10 @@ export default function GestaoSistemaPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
       <SidebarSistema />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="w-full">
           <div className="flex flex-col gap-6 mb-6">
         <div className="flex justify-between items-center">
           <div>

@@ -86,11 +86,11 @@ export default function CadastroFaixaPage() {
 	}
 
 	return (
-		<div className="flex min-h-screen">
+		<div className="flex min-h-screen overflow-x-hidden">
 			<SidebarSistema />
 
-			<main className="flex-1 bg-gray-50">
-				<div className="p-8">
+			<main className="flex-1 min-w-0 bg-gray-50 pt-16 lg:pt-0">
+				<div className="p-4 sm:p-6 lg:p-8">
 					<div className="mb-8 flex flex-col gap-2">
 						<Link
 							href="/asti/gestao-ips"

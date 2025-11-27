@@ -156,34 +156,38 @@ export default function SistemaAsti() {
   };
 
   return (
-    <>
+    <div className="flex min-h-screen bg-white overflow-x-hidden">
       <SidebarSistema />
-      <main className="lg:ml-64 p-6">
-        <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
-          <PageHeader title="Gestão de Projetos" />
+      <main className="flex-1 min-w-0 w-full">
+        <div className="p-3 sm:p-4 pt-16 lg:pt-4 w-full">
+          <PageHeader title="Sistema ASTI" />
           
           <Tabs defaultValue={getModuleSlug(sortedModules[0]?.title)} className="w-full mt-8">
-            {/* Tabs Navigation - Moderna com scroll horizontal suave */}
+            {/* Tabs Navigation - Responsiva com quebra de linha */}
             <div className="relative mb-8">
-              <div className="w-full overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <TabsList className="inline-flex w-auto h-auto p-0 bg-transparent border-b border-gray-200 rounded-none gap-0 min-w-full">
+              <div className="w-full">
+                <TabsList className="flex flex-wrap w-full h-auto p-0 bg-transparent border-b border-gray-200 rounded-none gap-0 justify-start">
                   {sortedModules.map((module) => {
                     const Icon = module.icon;
                     return (
                       <TabsTrigger
                         key={module.title}
                         value={getModuleSlug(module.title)}
-                        className="group relative flex items-center gap-2 px-6 py-4 rounded-none border-b-2 border-transparent 
+                        className="group relative flex items-center gap-2 px-4 py-3 rounded-none border-b-2 border-transparent 
                                    data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50/50
                                    hover:bg-gray-50 transition-all duration-200 whitespace-nowrap
                                    focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2
-                                   data-[state=active]:shadow-none"
+                                   data-[state=active]:shadow-none
+                                   flex-shrink-0 flex-grow-0
+                                   text-xs sm:text-sm
+                                   min-w-[calc(50%-0.5rem)] sm:min-w-[calc(33.333%-0.5rem)] lg:min-w-[calc(25%-0.5rem)] xl:min-w-0
+                                   max-w-[calc(50%-0.5rem)] sm:max-w-[calc(33.333%-0.5rem)] lg:max-w-[calc(25%-0.5rem)] xl:max-w-none"
                         aria-label={`Acessar módulo ${module.title}`}
                       >
-                        <Icon className="h-4 w-4 text-gray-500 group-data-[state=active]:text-emerald-600 transition-colors" 
+                        <Icon className="h-4 w-4 text-gray-500 group-data-[state=active]:text-emerald-600 transition-colors flex-shrink-0" 
                               aria-hidden="true" />
-                        <span className="text-sm font-medium text-gray-700 group-data-[state=active]:text-emerald-700 
-                                       group-data-[state=active]:font-semibold transition-all">
+                        <span className="font-medium text-gray-700 group-data-[state=active]:text-emerald-700 
+                                       group-data-[state=active]:font-semibold transition-all truncate">
                           {module.title}
                         </span>
                         {/* Indicador visual de aba ativa */}
@@ -195,10 +199,6 @@ export default function SistemaAsti() {
                   })}
                 </TabsList>
               </div>
-              
-              {/* Gradiente para indicar scroll */}
-              <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" 
-                   aria-hidden="true" />
             </div>
 
             {/* Conteúdo das Tabs */}
@@ -211,11 +211,11 @@ export default function SistemaAsti() {
                 <div className="max-w-4xl mx-auto">
                   <ModuleCard module={module} />
                 </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+            </TabsContent>
+          ))}
+        </Tabs>
         </div>
       </main>
-    </>
+    </div>
   );
 }

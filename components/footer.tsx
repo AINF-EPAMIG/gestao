@@ -7,10 +7,10 @@ export function Footer() {
         <Image 
           src="/logo_epamig_branca.svg" 
           alt="Logo EPAMIG" 
-          width={200}
-          height={80}
+          width={140}
+          height={56}
           priority={true}
-          className="w-auto h-auto"
+          className="w-[140px] h-auto"
         />
         <div className="text-center text-xs">
           <p>Desenvolvimento: ASTI</p>

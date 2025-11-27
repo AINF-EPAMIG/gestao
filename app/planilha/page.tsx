@@ -145,9 +145,9 @@ export default function PlanilhaPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="min-h-screen w-full bg-background">
+            <div className="min-h-screen w-full bg-background overflow-x-hidden">
               <SetorIndicator />
-              <div className="p-4 pt-10 lg:pt-6 max-w-[100vw] overflow-x-hidden">
+              <div className="p-3 sm:p-4 pt-16 lg:pt-4 w-full">
                 <PageHeader title="Planilha Kanban" />
 
                 {/* Cards de estatísticas */}

@@ -195,15 +195,15 @@ export default function KanbanPage() {
 
   return (
     <AuthRequired>
-      <div className="flex min-h-screen bg-white">
+      <div className="flex min-h-screen bg-white overflow-x-hidden">
         <Sidebar />
         
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 min-w-0 overflow-hidden">
           <PollingWrapper>
             <div className="h-screen overflow-hidden flex flex-col">
               <SetorIndicator />
               <div className="flex-1 overflow-y-auto">
-                <div className="p-4 pt-24 sm:pt-16 lg:pt-6 max-w-[100vw] overflow-x-hidden pb-4">
+                <div className="p-3 sm:p-4 pt-16 lg:pt-4 w-full pb-4">
                   {/* Título e botão criar */}
                   <PageHeader 
                     title="Kanban"
