@@ -86,8 +86,8 @@ export function SidebarSistema() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors",
-                "hover:bg-[#01432D] active:bg-emerald-700/70",
+                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3",
+                "hover:bg-[#01432D]",
                 pathname === item.href && "bg-emerald-900",
               )}
               onClick={() => setOpen(false)}
@@ -102,8 +102,8 @@ export function SidebarSistema() {
             <button
               onClick={handleLogout}
               className={cn(
-                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 transition-colors w-full",
-                "hover:bg-red-700/50 active:bg-red-700/70",
+                "flex items-center gap-3 px-3 sm:px-4 py-3 sm:py-3 w-full",
+                "hover:bg-red-700/50",
                 "text-left"
               )}
             >
@@ -124,7 +124,7 @@ export function SidebarSistema() {
       <div className="lg:hidden fixed top-0 left-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full h-14">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button className="p-3 m-1 hover:bg-accent rounded-lg transition-colors">
+            <button className="p-3 m-1 rounded-lg hover:bg-accent">
               <Menu size={24} />
             </button>
           </SheetTrigger>

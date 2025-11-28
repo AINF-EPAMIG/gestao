@@ -646,6 +646,7 @@ export default function EditarProjetoPage({ params }: { params: Promise<{ id: st
               variant="destructive" 
               onClick={handleCancel}
               disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Cancelar
             </Button>

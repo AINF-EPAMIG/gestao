@@ -121,24 +121,6 @@ export function ResultsSection({
         ),
       },
       {
-        accessorKey: "sigla",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-10 px-2 hover:bg-gray-200 font-semibold"
-          >
-            Sigla
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ),
-        cell: ({ row }) => (
-          <div className="text-sm text-gray-900">
-            {row.original.sigla || "-"}
-          </div>
-        ),
-      },
-      {
         accessorKey: "tipo",
         header: ({ column }) => (
           <Button
@@ -174,15 +156,7 @@ export function ResultsSection({
           </Badge>
         ),
       },
-      {
-        accessorKey: "tecnologia_principal",
-        header: () => <div className="px-2 font-semibold">Tecnologia</div>,
-        cell: ({ row }) => (
-          <div className="text-sm text-gray-900">
-            {row.original.tecnologia_principal || "-"}
-          </div>
-        ),
-      },
+      
       {
         id: "actions",
         header: () => <div className="text-right px-2 font-semibold">Ações</div>,
@@ -484,127 +458,36 @@ export function ResultsSection({
 
         {/* Tab Content - Sistemas */}
         <TabsContent value="sistema" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-blue-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-blue-900">Ações para Sistemas</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
-                  Exportar Sistemas
-                </Button>
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
-          {renderTable()}
+            {renderTable()}
         </TabsContent>
 
         {/* Tab Content - Sites */}
         <TabsContent value="site" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-green-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-green-900">Ações para Sites</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-100">
-                  Exportar Sites
-                </Button>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
 
         {/* Tab Content - APIs */}
         <TabsContent value="api" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-yellow-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-yellow-900">Ações para APIs</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-yellow-300 text-yellow-700 hover:bg-yellow-100">
-                  Exportar APIs
-                </Button>
-                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
 
         {/* Tab Content - Mobile */}
         <TabsContent value="mobile" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-teal-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-teal-900">Ações para Mobile</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-100">
-                  Exportar Mobile
-                </Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
 
         {/* Tab Content - Rotinas */}
         <TabsContent value="rotina" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Ações para Rotinas</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-100">
-                  Exportar Rotinas
-                </Button>
-                <Button size="sm" className="bg-gray-600 hover:bg-gray-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
 
         {/* Tab Content - Infraestrutura */}
         <TabsContent value="infraestrutura" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-stone-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-stone-900">Ações para Infraestrutura</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-stone-300 text-stone-700 hover:bg-stone-100">
-                  Exportar Infraestrutura
-                </Button>
-                <Button size="sm" className="bg-stone-600 hover:bg-stone-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
 
         {/* Tab Content - Outros */}
         <TabsContent value="outros" className="m-0 mt-0">
-          <div className="p-4 border-b border-gray-200 bg-slate-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">Ações para Outros</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100">
-                  Exportar Outros
-                </Button>
-                <Button size="sm" className="bg-slate-600 hover:bg-slate-700 text-white">
-                  Ação Específica
-                </Button>
-              </div>
-            </div>
-          </div>
           {renderTable()}
         </TabsContent>
       </Tabs>
