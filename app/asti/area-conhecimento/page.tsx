@@ -6,11 +6,11 @@ import { ArrowLeft } from "lucide-react";
 
 export default function AreaConhecimento(){
    return (
-           <div className="flex min-h-screen bg-white overflow-x-hidden">
+           <>
                 <SidebarSistema />
-                <main className="flex-1 min-w-0 w-full p-4 min-h-screen relative">
-                    <div className="pt-14 lg:pt-4 flex gap-4">
-                    <Link href="/sistema-asti" className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2">
+                <main className="lg:ml-[280px] p-6 min-h-screen relative">
+                    <div className="p-4 pt-8 lg:pt-6 max-w-[100vw] overflow-x-hidden flex gap-4">
+                    <Link href="/asti/home" className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2">
                     <ArrowLeft/>
                     </Link>
                         <PageHeader title="Área de conhecimento" subtitle="O que deseja?" />
@@ -22,6 +22,6 @@ export default function AreaConhecimento(){
                         </div>
                     </div>
                 </main>
-            </div>
+            </>
             )
 }
