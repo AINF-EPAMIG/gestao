@@ -196,7 +196,7 @@ export function AdvancedViewDialog({
 							<div className="rounded-md border border-red-200 bg-red-50 p-4">
 								<p className="text-sm text-red-700">Tem certeza que deseja excluir este IP? Esta ação não pode ser desfeita.</p>
 								<div className="mt-4 flex flex-wrap items-center gap-2">
-									<Button type="button" variant="outline" onClick={onCancelDelete} disabled={isDeletingIp}>
+									<Button type="button" variant="destructive" onClick={onCancelDelete} disabled={isDeletingIp} className="bg-red-600 hover:bg-red-700 text-white">
 										Cancelar
 									</Button>
 									<Button
@@ -215,7 +215,7 @@ export function AdvancedViewDialog({
 								<span className="text-xs text-muted-foreground">ID interno: #{selectedIp.id}</span>
 								{isEditing ? (
 									<div className="flex flex-wrap items-center gap-2">
-										<Button type="button" variant="outline" onClick={onCancelEditing} disabled={isSavingEdit}>
+										<Button type="button" variant="destructive" onClick={onCancelEditing} disabled={isSavingEdit} className="bg-red-600 hover:bg-red-700 text-white">
 											Cancelar
 										</Button>
 										<Button type="button" onClick={onSaveChanges} disabled={isSavingEdit}>

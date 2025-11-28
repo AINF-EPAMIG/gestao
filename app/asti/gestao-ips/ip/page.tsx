@@ -118,7 +118,7 @@ export default function CadastroIPPage() {
       setIpComplemento("")
       setDescricao("")
       redirectTimeout.current = setTimeout(() => {
-        router.push("/asti/gestao-ips")
+        router.push("/asti/home")
       }, 1500)
     } catch (error) {
       console.error("Erro ao cadastrar IP:", error)
@@ -129,40 +129,37 @@ export default function CadastroIPPage() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
       <SidebarSistema />
 
-      <main className="flex-1 min-w-0 bg-gray-50 pt-16 lg:pt-0">
-        <div className="p-4 sm:p-6 lg:p-8"> 
-          <div className="mb-8 flex flex-col gap-2">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="w-full">
+          <div className="mb-6 flex items-center gap-4">
             <Link
-              href="/asti/gestao-ips"
+              href="/asti/home"
               className="inline-flex items-center text-gray-600 transition-colors hover:text-gray-900"
               aria-label="Voltar para a gestão de IPs"
             >
               <ArrowLeft className="mr-2 h-5 w-5" />
               Voltar
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Cadastro de IP</h1>
-            <p className="text-gray-600">
-              Registre um novo endereço e associe-o a uma faixa para manter o controle atualizado.
-            </p>
+            <div className="h-6 w-px bg-gray-200" />
+            <div className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-emerald-600" />
+              <h1 className="text-lg font-semibold text-gray-900">Cadastro de IP</h1>
+            </div>
           </div>
 
-          <Card className="mx-auto w-full max-w-3xl">
-            <CardHeader className="flex flex-row items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-900 text-white">
-                <Check className="h-5 w-5" />
-              </span>
-              <div>
+          <div className="max-w-7xl mx-auto">
+            <Card className="w-full">
+              <CardHeader>
                 <CardTitle className="text-xl">Formulário de cadastro de IP</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Informe os dados necessários para disponibilizar o endereço no catálogo da rede.
                 </p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="faixa">Faixa</Label>
@@ -249,10 +246,18 @@ export default function CadastroIPPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => router.push("/asti/home")}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Cancelar
+                  </Button>
                   <Button
                     type="submit"
-                    className="bg-emerald-900 text-white hover:bg-emerald-800"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={isSubmitting}
                   >
                     <Check className="h-4 w-4 mr-2" />
@@ -262,9 +267,9 @@ export default function CadastroIPPage() {
               </form>
             </CardContent>
           </Card>
-
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
+  </div>
   )
 }

@@ -27,6 +27,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { SidebarSistema } from "@/components/sidebar-sistema"
 
 interface FormData {
   nome: string
@@ -155,17 +156,13 @@ export default function CadastrarProjetoPage() {
     router.back()
   }
 
-  const handleClear = () => {
-    setFormData(initialFormData)
-    setErrors({})
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
+      <SidebarSistema />
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="w-full">
+          {/* Header */}
+          <div className="flex items-center mb-6">
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
@@ -182,53 +179,26 @@ export default function CadastrarProjetoPage() {
                 <h1 className="text-lg font-semibold text-gray-900">Cadastrar Novo Projeto</h1>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={handleClear}
-                disabled={isSubmitting}
-              >
-                Limpar
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleCancel}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Salvando..." : "Salvar Projeto"}
-              </Button>
-            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="geral" className="space-y-6">
-            <TabsList className="bg-white border border-gray-200 p-1 shadow-sm">
-              <TabsTrigger value="geral" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
-                <FileText className="h-4 w-4 mr-2" />
-                Informações Gerais
-              </TabsTrigger>
-              <TabsTrigger value="tecnico" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
-                <Code className="h-4 w-4 mr-2" />
-                Dados Técnicos
-              </TabsTrigger>
-              <TabsTrigger value="links" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
-                <Link2 className="h-4 w-4 mr-2" />
-                Links e Documentação
-              </TabsTrigger>
-            </TabsList>
+          {/* Content */}
+          <div className="max-w-7xl mx-auto">
+            <form onSubmit={handleSubmit}>
+              <Tabs defaultValue="geral" className="space-y-6">
+                <TabsList className="bg-white border border-gray-200 p-1 shadow-sm">
+                  <TabsTrigger value="geral" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Informações Gerais
+                  </TabsTrigger>
+                  <TabsTrigger value="tecnico" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+                    <Code className="h-4 w-4 mr-2" />
+                    Dados Técnicos
+                  </TabsTrigger>
+                  <TabsTrigger value="links" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700">
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Links e Documentação
+                  </TabsTrigger>
+                </TabsList>
 
             {/* Informações Gerais */}
             <TabsContent value="geral">
@@ -496,32 +466,34 @@ export default function CadastrarProjetoPage() {
                     </div>
                   </div>
 
-                  {/* Sistemas Integrados */}
-                  <div className="space-y-2">
-                    <Label htmlFor="sistemas_integrados" className="text-sm font-medium">
-                      Sistemas Integrados
-                    </Label>
-                    <Textarea
-                      id="sistemas_integrados"
-                      value={formData.sistemas_integrados}
-                      onChange={(e) => handleChange("sistemas_integrados", e.target.value)}
-                      placeholder="Liste os sistemas que se integram com este projeto..."
-                      rows={3}
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Sistemas Integrados */}
+                    <div className="space-y-2">
+                      <Label htmlFor="sistemas_integrados" className="text-sm font-medium">
+                        Sistemas Integrados
+                      </Label>
+                      <Textarea
+                        id="sistemas_integrados"
+                        value={formData.sistemas_integrados}
+                        onChange={(e) => handleChange("sistemas_integrados", e.target.value)}
+                        placeholder="Liste os sistemas que se integram com este projeto..."
+                        rows={3}
+                      />
+                    </div>
 
-                  {/* Rotinas Principais */}
-                  <div className="space-y-2">
-                    <Label htmlFor="rotinas_principais" className="text-sm font-medium">
-                      Rotinas Principais
-                    </Label>
-                    <Textarea
-                      id="rotinas_principais"
-                      value={formData.rotinas_principais}
-                      onChange={(e) => handleChange("rotinas_principais", e.target.value)}
-                      placeholder="Descreva as principais rotinas do sistema..."
-                      rows={3}
-                    />
+                    {/* Rotinas Principais */}
+                    <div className="space-y-2">
+                      <Label htmlFor="rotinas_principais" className="text-sm font-medium">
+                        Rotinas Principais
+                      </Label>
+                      <Textarea
+                        id="rotinas_principais"
+                        value={formData.rotinas_principais}
+                        onChange={(e) => handleChange("rotinas_principais", e.target.value)}
+                        placeholder="Descreva as principais rotinas do sistema..."
+                        rows={3}
+                      />
+                    </div>
                   </div>
 
                   {/* Observações */}
@@ -542,13 +514,14 @@ export default function CadastrarProjetoPage() {
             </TabsContent>
           </Tabs>
 
-          {/* Footer Actions (Mobile) */}
-          <div className="mt-8 flex justify-end gap-3 md:hidden">
+          {/* Form Actions */}
+          <div className="mt-8 flex justify-end gap-3">
             <Button 
               type="button"
-              variant="outline" 
+              variant="destructive" 
               onClick={handleCancel}
               disabled={isSubmitting}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Cancelar
             </Button>
@@ -558,11 +531,13 @@ export default function CadastrarProjetoPage() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Salvando..." : "Salvar"}
+              {isSubmitting ? "Salvando..." : "Salvar Projeto"}
             </Button>
           </div>
         </form>
       </div>
     </div>
+  </main>
+</div>
   )
 }

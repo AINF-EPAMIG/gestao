@@ -29,6 +29,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import type { Sistema } from "@/types/sistema"
+import { SidebarSistema } from "@/components/sidebar-sistema"
 
 interface FormData {
   nome: string
@@ -256,21 +257,27 @@ export default function EditarProjetoPage({ params }: { params: Promise<{ id: st
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados do projeto...</p>
-        </div>
+      <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
+        <SidebarSistema />
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mx-auto mb-4" />
+              <p className="text-gray-600">Carregando dados do projeto...</p>
+            </div>
+          </div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
+      <SidebarSistema />
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="w-full">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
@@ -298,44 +305,27 @@ export default function EditarProjetoPage({ params }: { params: Promise<{ id: st
               >
                 Restaurar
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleCancel}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Salvando..." : "Salvar Alterações"}
-              </Button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="geral" className="space-y-6">
-            <TabsList className="bg-white border border-gray-200 p-1 shadow-sm">
-              <TabsTrigger value="geral" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
-                <FileText className="h-4 w-4 mr-2" />
-                Informações Gerais
-              </TabsTrigger>
-              <TabsTrigger value="tecnico" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
-                <Code className="h-4 w-4 mr-2" />
-                Dados Técnicos
-              </TabsTrigger>
-              <TabsTrigger value="links" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
-                <Link2 className="h-4 w-4 mr-2" />
-                Links e Documentação
-              </TabsTrigger>
-            </TabsList>
+          {/* Content */}
+          <div className="max-w-7xl mx-auto">
+            <form onSubmit={handleSubmit}>
+              <Tabs defaultValue="geral" className="space-y-6">
+                <TabsList className="bg-white border border-gray-200 p-1 shadow-sm">
+                  <TabsTrigger value="geral" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Informações Gerais
+                  </TabsTrigger>
+                  <TabsTrigger value="tecnico" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
+                    <Code className="h-4 w-4 mr-2" />
+                    Dados Técnicos
+                  </TabsTrigger>
+                  <TabsTrigger value="links" className="data-[state=active]:bg-yellow-50 data-[state=active]:text-yellow-700">
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Links e Documentação
+                  </TabsTrigger>
+                </TabsList>
 
             {/* Informações Gerais */}
             <TabsContent value="geral">
@@ -648,8 +638,30 @@ export default function EditarProjetoPage({ params }: { params: Promise<{ id: st
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Form Actions */}
+          <div className="mt-8 flex justify-end gap-3">
+            <Button 
+              type="button"
+              variant="destructive" 
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
+  </main>
+</div>
   )
 }

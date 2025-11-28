@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import type { Sistema } from "@/types/sistema"
 import { getTipoLabel, getStatusLabel } from "@/lib/sistema-utils"
+import { SidebarSistema } from "@/components/sidebar-sistema"
 
 const getTipoBadgeColor = (tipo?: number) => {
   switch (tipo) {
@@ -138,11 +139,16 @@ export default function ExcluirProjetoPage({ params }: { params: Promise<{ id: s
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados do projeto...</p>
-        </div>
+      <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
+        <SidebarSistema />
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
+              <p className="text-gray-600">Carregando dados do projeto...</p>
+            </div>
+          </div>
+        </main>
       </div>
     )
   }
@@ -157,11 +163,12 @@ export default function ExcluirProjetoPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-x-hidden">
+      <SidebarSistema />
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="w-full">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost" 
@@ -179,11 +186,9 @@ export default function ExcluirProjetoPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Content */}
+          <div className="max-w-4xl mx-auto">
         {/* Warning Card */}
         <Card className="border-red-200 bg-red-50 mb-6">
           <CardHeader>
@@ -351,7 +356,7 @@ export default function ExcluirProjetoPage({ params }: { params: Promise<{ id: s
 
             <div className="flex justify-end gap-3">
               <Button 
-                variant="outline" 
+                variant="destructive" 
                 onClick={handleCancel}
                 disabled={isDeleting}
               >
@@ -371,5 +376,7 @@ export default function ExcluirProjetoPage({ params }: { params: Promise<{ id: s
         </Card>
       </div>
     </div>
+  </main>
+</div>
   )
 }
