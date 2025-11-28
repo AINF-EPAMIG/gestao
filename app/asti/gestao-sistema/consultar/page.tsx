@@ -34,6 +34,18 @@ type Atividade = {
   data_criacao?: string | null
 }
 
+// Tipagem local para acessos (projetos_acessos)
+type Acesso = {
+  id: number
+  projeto_id: number
+  tipo?: string | null
+  nome_amigavel?: string | null
+  descricao?: string | null
+  status?: number
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 export default function ConsultarSistemasPage() {
   const router = useRouter()
   const [sistemas, setSistemas] = useState<Sistema[]>([])
@@ -49,6 +61,14 @@ export default function ConsultarSistemasPage() {
   // Estados para atividades do projeto
   const [projectActivities, setProjectActivities] = useState<Atividade[]>([])
   const [activitiesLoading, setActivitiesLoading] = useState(false)
+  // Estados para acessos do projeto
+  const [projectAccesses, setProjectAccesses] = useState<Acesso[]>([])
+  const [accessesLoading, setAccessesLoading] = useState(false)
+  // Estados para formulário inline de cadastro de acesso
+  const [showAccessForm, setShowAccessForm] = useState(false)
+  const [accessForm, setAccessForm] = useState({ tipo: '', nome_amigavel: '', descricao: '', status: 1 })
+  const [accessSubmitting, setAccessSubmitting] = useState(false)
+  const [editingAccessId, setEditingAccessId] = useState<number | null>(null)
   
   // Estados para setores
   const [setores, setSetores] = useState<{id: number, sigla: string, nome: string}[]>([])
@@ -121,6 +141,21 @@ export default function ConsultarSistemasPage() {
     }
   }
 
+  const fetchProjectAccesses = async (projectId: number) => {
+    try {
+      setAccessesLoading(true)
+      const response = await fetch(`/api/projetos-acessos?projeto_id=${projectId}`)
+      if (!response.ok) throw new Error('Erro ao carregar acessos')
+      const data = (await response.json()) as Acesso[]
+      setProjectAccesses(data || [])
+    } catch (error) {
+      console.error('Erro ao buscar acessos do projeto:', error)
+      toast({ title: 'Erro', description: 'Não foi possível carregar os acessos do projeto', variant: 'destructive' })
+    } finally {
+      setAccessesLoading(false)
+    }
+  }
+
   const filteredSistemas = sistemas.filter((sistema) => {
     const matchesSearch = 
       sistema.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,6 +177,7 @@ export default function ConsultarSistemasPage() {
     setViewingSistema(sistema)
     setViewDialogOpen(true)
     fetchProjectActivities(sistema.id)
+    fetchProjectAccesses(sistema.id)
   }
 
   const getSetorNome = (setorId: number | null): string => {
@@ -256,6 +292,10 @@ export default function ConsultarSistemasPage() {
                       <Info className="h-4 w-4 mr-2" />
                       Tarefas do Kanban
                     </TabsTrigger>
+                      <TabsTrigger value="acessos" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
+                        <User className="h-4 w-4 mr-2" />
+                        Níveis de Acesso
+                      </TabsTrigger>
                   </TabsList>
 
                   {/* Informações Gerais */}
@@ -343,6 +383,172 @@ export default function ConsultarSistemasPage() {
                             <div className="p-4 bg-gray-50 rounded-md">
                               <p className="text-gray-900 whitespace-pre-wrap">{viewingSistema.objetivo}</p>
                             </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Níveis de Acesso */}
+                  <TabsContent value="acessos">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <User className="h-5 w-5 text-blue-600" />
+                            <CardTitle className="!m-0">Níveis de Acesso</CardTitle>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CardDescription className="hidden sm:block">Permissões / acessos associados a este projeto</CardDescription>
+                            {viewingSistema && (
+                              <Button
+                                onClick={() => setShowAccessForm(true)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              >
+                                <PlusCircle className="h-4 w-4 mr-2" />
+                                Cadastrar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {/* Formulário inline de cadastro */}
+                        {showAccessForm && viewingSistema && (
+                          <div className="p-4 bg-white border rounded-md mb-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-gray-600">Tipo</label>
+                                <input
+                                  className="w-full mt-1 px-3 py-2 border rounded-md"
+                                  value={accessForm.tipo}
+                                  onChange={(e) => setAccessForm(prev => ({ ...prev, tipo: e.target.value }))}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium text-gray-600">Nome Amigável</label>
+                                <input
+                                  className="w-full mt-1 px-3 py-2 border rounded-md"
+                                  value={accessForm.nome_amigavel}
+                                  onChange={(e) => setAccessForm(prev => ({ ...prev, nome_amigavel: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-4">
+                              <label className="text-sm font-medium text-gray-600">Descrição</label>
+                              <textarea
+                                className="w-full mt-1 px-3 py-2 border rounded-md"
+                                rows={3}
+                                value={accessForm.descricao}
+                                onChange={(e) => setAccessForm(prev => ({ ...prev, descricao: e.target.value }))}
+                              />
+                            </div>
+
+                            <div className="flex justify-end gap-2 mt-4">
+                              <Button
+                                onClick={() => {
+                                  setShowAccessForm(false)
+                                  setAccessForm({ tipo: '', nome_amigavel: '', descricao: '', status: 1 })
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  if (!viewingSistema) return
+                                  setAccessSubmitting(true)
+                                  try {
+                                    if (editingAccessId) {
+                                      // Atualizar
+                                      const res = await fetch('/api/projetos-acessos', {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ id: editingAccessId, ...accessForm })
+                                      })
+                                      if (!res.ok) throw new Error('Erro ao atualizar acesso')
+                                      toast({ title: 'Sucesso', description: 'Acesso atualizado', variant: 'default' })
+                                    } else {
+                                      // Criar
+                                      const res = await fetch('/api/projetos-acessos', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ projeto_id: viewingSistema.id, ...accessForm })
+                                      })
+                                      if (!res.ok) throw new Error('Erro ao cadastrar acesso')
+                                      toast({ title: 'Sucesso', description: 'Acesso cadastrado', variant: 'default' })
+                                    }
+
+                                    setShowAccessForm(false)
+                                    setAccessForm({ tipo: '', nome_amigavel: '', descricao: '', status: 1 })
+                                    setEditingAccessId(null)
+                                    fetchProjectAccesses(viewingSistema.id)
+                                  } catch (err) {
+                                    console.error('Erro ao salvar acesso:', err)
+                                    toast({ title: 'Erro', description: 'Não foi possível salvar o acesso', variant: 'destructive' })
+                                  } finally {
+                                    setAccessSubmitting(false)
+                                  }
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                disabled={accessSubmitting}
+                              >
+                                {editingAccessId ? 'Atualizar' : 'Salvar'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {accessesLoading ? (
+                          <div className="flex items-center justify-center py-8">Carregando acessos...</div>
+                        ) : projectAccesses.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-500">Nenhum nível de acesso encontrado para este projeto</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full table-auto">
+                              <thead className="text-left text-sm text-gray-600">
+                                <tr>
+                                  <th className="py-2">Tipo</th>
+                                  <th className="py-2">Nome Amigável</th>
+                                  <th className="py-2">Descrição</th>
+                                  <th className="py-2">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {projectAccesses.map((a) => (
+                                  <tr key={a.id} className="border-t">
+                                    <td className="py-2 align-top">{a.tipo || '-'}</td>
+                                    <td className="py-2 align-top">{a.nome_amigavel || '-'}</td>
+                                    <td className="py-2 align-top text-sm text-gray-700 whitespace-pre-wrap">{a.descricao || '-'}</td>
+                                    <td className="py-2 align-top">
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            // abrir formulário inline para edição
+                                            setAccessForm({
+                                              tipo: a.tipo || '',
+                                              nome_amigavel: a.nome_amigavel || '',
+                                              descricao: a.descricao || '',
+                                              status: a.status ?? 1,
+                                            })
+                                            setEditingAccessId(a.id)
+                                            setShowAccessForm(true)
+                                          }}
+                                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                        >
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Editar
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </CardContent>
@@ -685,7 +891,7 @@ export default function ConsultarSistemasPage() {
                     className="bg-yellow-500 hover:bg-yellow-600 text-white"
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Editar
+                    Editar Projeto
                   </Button>
                 </div>
               </div>
