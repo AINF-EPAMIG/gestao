@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { FilterPanel } from "./components/filter-panel"
 import { ResultsSection } from "./components/results-section"
 import { SidebarSistema } from "@/components/sidebar-sistema"
@@ -9,36 +10,24 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Edit, Trash2, PlusCircle } from "lucide-react"
 import type { Sistema } from "@/types/sistema"
 import { useToast } from "@/hooks/use-toast"
 import { getTipoLabel, getStatusLabel } from "@/lib/sistema-utils"
 
 export default function ConsultarSistemasPage() {
+  const router = useRouter()
   const [sistemas, setSistemas] = useState<Sistema[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [tipoFilter, setTipoFilter] = useState("todos")
   const [statusFilter, setStatusFilter] = useState("todos")
   
-  // Estados para dialogs
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  // Estados para dialog de visualização
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [editingSistema, setEditingSistema] = useState<Sistema | null>(null)
   const [viewingSistema, setViewingSistema] = useState<Sistema | null>(null)
   
   const { toast } = useToast()
@@ -80,8 +69,8 @@ export default function ConsultarSistemasPage() {
   })
 
   const handleEdit = (sistema: Sistema) => {
-    setEditingSistema(sistema)
-    setEditDialogOpen(true)
+    // Navegar para a página de edição
+    router.push(`/asti/gestao-sistema/editar/${sistema.id}`)
   }
 
   const handleView = (sistema: Sistema) => {
@@ -90,60 +79,12 @@ export default function ConsultarSistemasPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este projeto?")) return
-
-    try {
-      const response = await fetch("/api/projetos", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      })
-
-      if (!response.ok) throw new Error("Erro ao excluir projeto")
-
-      toast({
-        title: "Sucesso",
-        description: "Projeto excluído com sucesso!",
-      })
-      fetchSistemas()
-    } catch (error) {
-      console.error("Erro ao excluir projeto:", error)
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o projeto",
-        variant: "destructive",
-      })
-    }
+    // Navegar para a página de exclusão com confirmação
+    router.push(`/asti/gestao-sistema/excluir/${id}`)
   }
 
-  const handleSubmitEdit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!editingSistema) return
-
-    try {
-      const response = await fetch("/api/projetos", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingSistema),
-      })
-
-      if (!response.ok) throw new Error("Erro ao atualizar projeto")
-
-      toast({
-        title: "Sucesso",
-        description: "Projeto atualizado com sucesso!",
-      })
-      setEditDialogOpen(false)
-      setEditingSistema(null)
-      fetchSistemas()
-    } catch (error) {
-      console.error("Erro ao atualizar projeto:", error)
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o projeto",
-        variant: "destructive",
-      })
-    }
+  const handleNewProject = () => {
+    router.push("/asti/gestao-sistema/cadastrar")
   }
 
   return (
@@ -151,6 +92,21 @@ export default function ConsultarSistemasPage() {
       <SidebarSistema />
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         <div className="w-full space-y-6">
+          {/* Header com botão de novo projeto */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Consultar Projetos</h1>
+              <p className="text-gray-500 mt-1">Visualize, edite ou exclua projetos cadastrados</p>
+            </div>
+            <Button 
+              onClick={handleNewProject}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Novo Projeto
+            </Button>
+          </div>
+
           {/* Filters */}
           <FilterPanel
             searchQuery={searchQuery}
@@ -170,101 +126,6 @@ export default function ConsultarSistemasPage() {
             onView={handleView}
           />
         </div>
-
-        {/* Edit Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Editar Projeto</DialogTitle>
-              <DialogDescription>
-                Atualize as informações do projeto abaixo
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmitEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="edit-nome">Nome *</Label>
-                  <Input
-                    id="edit-nome"
-                    value={editingSistema?.nome || ""}
-                    onChange={(e) => setEditingSistema(prev => prev ? {...prev, nome: e.target.value} : null)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-sigla">Sigla</Label>
-                  <Input
-                    id="edit-sigla"
-                    value={editingSistema?.sigla || ""}
-                    onChange={(e) => setEditingSistema(prev => prev ? {...prev, sigla: e.target.value} : null)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tipo">Tipo</Label>
-                  <Select
-                    value={editingSistema?.tipo ? String(editingSistema.tipo) : ""}
-                    onValueChange={(value) => setEditingSistema(prev => prev ? {...prev, tipo: Number(value) as Sistema['tipo']} : null)}
-                  >
-                    <SelectTrigger id="edit-tipo">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Sistema</SelectItem>
-                      <SelectItem value="2">Site</SelectItem>
-                      <SelectItem value="3">API</SelectItem>
-                      <SelectItem value="4">Mobile</SelectItem>
-                      <SelectItem value="5">Rotina</SelectItem>
-                      <SelectItem value="6">Infraestrutura</SelectItem>
-                      <SelectItem value="7">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-status">Status</Label>
-                  <Select
-                    value={editingSistema?.status ? String(editingSistema.status) : ""}
-                    onValueChange={(value) => setEditingSistema(prev => prev ? {...prev, status: Number(value) as Sistema['status']} : null)}
-                  >
-                    <SelectTrigger id="edit-status">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Produção</SelectItem>
-                      <SelectItem value="2">Em Desenvolvimento</SelectItem>
-                      <SelectItem value="3">Manutenção</SelectItem>
-                      <SelectItem value="4">Descontinuado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tecnologia">Tecnologia Principal</Label>
-                  <Input
-                    id="edit-tecnologia"
-                    value={editingSistema?.tecnologia_principal || ""}
-                    onChange={(e) => setEditingSistema(prev => prev ? {...prev, tecnologia_principal: e.target.value} : null)}
-                  />
-                </div>
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="edit-objetivo">Objetivo</Label>
-                  <Textarea
-                    id="edit-objetivo"
-                    value={editingSistema?.objetivo || ""}
-                    onChange={(e) => setEditingSistema(prev => prev ? {...prev, objetivo: e.target.value} : null)}
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                  Salvar Alterações
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
 
         {/* View Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -348,6 +209,36 @@ export default function ConsultarSistemasPage() {
                       <span className="text-gray-900">{viewingSistema.observacoes}</span>
                     </div>
                   )}
+                </div>
+                
+                {/* Action buttons in view dialog */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setViewDialogOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setViewDialogOpen(false)
+                      router.push(`/asti/gestao-sistema/editar/${viewingSistema.id}`)
+                    }}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={() => {
+                      setViewDialogOpen(false)
+                      router.push(`/asti/gestao-sistema/excluir/${viewingSistema.id}`)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </Button>
                 </div>
               </div>
             )}

@@ -93,7 +93,7 @@ const modules: ModuleCard[] = [
     description: "Gerencia projetos, sistemas e demandas da organização.",
     icon: Globe,
     actions: [
-      { label: "Cadastrar Projeto", href: "/asti/gestao-sistema", variant: "primary" },
+      { label: "Cadastrar Projeto", href: "/asti/gestao-sistema/cadastrar", variant: "primary" },
       { label: "Consultar Projeto", href: "/asti/gestao-sistema/consultar", variant: "secondary" },
     ],
   },
