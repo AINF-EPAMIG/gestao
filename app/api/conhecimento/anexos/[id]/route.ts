@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { executeQueryAsti } from "@/lib/db";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { getFileFromDrive } from "@/lib/google-drive";
 
 export async function GET(req: Request, { params }: { params: Promise<Record<string, string | string[] | undefined>> }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ erro: "Usuário não autenticado" }, { status: 401 });
+    }
+    if (!session.accessToken || session.error) {
+      return NextResponse.json({ erro: session.error ? `Erro de autenticação: ${session.error}` : "Token de acesso do Google indisponível" }, { status: 401 });
+    }
+
     const paramsObj = await params;
     const id = String(paramsObj?.id ?? "");
   const query = `SELECT * FROM anexo WHERE id = ?`;
@@ -11,15 +22,6 @@ export async function GET(req: Request, { params }: { params: Promise<Record<str
     if (!row) {
       return NextResponse.json({ erro: "Anexo não encontrado" }, { status: 404 });
     }
-
-  const base64 = String(row["conteudo_arquivo"] ?? "");
-  // If the content is already stored as base64 with possible data URI prefix, strip it
-  const maybeData = base64;
-    const commaIndex = maybeData.indexOf(',');
-    const rawBase64 = commaIndex > 0 ? maybeData.substring(commaIndex + 1) : maybeData;
-
-    // Decode base64 to Uint8Array
-    const binary = Buffer.from(rawBase64, 'base64');
 
   const filename = String(row["nome_arquivo"] ?? `anexo_${id}`);
   const contentType = String(row["tipo_arquivo"] ?? 'application/octet-stream');
@@ -35,7 +37,38 @@ export async function GET(req: Request, { params }: { params: Promise<Record<str
       // ignore - fallback to attachment
     }
 
-    return new NextResponse(binary, {
+    if (row["google_drive_id"]) {
+      try {
+        const driveFile = await getFileFromDrive(session.accessToken, String(row["google_drive_id"]));
+        const contentBuffer = driveFile.content;
+        const driveArrayBuffer = contentBuffer.buffer.slice(
+          contentBuffer.byteOffset,
+          contentBuffer.byteOffset + contentBuffer.byteLength
+        ) as ArrayBuffer;
+        const response = new NextResponse(driveArrayBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': String(contentBuffer.length),
+            'Content-Disposition': `${dispositionType}; filename="${filename.replace(/\"/g, '')}"`
+          }
+        });
+        return response;
+      } catch (driveErr) {
+        console.error("Erro ao recuperar arquivo do Google Drive:", driveErr);
+        if (row["google_drive_link"]) {
+          return NextResponse.redirect(String(row["google_drive_link"]));
+        }
+      }
+    }
+
+    const base64 = String(row["conteudo_arquivo"] ?? "");
+    const commaIndex = base64.indexOf(',');
+    const rawBase64 = commaIndex > 0 ? base64.substring(commaIndex + 1) : base64;
+    const binary = Buffer.from(rawBase64, 'base64');
+    const fallbackArrayBuffer = binary.buffer.slice(binary.byteOffset, binary.byteOffset + binary.byteLength) as ArrayBuffer;
+
+    return new NextResponse(fallbackArrayBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,

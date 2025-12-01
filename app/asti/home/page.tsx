@@ -23,7 +23,8 @@ const modules: ModuleCard[] = [
     description: "Reúne e organiza informações e procedimentos do setor.",
     icon: Notebook,
     actions: [
-      { label: "Cadastrar Tutoriais", href: "/asti/area-conhecimento/cadastrar", variant: "primary" },
+      { label: "Dashboard", href: "/asti/area-conhecimento/dashboard", variant: "primary" },
+      { label: "Cadastrar Tutoriais", href: "/asti/area-conhecimento/cadastrar", variant: "secondary" },
       { label: "Consultar Tutoriais", href: "/asti/area-conhecimento/consultar", variant: "secondary" },
     ],
   },

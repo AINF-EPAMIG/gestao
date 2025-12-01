@@ -3,6 +3,13 @@ import { executeQueryAsti } from "@/lib/db";
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { deleteFileFromDrive, uploadFileToDrive } from "@/lib/google-drive";
+
+function extractBase64Payload(raw: string | undefined | null) {
+  if (!raw) return null;
+  const commaIndex = raw.indexOf(",");
+  return commaIndex > -1 ? raw.substring(commaIndex + 1) : raw;
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<Record<string, string | string[] | undefined>> }) {
   try {
@@ -23,6 +30,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Record
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ erro: "Usuário não autenticado" }, { status: 401 });
+  }
+  if (!session.accessToken || session.error) {
+    return NextResponse.json({ erro: session.error ? `Erro de autenticação: ${session.error}` : "Token de acesso do Google indisponível" }, { status: 401 });
   }
   const paramsObj = await params;
   const id = String(paramsObj?.id ?? "");
@@ -48,15 +58,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Record
     // Se veio anexo no body, apagar anexo antigo, inserir novo anexo e atualizar o conhecimento.anexo_id
     try {
       if (body.anexo && body.anexo.conteudo_base64) {
-        // Buscar o anexo_id antigo do conhecimento
-        const queryGetOldAnexo = `SELECT anexo_id FROM conhecimento WHERE id = ?`;
-        const oldAnexoRes = await executeQueryAsti({ query: queryGetOldAnexo, values: [id] }) as Array<{ anexo_id: number | null }>;
-        const oldAnexoId = oldAnexoRes.length > 0 ? oldAnexoRes[0].anexo_id : null;
+        // Buscar anexos antigos relacionados para remoção (inclui dados do Drive)
+        const queryGetOldAnexo = `SELECT id, google_drive_id FROM anexo WHERE conhecimento_id = ?`;
+        const oldAnexoRes = await executeQueryAsti({ query: queryGetOldAnexo, values: [id] }) as Array<{ id: number; google_drive_id: string | null }>;
 
-        // Se existir anexo antigo, apagar ele da tabela anexo
-        if (oldAnexoId) {
-          const deleteOldAnexoQuery = `DELETE FROM anexo WHERE id = ?`;
-          await executeQueryAsti({ query: deleteOldAnexoQuery, values: [oldAnexoId] });
+        if (oldAnexoRes.length > 0) {
+          for (const anexoRow of oldAnexoRes) {
+            if (anexoRow.google_drive_id) {
+              try {
+                await deleteFileFromDrive(session.accessToken!, anexoRow.google_drive_id);
+              } catch (driveErr) {
+                console.warn("Falha ao remover arquivo antigo do Google Drive:", driveErr);
+              }
+            }
+          }
+          const placeholders = oldAnexoRes.map(() => "?").join(",");
+          await executeQueryAsti({
+            query: `DELETE FROM anexo WHERE id IN (${placeholders})`,
+            values: oldAnexoRes.map((row) => row.id)
+          });
         }
 
         // Inserir novo anexo
@@ -67,6 +87,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Record
         if (!tipoArquivo.includes("pdf") && !nomeArquivo.endsWith('.pdf')) {
           return NextResponse.json({ erro: "Apenas arquivos PDF são aceitos" }, { status: 400 });
         }
+        const base64Payload = extractBase64Payload(anexo.conteudo_base64);
+        if (!base64Payload) {
+          return NextResponse.json({ erro: "Conteúdo do anexo inválido" }, { status: 400 });
+        }
+        const fileBuffer = Buffer.from(base64Payload, "base64");
+        const tamanhoBytes = anexo.tamanho_bytes || anexo.size || fileBuffer.byteLength;
+        let driveFile;
+        try {
+          driveFile = await uploadFileToDrive(
+            session.accessToken,
+            fileBuffer,
+            anexo.nome_arquivo || anexo.name || `arquivo-${id}.pdf`,
+            anexo.tipo_arquivo || anexo.type || "application/pdf"
+          );
+        } catch (driveError) {
+          console.error("Erro ao enviar novo anexo para o Google Drive:", driveError);
+          return NextResponse.json({ erro: "Falha ao salvar anexo no Google Drive" }, { status: 502 });
+        }
         const insertAnexoQuery = `
           INSERT INTO anexo (conhecimento_id, nome_arquivo, caminho_arquivo, google_drive_id, google_drive_link, tipo_arquivo, tamanho_bytes, dt_upload, usuario_email, conteudo_arquivo)
           VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
@@ -74,13 +112,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Record
         const insertAnexoValues = [
           id,
           anexo.nome_arquivo || anexo.name || "",
-          anexo.caminho_arquivo || "",
-          anexo.google_drive_id || "",
-          anexo.google_drive_link || "",
+          driveFile.webContentLink || anexo.caminho_arquivo || "",
+          driveFile.id,
+          driveFile.webViewLink || driveFile.webContentLink || anexo.google_drive_link || "",
           anexo.tipo_arquivo || anexo.type || "application/octet-stream",
-          anexo.tamanho_bytes || anexo.size || 0,
+          tamanhoBytes,
           session.user?.email || "",
-          anexo.conteudo_base64 || ""
+          ""
         ];
         const anexoResult = await executeQueryAsti({ query: insertAnexoQuery, values: insertAnexoValues }) as
           | Record<string, unknown>
@@ -120,42 +158,66 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Rec
   if (!session) {
     return NextResponse.json({ erro: "Usuário não autenticado" }, { status: 401 });
   }
+  if (!session.accessToken || session.error) {
+    return NextResponse.json({ erro: session.error ? `Erro de autenticação: ${session.error}` : "Token de acesso do Google indisponível" }, { status: 401 });
+  }
   const paramsObj = await params;
   const id = String(paramsObj?.id ?? "");
   try {
     // Primeiro, buscar anexos relacionados (por conhecimento_id ou por anexo_id referenciado)
     try {
-      const queryAnexos = `SELECT id FROM anexo WHERE conhecimento_id = ?`;
-      const anexosResultado = await executeQueryAsti({ query: queryAnexos, values: [id] }) as Array<Record<string, unknown>> | undefined;
-      const anexosIds = (anexosResultado || [])
-        .map((r) => {
-          const v = r && (r["id"] as unknown);
-          if (typeof v === "number") return v;
-          if (typeof v === "string" && v !== "") return Number(v);
-          return null;
-        })
-        .filter((v): v is number => typeof v === "number");
+      const anexosParaExcluir: Array<{ id: number; google_drive_id: string | null }> = [];
+
+      const queryAnexos = `SELECT id, google_drive_id FROM anexo WHERE conhecimento_id = ?`;
+      const anexosResultado = await executeQueryAsti({ query: queryAnexos, values: [id] }) as Array<{ id: number; google_drive_id: string | null }> | undefined;
+      if (anexosResultado) {
+        anexosResultado.forEach((row) => {
+          if (typeof row.id === "number") {
+            anexosParaExcluir.push({ id: row.id, google_drive_id: row.google_drive_id || null });
+          }
+        });
+      }
 
       // Também verificar se o próprio conhecimento referencia um anexo (conhecimento.anexo_id)
       const queryRef = `SELECT anexo_id FROM conhecimento WHERE id = ?`;
       const refRes = await executeQueryAsti({ query: queryRef, values: [id] }) as Array<Record<string, unknown>> | undefined;
-      let refAnexoId: number | null = null;
+      let refAnexo: { id: number; google_drive_id: string | null } | null = null;
       if (refRes && refRes[0]) {
         const raw = refRes[0]["anexo_id"] as unknown;
-        if (typeof raw === "number") refAnexoId = raw;
-        else if (typeof raw === "string" && raw !== "") refAnexoId = Number(raw);
+        const numeric = typeof raw === "number" ? raw : (typeof raw === "string" && raw !== "" ? Number(raw) : NaN);
+        if (!Number.isNaN(numeric) && numeric > 0) {
+          refAnexo = { id: numeric, google_drive_id: null };
+        }
       }
-      if (refAnexoId) anexosIds.push(refAnexoId);
 
-      // Remover duplicatas
-      const distinctAnexos = Array.from(new Set(anexosIds)).filter(Boolean);
+      if (refAnexo && !anexosParaExcluir.find((row) => row.id === refAnexo.id)) {
+        const refRow = await executeQueryAsti({
+          query: `SELECT id, google_drive_id FROM anexo WHERE id = ?`,
+          values: [refAnexo.id]
+        }) as Array<{ id: number; google_drive_id: string | null }> | undefined;
+        if (refRow && refRow[0]) {
+          anexosParaExcluir.push(refRow[0]);
+        } else {
+          anexosParaExcluir.push(refAnexo);
+        }
+      }
 
-      // Deletar anexos relacionados primeiro
-      if (distinctAnexos.length > 0) {
-        const placeholders = distinctAnexos.map(() => '?').join(',');
-        const deleteAnexosQuery = `DELETE FROM anexo WHERE id IN (${placeholders})`;
-        const deleteValues = distinctAnexos.map((v) => Number(v)) as (string | number)[];
-        await executeQueryAsti({ query: deleteAnexosQuery, values: deleteValues });
+      if (anexosParaExcluir.length > 0) {
+        for (const anexo of anexosParaExcluir) {
+          if (anexo.google_drive_id) {
+            try {
+              await deleteFileFromDrive(session.accessToken!, anexo.google_drive_id);
+            } catch (driveErr) {
+              console.warn("Falha ao excluir arquivo do Google Drive:", driveErr);
+            }
+          }
+        }
+
+        const placeholders = anexosParaExcluir.map(() => '?').join(',');
+        await executeQueryAsti({
+          query: `DELETE FROM anexo WHERE id IN (${placeholders})`,
+          values: anexosParaExcluir.map((row) => row.id)
+        });
       }
     } catch (cleanupErr) {
       // registrar aviso, mas continuar para tentar deletar o conhecimento

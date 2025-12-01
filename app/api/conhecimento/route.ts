@@ -3,12 +3,23 @@ import { executeQueryAsti } from "@/lib/db";
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; 
+import { uploadFileToDrive } from "@/lib/google-drive";
+
+function extractBase64Payload(raw: string | undefined | null) {
+  if (!raw) return null;
+  const commaIndex = raw.indexOf(",");
+  return commaIndex > -1 ? raw.substring(commaIndex + 1) : raw;
+}
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
     return NextResponse.json({ erro: "Usuário não autenticado" }, { status: 401 });
+  }
+
+  if (!session.accessToken || session.error) {
+    return NextResponse.json({ erro: session.error ? `Erro de autenticação: ${session.error}` : "Token de acesso do Google indisponível" }, { status: 401 });
   }
 
   const body = await req.json();
@@ -74,6 +85,26 @@ export async function POST(req: NextRequest) {
       if (!tipoArquivo.includes("pdf") && !nomeArquivo.endsWith('.pdf')) {
         return NextResponse.json({ erro: "Apenas arquivos PDF são aceitos" }, { status: 400 });
       }
+
+      const base64Payload = extractBase64Payload(anexo.conteudo_base64);
+      if (!base64Payload) {
+        return NextResponse.json({ erro: "Conteúdo do anexo inválido" }, { status: 400 });
+      }
+
+      const fileBuffer = Buffer.from(base64Payload, "base64");
+      const tamanhoBytes = anexo.tamanho_bytes || anexo.size || fileBuffer.byteLength;
+      let driveFile;
+      try {
+        driveFile = await uploadFileToDrive(
+          session.accessToken,
+          fileBuffer,
+          anexo.nome_arquivo || anexo.name || `arquivo-${conhecimentoId}.pdf`,
+          anexo.tipo_arquivo || anexo.type || "application/pdf"
+        );
+      } catch (driveError) {
+        console.error("Erro ao enviar anexo para o Google Drive:", driveError);
+        return NextResponse.json({ erro: "Falha ao salvar anexo no Google Drive" }, { status: 502 });
+      }
       const insertAnexoQuery = `
         INSERT INTO anexo (conhecimento_id, nome_arquivo, caminho_arquivo, google_drive_id, google_drive_link, tipo_arquivo, tamanho_bytes, dt_upload, usuario_email, conteudo_arquivo)
         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
@@ -81,13 +112,13 @@ export async function POST(req: NextRequest) {
       const insertAnexoValues = [
         conhecimentoId,
         anexo.nome_arquivo || anexo.name || "",
-        anexo.caminho_arquivo || "",
-        anexo.google_drive_id || "",
-        anexo.google_drive_link || "",
+        driveFile.webContentLink || anexo.caminho_arquivo || "",
+        driveFile.id,
+        driveFile.webViewLink || driveFile.webContentLink || anexo.google_drive_link || "",
         anexo.tipo_arquivo || anexo.type || "application/octet-stream",
-        anexo.tamanho_bytes || anexo.size || 0,
+        tamanhoBytes,
         session.user?.email || "",
-        anexo.conteudo_base64 || ""
+        ""
       ];
       const anexoResult = await executeQueryAsti({ query: insertAnexoQuery, values: insertAnexoValues }) as
         | Record<string, unknown>
@@ -125,26 +156,35 @@ export async function GET(req: NextRequest) {
     const tipoStr = searchParams.get("tipo"); // recebe string "0" ou "1" ou null
 
     let query = `
-      SELECT id, nome, dt_publicacao, tipo
-      FROM conhecimento
-      WHERE nome LIKE ?
+      SELECT 
+        c.id,
+        c.nome,
+        c.dt_publicacao,
+        c.tipo,
+        c.descricao,
+        c.anexo_id,
+        a.nome_arquivo,
+        a.google_drive_link
+      FROM conhecimento c
+      LEFT JOIN anexo a ON a.id = c.anexo_id
+      WHERE c.nome LIKE ?
     `;
     const values = [`%${nome}%`];
 
     // filtro por data
     if (data) {
-      query += ` AND DATE(dt_publicacao) = ?`;
+      query += ` AND DATE(c.dt_publicacao) = ?`;
       values.push(data);
     }
 
     // filtro por tipo
     if (tipoStr !== null && (tipoStr === "0" || tipoStr === "1")) {
-      query += ` AND tipo = ?`;
+      query += ` AND c.tipo = ?`;
       values.push(tipoStr);
     }
 
     // ordenar alfabeticamente pelo nome
-    query += ` ORDER BY nome ASC`;
+    query += ` ORDER BY c.nome ASC`;
 
     const resultado = await executeQueryAsti({ query, values });
     return NextResponse.json(resultado);
