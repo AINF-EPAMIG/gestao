@@ -55,17 +55,18 @@ export default function AuthRequired({ children }: AuthRequiredProps) {
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url(/bg-gestao.png)' }}
+        style={{ backgroundImage: 'url(/bg-gestao.svg)' }}
       />
 
       {/* Content Overlay */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-      <h1 className="relative z-10 text-3xl font-bold text-center text-slate-800 mt-12 mb-8">
-        Gestão de Projetos ASTI
-      </h1>
+
           <Card className="shadow-lg bg-white/40 backdrop-blur-sm">
             <CardHeader className="text-center space-y-8">
+              <h1 className="relative z-10 text-3xl font-bold text-center text-slate-800 mt-12 mb-8">
+                Gestão de Projetos ASTI
+              </h1>
               <div className="flex justify-center">
                 <Image 
                   src="/epamig_logo_login.svg" 
