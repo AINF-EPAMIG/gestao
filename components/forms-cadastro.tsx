@@ -1,36 +1,53 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useMemo, memo } from "react";
 import { Check, CheckCircle, FolderOpen, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { KNOWLEDGE_CATEGORIES } from "@/lib/constants";
 
+type FormState = {
+  nome: string;
+  tipo: number | null;
+  categoria: string;
+  descricao: string;
+  link: string;
+};
+
+type FileData = {
+  base64: string;
+  name: string;
+  type: string;
+  size: number;
+};
+
+const INITIAL_FORM_STATE: FormState = {
+  nome: "",
+  tipo: null,
+  categoria: "",
+  descricao: "",
+  link: ""
+};
+
 export default function FormsCadastro() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    nome: "",
-    tipo: null as number | null,
-    categoria: "",
-    descricao: "",
-    link: ""
-  });
+  const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const [mensagem, setMensagem] = useState("");
-  const [fileData, setFileData] = useState<{
-    base64: string;
-    name: string;
-    type: string;
-    size: number;
-  } | null>(null);
+  const [fileData, setFileData] = useState<FileData | null>(null);
   const [fileError, setFileError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm({
-      ...form,
-      [name]: name === "tipo" ? (value === "" ? null : Number(value)) : value
+    setForm((prev) => {
+      if (name === "tipo") {
+        return { ...prev, tipo: value === "" ? null : Number(value) };
+      }
+      return { ...prev, [name]: value };
     });
-  }
+  }, []);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files && e.target.files[0];
     if (!f) {
       setFileData(null);
@@ -57,21 +74,20 @@ export default function FormsCadastro() {
       setFileData({ base64: rawBase64, name: f.name, type: f.type || 'application/pdf', size: f.size });
     };
     reader.readAsDataURL(f);
-  }
+  }, []);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  function clearFile(e?: React.MouseEvent) {
+  const clearFile = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setFileData(null);
     setFileError("");
     if (fileInputRef.current) {
       try { fileInputRef.current.value = ""; } catch { }
     }
-  }
+  }, []);
 
+  const knowledgeCategories = useMemo(() => KNOWLEDGE_CATEGORIES, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // require attachment
     if (!fileData) {
@@ -79,6 +95,7 @@ export default function FormsCadastro() {
       return;
     }
     setFileError("");
+    setIsSubmitting(true);
     // prepare payload, include anexo
     type AnexoPayload = {
       nome_arquivo: string;
@@ -110,20 +127,33 @@ export default function FormsCadastro() {
       };
     }
 
-    const resp = await fetch("/api/conhecimento", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = await resp.json();
-    if (resp.ok) {
-      setMensagem(result.mensagem);
-      setForm({ nome: "", tipo: null, categoria: "", descricao: "", link: "" });
-      setFileData(null);
-    } else {
-      setMensagem(result.erro || "Falha ao cadastrar.");
+    try {
+      const resp = await fetch("/api/conhecimento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await resp.json();
+      if (resp.ok) {
+        setMensagem(result.mensagem);
+        setForm(INITIAL_FORM_STATE);
+        clearFile();
+      } else {
+        setMensagem(result.erro || "Falha ao cadastrar.");
+      }
+    } catch {
+      setMensagem("Falha ao cadastrar.");
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  }, [clearFile, fileData, form]);
+
+  const handleCloseMensagem = useCallback(() => {
+    if (mensagem === "Tutorial cadastrado!") {
+      router.push("/asti/area-conhecimento/consultar");
+    }
+    setMensagem("");
+  }, [mensagem, router]);
 
   return (
     <div className="flex justify-center px-4 py-8">
@@ -187,7 +217,7 @@ export default function FormsCadastro() {
                 className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="">Selecione a categoria</option>
-                {KNOWLEDGE_CATEGORIES.map((category) => (
+                {knowledgeCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
                   </option>
@@ -228,56 +258,23 @@ export default function FormsCadastro() {
             <p className="text-xs text-gray-400">Descreva o conteúdo para facilitar buscas futuras.</p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Anexo em PDF</label>
-            <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-4">
-              <label htmlFor="arquivo" className="flex flex-col items-center justify-center gap-2 text-center cursor-pointer">
-                {fileData ? (
-                  <CheckCircle className="w-9 h-9 text-emerald-600" />
-                ) : (
-                  <FolderOpen className="w-8 h-8 text-emerald-700" />
-                )}
-                <div className="text-sm text-gray-700">
-                  {fileData ? (
-                    <span className="font-medium">{fileData.name}</span>
-                  ) : (
-                    <>
-                      Arraste e solte ou <span className="text-emerald-700 underline">clique para selecionar</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500">Somente arquivos PDF são aceitos.</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="arquivo"
-                  name="arquivo"
-                  accept="application/pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-              {fileData && (
-                <button
-                  type="button"
-                  onClick={(e) => clearFile(e)}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600"
-                >
-                  <X className="w-3 h-3" /> Remover arquivo
-                </button>
-              )}
-            </div>
-            {fileError && <p className="text-sm text-red-600">{fileError}</p>}
-          </div>
+          <FileDropzone
+            fileData={fileData}
+            fileError={fileError}
+            onFileChange={handleFileChange}
+            onClear={clearFile}
+            fileInputRef={fileInputRef}
+          />
 
           <div className="flex flex-col gap-3 pt-2 md:flex-row md:items-center md:justify-between">
             <p className="text-xs text-gray-500">Ao cadastrar você confirma que o conteúdo segue o padrão ASTI.</p>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4" />
-              Cadastrar material
+              {isSubmitting ? "Enviando..." : "Cadastrar material"}
             </button>
           </div>
 
@@ -286,12 +283,7 @@ export default function FormsCadastro() {
               <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-2xl">
                 <p className="text-sm text-gray-900">{mensagem}</p>
                 <button
-                  onClick={() => {
-                    setMensagem("");
-                    if (mensagem === "Tutorial cadastrado!") {
-                      router.push("/asti/area-conhecimento/consultar");
-                    }
-                  }}
+                  onClick={handleCloseMensagem}
                   className="mt-4 inline-flex items-center justify-center rounded-xl border border-red-200 px-6 py-2 text-sm font-medium text-red-600 transition hover:bg-red-500 hover:text-white"
                 >
                   Fechar
@@ -304,3 +296,59 @@ export default function FormsCadastro() {
     </div>
   );
 }
+
+type FileDropzoneProps = {
+  fileData: FileData | null;
+  fileError: string;
+  onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: (event?: React.MouseEvent) => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+};
+
+const FileDropzone = memo(function FileDropzone({ fileData, fileError, onFileChange, onClear, fileInputRef }: FileDropzoneProps) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-gray-700">Anexo em PDF</label>
+      <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-4">
+        <label htmlFor="arquivo" className="flex flex-col items-center justify-center gap-2 text-center cursor-pointer">
+          {fileData ? (
+            <CheckCircle className="w-9 h-9 text-emerald-600" />
+          ) : (
+            <FolderOpen className="w-8 h-8 text-emerald-700" />
+          )}
+          <div className="text-sm text-gray-700">
+            {fileData ? (
+              <span className="font-medium">{fileData.name}</span>
+            ) : (
+              <>
+                Arraste e solte ou <span className="text-emerald-700 underline">clique para selecionar</span>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-gray-500">Somente arquivos PDF são aceitos.</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="arquivo"
+            name="arquivo"
+            accept="application/pdf"
+            onChange={onFileChange}
+            className="hidden"
+          />
+        </label>
+        {fileData && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600"
+          >
+            <X className="w-3 h-3" /> Remover arquivo
+          </button>
+        )}
+      </div>
+      {fileError && <p className="text-sm text-red-600">{fileError}</p>}
+    </div>
+  );
+});
+
+FileDropzone.displayName = "FileDropzone";

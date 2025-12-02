@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import {
   Search,
   Eye,
@@ -36,11 +36,24 @@ interface Registro {
   categoria?: string | null;
 }
 
+type Filters = {
+  nome: string;
+  data: string;
+  tipo: string;
+  categoria: string;
+};
+
+const DEFAULT_FILTERS: Filters = {
+  nome: "",
+  data: "",
+  tipo: "",
+  categoria: ""
+};
+
+const REGISTROS_POR_PAGINA = 10;
+
 export default function ConsultaConhecimento() {
-  const [nome, setNome] = useState("");
-  const [data, setData] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -63,24 +76,11 @@ export default function ConsultaConhecimento() {
     size: number;
   } | null>(null);
   const [pagina, setPagina] = useState(1);
-  const registrosPorPagina = 10;
 
   // ref para o input file
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    buscarRegistros();
-  }, []);
-
-  function handleLimpar() {
-    setNome("");
-    setData("");
-    setTipo("");
-    setCategoria("");
-    buscarRegistros();
-  }
-
-  function formatDate(raw: string | number | null) {
+  const formatDate = useCallback((raw: string | number | null) => {
     if (!raw) return "";
     let date: Date;
     if (typeof raw === "number") {
@@ -95,13 +95,20 @@ export default function ConsultaConhecimento() {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
-  }
+  }, []);
 
-  async function buscarRegistros(params?: URLSearchParams) {
+  const fetchRegistros = useCallback(async (activeFilters: Filters) => {
     setCarregando(true);
     setErro("");
+    setFilters({ ...activeFilters });
     try {
-      const url = params ? `/api/conhecimento?${params.toString()}` : `/api/conhecimento`;
+      const queryParams = new URLSearchParams();
+      if (activeFilters.nome) queryParams.append("nome", activeFilters.nome);
+      if (activeFilters.data) queryParams.append("data", activeFilters.data);
+      if (activeFilters.tipo) queryParams.append("tipo", activeFilters.tipo);
+      if (activeFilters.categoria) queryParams.append("categoria", activeFilters.categoria);
+      const queryString = queryParams.toString();
+      const url = queryString ? `/api/conhecimento?${queryString}` : `/api/conhecimento`;
       const res = await fetch(url);
       const json = await res.json();
       if (!res.ok) {
@@ -116,25 +123,36 @@ export default function ConsultaConhecimento() {
       setRegistros([]);
     }
     setCarregando(false);
-  }
+  }, []);
 
-  async function handleBuscar() {
-    const queryParams = new URLSearchParams();
-    if (nome) queryParams.append("nome", nome);
-    if (data) queryParams.append("data", data);
-    if (tipo) queryParams.append("tipo", tipo);
-    if (categoria) queryParams.append("categoria", categoria);
-    buscarRegistros(queryParams);
-  }
+  useEffect(() => {
+    fetchRegistros(DEFAULT_FILTERS);
+  }, [fetchRegistros]);
 
-  const totalPaginas = Math.ceil(registros.length / registrosPorPagina);
-  const registrosPaginaAtual = registros.slice(
-    (pagina - 1) * registrosPorPagina,
-    pagina * registrosPorPagina
-  );
+  const handleBuscar = useCallback((nextFilters: Filters) => {
+    fetchRegistros(nextFilters);
+  }, [fetchRegistros]);
+
+  const handleResetFilters = useCallback(() => {
+    fetchRegistros(DEFAULT_FILTERS);
+  }, [fetchRegistros]);
+
+  const totalPaginas = useMemo(() => (
+    registros.length ? Math.ceil(registros.length / REGISTROS_POR_PAGINA) : 0
+  ), [registros.length]);
+
+  const registrosPaginaAtual = useMemo(() => {
+    if (!registros.length) return [] as Registro[];
+    const start = (pagina - 1) * REGISTROS_POR_PAGINA;
+    return registros.slice(start, start + REGISTROS_POR_PAGINA);
+  }, [pagina, registros]);
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    setPagina(nextPage);
+  }, []);
 
   // Abre modal de visualização e carrega registro completo
-  async function openView(id: number) {
+  const openView = useCallback(async (id: number) => {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/conhecimento/${id}`);
@@ -149,10 +167,10 @@ export default function ConsultaConhecimento() {
       setErro("Erro ao buscar registro");
     }
     setActionLoading(false);
-  }
+  }, []);
 
   // Abre modal de edição, carrega registro e preenche o formulário
-  async function openEdit(id: number) {
+  const openEdit = useCallback(async (id: number) => {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/conhecimento/${id}`);
@@ -176,9 +194,9 @@ export default function ConsultaConhecimento() {
       setErro("Erro ao buscar registro");
     }
     setActionLoading(false);
-  }
+  }, []);
 
-  function handleEditFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleEditFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files && e.target.files[0];
     if (!f) {
       setEditFileData(null);
@@ -206,10 +224,10 @@ export default function ConsultaConhecimento() {
       });
     };
     reader.readAsDataURL(f);
-  }
+  }, []);
 
   // Salva edição via API PUT
-  async function handleSaveEdit() {
+  const handleSaveEdit = useCallback(async () => {
     if (!selected) return;
     if (!editCategoria) {
       setModalError("Selecione uma categoria.");
@@ -271,16 +289,16 @@ export default function ConsultaConhecimento() {
         setModalError("");
         setEditLink("");
         setEditCategoria("");
-        buscarRegistros();
+        fetchRegistros(filters);
       }
     } catch (err) {
       setModalError(String(err) || "Erro ao atualizar registro");
     }
     setActionLoading(false);
-  }
+  }, [editCategoria, editDescricao, editFileData, editLink, editNome, editTipo, fetchRegistros, filters, selected]);
 
   // Excluir com confirmação
-  async function handleDelete(id: number) {
+  const handleDelete = useCallback(async (id: number) => {
     const confirma = window.confirm("Deseja realmente apagar este registro?");
     if (!confirma) return;
     setActionLoading(true);
@@ -290,163 +308,38 @@ export default function ConsultaConhecimento() {
       if (!res.ok) {
         setErro(json.erro || "Erro ao excluir");
       } else {
-        buscarRegistros();
+        fetchRegistros(filters);
       }
     } catch {
       setErro("Erro ao excluir registro");
     }
     setActionLoading(false);
-  }
+  }, [fetchRegistros, filters]);
 
   return (
     <div className="p-4 w-full max-w-6xl mx-auto">
-      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:gap-4">
-        <input
-          type="text"
-          placeholder="Nome"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          className="border rounded px-3 py-2 flex-1 min-w-0 outline-none focus:ring-1 focus:ring-emerald-500"
-        />
-        <input
-          type="date"
-          value={data}
-          onChange={(e) => setData(e.target.value)}
-          className="border rounded px-3 py-2 flex-1 min-w-0 outline-none focus:ring-1 focus:ring-emerald-500"
-        />
-        <select
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value)}
-          className="border rounded px-3 py-2 flex-1 min-w-0 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-        >
-          <option value="">Todos os Tipos</option>
-          <option value="0">Tutorial</option>
-          <option value="1">POP</option>
-        </select>
-        <select
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
-          className="border rounded px-3 py-2 flex-1 min-w-0 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-        >
-          <option value="">Todas as Categorias</option>
-          {KNOWLEDGE_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-2">
-          <div className="flex flex-row gap-2 justify-center w-full sm:w-auto">
-            <button
-              onClick={handleBuscar}
-              disabled={carregando}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-primary text-emerald-800 border font-medium rounded-md shadow hover:bg-emerald-500/15 transition"
-            >
-              <Search size={16} />
-              {carregando ? "Buscando..." : "Buscar"}
-            </button>
-
-            <button
-              onClick={handleLimpar}
-              disabled={carregando}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-white-200 text-red-800 border font-medium rounded-md shadow hover:bg-red-400/15 transition"
-              type="button"
-            >
-              <Trash2 size={16} />
-              Limpar
-            </button>
-          </div>
-        </div>
-      </div>
+      <FilterBar
+        filters={filters}
+        carregando={carregando}
+        onBuscar={handleBuscar}
+        onReset={handleResetFilters}
+      />
 
       {erro && <p className="text-red-600 mb-4">{erro}</p>}
 
       {!erro && registros.length === 0 && <p>Nenhum cadastro encontrado.</p>}
 
       {registros.length > 0 && (
-        <>
-          <table className="w-full border-collapse border-gray-300 text-left">
-            <colgroup>
-              <col style={{ width: "34%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "18%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="border border-gray-300 px-2 py-2 break-words">Nome</th>
-                <th className="border border-gray-300 px-2 py-2 break-words">Data de Publicação</th>
-                <th className="border border-gray-300 px-2 py-2 break-words">Tipo</th>
-                <th className="border border-gray-300 px-2 py-2 break-words">Categoria</th>
-                <th className="border border-gray-300 px-2 py-2 break-words">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {registrosPaginaAtual.map(({ id, nome, dt_publicacao, tipo, categoria: registroCategoria }) => (
-                <tr key={id} className="align-top hover:bg-gray-100/50">
-                  <td className="border border-gray-300 px-2 py-3 break-words">{nome}</td>
-                  <td className="border border-gray-300 px-2 py-3 break-words">{formatDate(dt_publicacao)}</td>
-                  <td className="border border-gray-300 px-2 py-3 break-words">
-                    {tipo === 0 ? "Tutorial" : "POP"}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-3 break-words">{registroCategoria || "-"}</td>
-                  <td className="border border-gray-300 px-2 py-3 flex flex-wrap gap-2 justify-center items-center">
-                    <button
-                      onClick={() => openView(id)}
-                      title="Visualizar"
-                      className="flex items-center justify-center p-2 rounded shadow outline-none bg-sky-100 text-sky-700 hover:bg-sky-200 focus:ring-2 focus:ring-sky-300 transition w-auto min-w-[36px]"
-                      aria-label="Visualizar"
-                      type="button"
-                    >
-                      <Eye size={20} />
-                    </button>
-                    <button
-                      onClick={() => openEdit(id)}
-                      title="Editar"
-                      className="flex items-center justify-center p-2 rounded shadow outline-none bg-yellow-100/60 text-yellow-700 hover:bg-yellow-200 focus:ring-2 focus:ring-yellow-300 transition w-auto min-w-[36px]"
-                      aria-label="Editar"
-                      type="button"
-                    >
-                      <Pencil size={20} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(id)}
-                      title="Excluir"
-                      className="flex items-center justify-center p-2 rounded shadow outline-none bg-red-100 text-red-700 hover:bg-red-200 focus:ring-2 focus:ring-red-300 transition w-auto min-w-[36px]"
-                      aria-label="Excluir"
-                      type="button"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="flex justify-center mt-4 gap-2">
-            <button
-              onClick={() => setPagina(pagina - 1)}
-              disabled={pagina === 1}
-              className="px-3 py-1 bg-gray-100 flex justify-center text-center rounded hover:bg-gray-200/80 disabled:opacity-50"
-            >
-              <ArrowLeft size={20} />
-              Anterior
-            </button>
-            <span>
-              Página {pagina} de {totalPaginas}
-            </span>
-            <button
-              onClick={() => setPagina(pagina + 1)}
-              disabled={pagina === totalPaginas}
-              className="px-3 py-1 bg-gray-100 flex justify-center text-center rounded hover:bg-gray-200/80 disabled:opacity-50"
-            >
-              Próxima
-              <ArrowRight size={20} />
-            </button>
-          </div>
-        </>
+        <RegistroTable
+          registros={registrosPaginaAtual}
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          onPageChange={handlePageChange}
+          onView={openView}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+          formatDate={formatDate}
+        />
       )}
 
       {/* Modal de visualização */}
@@ -675,3 +568,254 @@ export default function ConsultaConhecimento() {
     </div>
   );
 }
+
+type FilterBarProps = {
+  filters: Filters;
+  carregando: boolean;
+  onBuscar: (filters: Filters) => void;
+  onReset: () => void;
+};
+
+const FilterBar = memo(function FilterBar({ filters, carregando, onBuscar, onReset }: FilterBarProps) {
+  const [localFilters, setLocalFilters] = useState<Filters>(filters);
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  const updateField = useCallback((field: keyof Filters, value: string) => {
+    setLocalFilters((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleSubmit = useCallback((event?: React.FormEvent) => {
+    if (event) event.preventDefault();
+    onBuscar(localFilters);
+  }, [localFilters, onBuscar]);
+
+  const handleReset = useCallback(() => {
+    setLocalFilters({ ...DEFAULT_FILTERS });
+    onReset();
+  }, [onReset]);
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 mb-6 sm:flex-row sm:gap-4">
+      <input
+        type="text"
+        placeholder="Nome"
+        value={localFilters.nome}
+        onChange={(e) => updateField("nome", e.target.value)}
+        className="border rounded px-3 py-2 flex-1 min-w-0 outline-none focus:ring-1 focus:ring-emerald-500"
+      />
+      <input
+        type="date"
+        value={localFilters.data}
+        onChange={(e) => updateField("data", e.target.value)}
+        className="border rounded px-3 py-2 flex-1 min-w-0 outline-none focus:ring-1 focus:ring-emerald-500"
+      />
+      <select
+        value={localFilters.tipo}
+        onChange={(e) => updateField("tipo", e.target.value)}
+        className="border rounded px-3 py-2 flex-1 min-w-0 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+      >
+        <option value="">Todos os Tipos</option>
+        <option value="0">Tutorial</option>
+        <option value="1">POP</option>
+      </select>
+      <select
+        value={localFilters.categoria}
+        onChange={(e) => updateField("categoria", e.target.value)}
+        className="border rounded px-3 py-2 flex-1 min-w-0 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+      >
+        <option value="">Todas as Categorias</option>
+        {KNOWLEDGE_CATEGORIES.map((category) => (
+          <option key={category} value={category}>
+            {category}
+          </option>
+        ))}
+      </select>
+      <div className="flex gap-2">
+        <div className="flex flex-row gap-2 justify-center w-full sm:w-auto">
+          <button
+            type="submit"
+            disabled={carregando}
+            className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-primary text-emerald-800 border font-medium rounded-md shadow hover:bg-emerald-500/15 transition disabled:opacity-50"
+          >
+            <Search size={16} />
+            {carregando ? "Buscando..." : "Buscar"}
+          </button>
+
+          <button
+            onClick={handleReset}
+            disabled={carregando}
+            className="inline-flex items-center justify-center gap-2 px-6 py-2 bg-white-200 text-red-800 border font-medium rounded-md shadow hover:bg-red-400/15 transition disabled:opacity-50"
+            type="button"
+          >
+            <Trash2 size={16} />
+            Limpar
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+});
+
+FilterBar.displayName = "FilterBar";
+
+type RegistroTableProps = {
+  registros: Registro[];
+  pagina: number;
+  totalPaginas: number;
+  onPageChange: (page: number) => void;
+  onView: (id: number) => void;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+  formatDate: (raw: string | number | null) => string;
+};
+
+const RegistroTable = memo(function RegistroTable({
+  registros,
+  pagina,
+  totalPaginas,
+  onPageChange,
+  onView,
+  onEdit,
+  onDelete,
+  formatDate
+}: RegistroTableProps) {
+  const handlePrev = useCallback(() => onPageChange(pagina - 1), [onPageChange, pagina]);
+  const handleNext = useCallback(() => onPageChange(pagina + 1), [onPageChange, pagina]);
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-3xl border border-gray-100 shadow-sm">
+        <table className="w-full text-left text-sm">
+          <colgroup>
+            <col style={{ width: "34%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "14%" }} />
+          </colgroup>
+          <thead className="bg-emerald-50/80 text-emerald-900 text-xs uppercase tracking-wide">
+            <tr>
+              <th className="px-4 py-3">Nome</th>
+              <th className="px-4 py-3">Categoria</th>
+              <th className="px-4 py-3">Data de Publicação</th>
+              <th className="px-4 py-3">Tipo</th>
+              <th className="px-4 py-3 text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {registros.map((registro) => (
+              <RegistroRow
+                key={registro.id}
+                registro={registro}
+                onView={onView}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                formatDate={formatDate}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-center mt-4 gap-2">
+        <button
+          onClick={handlePrev}
+          disabled={pagina === 1 || totalPaginas === 0}
+          className="px-3 py-1 bg-gray-100 flex justify-center text-center rounded hover:bg-gray-200/80 disabled:opacity-50"
+        >
+          <ArrowLeft size={20} />
+          Anterior
+        </button>
+        <span>
+          Página {pagina} de {totalPaginas}
+        </span>
+        <button
+          onClick={handleNext}
+          disabled={pagina === totalPaginas || totalPaginas === 0}
+          className="px-3 py-1 bg-gray-100 flex justify-center text-center rounded hover:bg-gray-200/80 disabled:opacity-50"
+        >
+          Próxima
+          <ArrowRight size={20} />
+        </button>
+      </div>
+    </>
+  );
+});
+
+RegistroTable.displayName = "RegistroTable";
+
+type RegistroRowProps = {
+  registro: Registro;
+  onView: (id: number) => void;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+  formatDate: (raw: string | number | null) => string;
+};
+
+const RegistroRow = memo(function RegistroRow({ registro, onView, onEdit, onDelete, formatDate }: RegistroRowProps) {
+  const { id, nome, dt_publicacao, tipo, categoria } = registro;
+
+  return (
+    <tr className="border-t border-gray-100/80 text-gray-700 hover:bg-gray-50/70">
+      <td className="px-4 py-4">
+        <div className="font-semibold text-gray-900">{nome}</div>
+        <p className="text-xs text-gray-500 mt-1">ID #{id}</p>
+      </td>
+      <td className="px-4 py-4">
+        {categoria ? (
+          <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+            {categoria}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">Sem categoria</span>
+        )}
+      </td>
+      <td className="px-4 py-4 text-sm">{formatDate(dt_publicacao ?? null)}</td>
+      <td className="px-4 py-4">
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+            tipo === 0 ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {tipo === 0 ? "Tutorial" : "POP"}
+        </span>
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex flex-wrap gap-2 justify-center">
+          <button
+            onClick={() => onView(id)}
+            title="Visualizar"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sky-600 shadow ring-1 ring-sky-100 transition hover:bg-sky-50"
+            aria-label="Visualizar"
+            type="button"
+          >
+            <Eye size={18} />
+          </button>
+          <button
+            onClick={() => onEdit(id)}
+            title="Editar"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-amber-600 shadow ring-1 ring-amber-100 transition hover:bg-amber-50"
+            aria-label="Editar"
+            type="button"
+          >
+            <Pencil size={18} />
+          </button>
+          <button
+            onClick={() => onDelete(id)}
+            title="Excluir"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-red-100 transition hover:bg-red-50"
+            aria-label="Excluir"
+            type="button"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+RegistroRow.displayName = "RegistroRow";
