@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Loader2, RefreshCw, Search, Plus } from "lucid
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PdfCard } from "./pdf-card"
+import { KNOWLEDGE_CATEGORIES } from "@/lib/constants"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,8 @@ type ConhecimentoItem = {
   anexo_id?: number | null
   nome_arquivo?: string | null
   google_drive_link?: string | null
+  link?: string | null
+  categoria: string
 }
 
 const TYPE_LABEL: Record<ConhecimentoItem["tipo"], "Tutorial" | "POP"> = {
@@ -38,6 +41,7 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
   const [searchValue, setSearchValue] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [categoryFilter, setCategoryFilter] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [reloadIndex, setReloadIndex] = useState(0)
   const [selectedItem, setSelectedItem] = useState<ConhecimentoItem | null>(null)
@@ -60,6 +64,9 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
         if (debouncedSearch) {
           params.append("nome", debouncedSearch)
         }
+        if (categoryFilter) {
+          params.append("categoria", categoryFilter)
+        }
         const query = params.toString()
         const response = await fetch(`/api/conhecimento${query ? `?${query}` : ""}`, {
           signal: controller.signal,
@@ -80,7 +87,7 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
 
     loadKnowledge()
     return () => controller.abort()
-  }, [debouncedSearch, reloadIndex])
+  }, [debouncedSearch, categoryFilter, reloadIndex])
 
   const { tutorials, pops } = useMemo(() => {
     const tutorialsList: ConhecimentoItem[] = []
@@ -98,7 +105,12 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
   }
 
   const handleOpenViewer = (item: ConhecimentoItem, inlineUrl: string, downloadHref: string) => {
-    if (!inlineUrl) return
+    if (!inlineUrl) {
+      if (item.link) {
+        window.open(item.link, "_blank", "noopener,noreferrer")
+      }
+      return
+    }
     setSelectedItem(item)
     setViewerUrl(inlineUrl)
     setDownloadUrl(downloadHref)
@@ -132,7 +144,7 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
             : item.google_drive_link || ""
           const downloadHref = item.anexo_id
             ? `/api/conhecimento/anexos/${item.anexo_id}`
-            : item.google_drive_link || ""
+            : item.google_drive_link || item.link || ""
           return (
             <PdfCard
               key={item.id}
@@ -140,6 +152,7 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
               type={TYPE_LABEL[item.tipo]}
               previewUrl={buildPreviewUrl(inlineUrl)}
               onClick={() => handleOpenViewer(item, inlineUrl, downloadHref)}
+              category={item.categoria}
             />
           )
         })}
@@ -168,6 +181,18 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
             />
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:w-56"
+          >
+            <option value="">Todas as categorias</option>
+            {KNOWLEDGE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
           <Button
             variant="outline"
             className="gap-2"
@@ -247,7 +272,9 @@ export function Dashboard({ headerPrefix }: DashboardProps) {
           <DialogHeader>
             <DialogTitle>{selectedItem?.nome || "Documento"}</DialogTitle>
             <DialogDescription>
-              {selectedItem ? `${TYPE_LABEL[selectedItem.tipo]} · ${selectedItem.nome_arquivo || "PDF"}` : "Visualização completa do documento"}
+              {selectedItem
+                ? `${TYPE_LABEL[selectedItem.tipo]} · ${selectedItem.categoria}`
+                : "Visualização completa do documento"}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-hidden rounded-lg border bg-muted">

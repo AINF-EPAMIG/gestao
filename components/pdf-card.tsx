@@ -6,11 +6,12 @@ import { Card, CardContent } from "@/components/ui/card"
 interface PdfCardProps {
   title: string
   type: "Tutorial" | "POP"
+  category?: string
   previewUrl?: string
   onClick?: () => void
 }
 
-export function PdfCard({ title, type, previewUrl, onClick }: PdfCardProps) {
+export function PdfCard({ title, type, category, previewUrl, onClick }: PdfCardProps) {
   return (
     <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={onClick}>
       {/* PDF Preview Area */}
@@ -51,7 +52,9 @@ export function PdfCard({ title, type, previewUrl, onClick }: PdfCardProps) {
       {/* Card Footer */}
       <CardContent className="p-3 text-center">
         <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-        <p className="text-xs text-muted-foreground">{type}</p>
+        <p className="text-xs text-muted-foreground">
+          {category ? `${type} · ${category}` : type}
+        </p>
       </CardContent>
     </Card>
   )

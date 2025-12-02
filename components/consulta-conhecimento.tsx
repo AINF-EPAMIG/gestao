@@ -19,6 +19,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { KNOWLEDGE_CATEGORIES } from "@/lib/constants";
 
 interface Registro {
   id: number;
@@ -31,12 +32,15 @@ interface Registro {
   dt_modificacao?: string | number;
   email_modificador?: string;
   anexo_id?: number;
+  link?: string | null;
+  categoria?: string | null;
 }
 
 export default function ConsultaConhecimento() {
   const [nome, setNome] = useState("");
   const [data, setData] = useState("");
   const [tipo, setTipo] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -49,7 +53,9 @@ export default function ConsultaConhecimento() {
   // edit form state
   const [editNome, setEditNome] = useState("");
   const [editTipo, setEditTipo] = useState<string | number>("");
+  const [editCategoria, setEditCategoria] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
+  const [editLink, setEditLink] = useState("");
   const [editFileData, setEditFileData] = useState<{
     base64: string;
     name: string;
@@ -70,6 +76,7 @@ export default function ConsultaConhecimento() {
     setNome("");
     setData("");
     setTipo("");
+    setCategoria("");
     buscarRegistros();
   }
 
@@ -116,6 +123,7 @@ export default function ConsultaConhecimento() {
     if (nome) queryParams.append("nome", nome);
     if (data) queryParams.append("data", data);
     if (tipo) queryParams.append("tipo", tipo);
+    if (categoria) queryParams.append("categoria", categoria);
     buscarRegistros(queryParams);
   }
 
@@ -157,6 +165,8 @@ export default function ConsultaConhecimento() {
       setEditNome(json.nome || "");
       setEditTipo(json.tipo ?? "");
       setEditDescricao(json.descricao || "");
+      setEditLink(json.link || "");
+      setEditCategoria(json.categoria || "");
       // Reseta arquivo e input file
       setEditFileData(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -201,6 +211,10 @@ export default function ConsultaConhecimento() {
   // Salva edição via API PUT
   async function handleSaveEdit() {
     if (!selected) return;
+    if (!editCategoria) {
+      setModalError("Selecione uma categoria.");
+      return;
+    }
     setActionLoading(true);
     setModalError("");
     try {
@@ -214,6 +228,8 @@ export default function ConsultaConhecimento() {
         nome: string;
         tipo: number;
         descricao: string;
+        categoria: string;
+        link?: string | null;
         anexo?: AnexoPayload;
       };
 
@@ -221,6 +237,8 @@ export default function ConsultaConhecimento() {
         nome: editNome,
         tipo: typeof editTipo === "string" ? Number(editTipo) : (editTipo as number),
         descricao: editDescricao,
+        categoria: editCategoria,
+        link: editLink.trim() ? editLink.trim() : null,
       };
       if (editFileData) {
         body.anexo = {
@@ -251,6 +269,8 @@ export default function ConsultaConhecimento() {
         setEditOpen(false);
         setErro("");
         setModalError("");
+        setEditLink("");
+        setEditCategoria("");
         buscarRegistros();
       }
     } catch (err) {
@@ -303,6 +323,18 @@ export default function ConsultaConhecimento() {
           <option value="0">Tutorial</option>
           <option value="1">POP</option>
         </select>
+        <select
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+          className="border rounded px-3 py-2 flex-1 min-w-0 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+        >
+          <option value="">Todas as Categorias</option>
+          {KNOWLEDGE_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
         <div className="flex gap-2">
           <div className="flex flex-row gap-2 justify-center w-full sm:w-auto">
             <button
@@ -335,27 +367,30 @@ export default function ConsultaConhecimento() {
         <>
           <table className="w-full border-collapse border-gray-300 text-left">
             <colgroup>
-              <col style={{ width: "42%" }} />
-              <col style={{ width: "22%" }} />
+              <col style={{ width: "34%" }} />
+              <col style={{ width: "18%" }} />
               <col style={{ width: "16%" }} />
-              <col style={{ width: "20%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "18%" }} />
             </colgroup>
             <thead>
               <tr>
                 <th className="border border-gray-300 px-2 py-2 break-words">Nome</th>
                 <th className="border border-gray-300 px-2 py-2 break-words">Data de Publicação</th>
                 <th className="border border-gray-300 px-2 py-2 break-words">Tipo</th>
+                <th className="border border-gray-300 px-2 py-2 break-words">Categoria</th>
                 <th className="border border-gray-300 px-2 py-2 break-words">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {registrosPaginaAtual.map(({ id, nome, dt_publicacao, tipo }) => (
+              {registrosPaginaAtual.map(({ id, nome, dt_publicacao, tipo, categoria: registroCategoria }) => (
                 <tr key={id} className="align-top hover:bg-gray-100/50">
                   <td className="border border-gray-300 px-2 py-3 break-words">{nome}</td>
                   <td className="border border-gray-300 px-2 py-3 break-words">{formatDate(dt_publicacao)}</td>
                   <td className="border border-gray-300 px-2 py-3 break-words">
                     {tipo === 0 ? "Tutorial" : "POP"}
                   </td>
+                  <td className="border border-gray-300 px-2 py-3 break-words">{registroCategoria || "-"}</td>
                   <td className="border border-gray-300 px-2 py-3 flex flex-wrap gap-2 justify-center items-center">
                     <button
                       onClick={() => openView(id)}
@@ -434,6 +469,10 @@ export default function ConsultaConhecimento() {
               <div className="mt-1">{selected?.tipo === 0 ? "Tutorial" : "POP"}</div>
             </div>
             <div>
+              <div className="font-medium">Categoria</div>
+              <div className="mt-1">{selected?.categoria || "-"}</div>
+            </div>
+            <div>
               <div className="font-medium">Autor</div>
               <div className="mt-1">
                 {selected?.nome_autor || "-"} ({selected?.email_autor || "-"})
@@ -443,12 +482,27 @@ export default function ConsultaConhecimento() {
               <div className="font-medium">Data de publicação</div>
               <div className="mt-1">{formatDate(selected?.dt_publicacao ?? null)}</div>
             </div>
-            <div className="sm:col-span-2">
+              <div className="sm:col-span-2">
               <div className="font-medium">Descrição</div>
               <div className="mt-1 p-3 border rounded bg-gray-50 min-h-[200px] whitespace-pre-wrap">
                 {selected?.descricao || "-"}
               </div>
             </div>
+              <div className="sm:col-span-2">
+                <div className="font-medium">Link associado</div>
+                {selected?.link ? (
+                  <a
+                    href={selected.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center text-emerald-700 underline break-all"
+                  >
+                    {selected.link}
+                  </a>
+                ) : (
+                  <div className="mt-1 text-gray-500">Nenhum link informado.</div>
+                )}
+              </div>
           </div>
 
           {selected?.anexo_id ? (
@@ -509,6 +563,22 @@ export default function ConsultaConhecimento() {
               </select>
             </label>
 
+            <label className="block">
+              <div className="text-sm font-medium">Categoria</div>
+              <select
+                value={editCategoria}
+                onChange={(e) => setEditCategoria(e.target.value)}
+                className="border rounded w-full px-3 py-2 outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Selecione</option>
+                {KNOWLEDGE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div className="sm:col-span-2">
               <div className="text-sm font-medium">Descrição</div>
               <textarea
@@ -517,6 +587,17 @@ export default function ConsultaConhecimento() {
                 className="border rounded w-full px-3 py-3 mt-1 min-h-[240px] resize-none outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
+
+            <label className="block sm:col-span-2">
+              <div className="text-sm font-medium">Link de apoio (opcional)</div>
+              <input
+                value={editLink}
+                onChange={(e) => setEditLink(e.target.value)}
+                type="url"
+                placeholder="https://..."
+                className="border rounded w-full px-3 py-2 mt-1 outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </label>
 
             <div className="sm:col-span-2">
               <div className="text-sm font-medium">Novo arquivo</div>
@@ -573,6 +654,8 @@ export default function ConsultaConhecimento() {
                   setEditFileData(null);
                   if (fileInputRef.current) fileInputRef.current.value = "";
                   setModalError("");
+                  setEditLink("");
+                  setEditCategoria("");
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
               >

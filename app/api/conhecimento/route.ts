@@ -4,6 +4,7 @@ import { executeQueryAsti } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth"; 
 import { uploadFileToDrive } from "@/lib/google-drive";
+import { KNOWLEDGE_CATEGORIES } from "@/lib/constants";
 
 function extractBase64Payload(raw: string | undefined | null) {
   if (!raw) return null;
@@ -23,12 +24,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  const linkValue = typeof body.link === "string" && body.link.trim() !== "" ? body.link.trim() : null;
+  const categoriaValue = typeof body.categoria === "string" ? body.categoria.trim() : "";
 
   // Validação simples dos campos enviados pelo frontend
   if (
     !body.nome ||
     body.tipo == null || // verifica se tipo está definido e não é null
     (Number(body.tipo) !== 0 && Number(body.tipo) !== 1) ||
+    !categoriaValue ||
+    !KNOWLEDGE_CATEGORIES.includes(categoriaValue as (typeof KNOWLEDGE_CATEGORIES)[number]) ||
     !body.descricao
   ) {
     return NextResponse.json({ erro: "Campos obrigatórios ausentes ou inválidos" }, { status: 400 });
@@ -42,15 +47,17 @@ export async function POST(req: NextRequest) {
   try {
     // 1) Criar registro de conhecimento (sem informar anexo_id). Se houver anexo, atualizamos depois.
     const insertConhecimentoQuery = `
-      INSERT INTO conhecimento (nome, tipo, nome_autor, email_autor, dt_publicacao, descricao)
-      VALUES (?, ?, ?, ?, NOW(), ?)
+      INSERT INTO conhecimento (nome, tipo, nome_autor, email_autor, dt_publicacao, categoria, descricao, link)
+      VALUES (?, ?, ?, ?, NOW(), ?, ?, ?)
     `;
     const insertConhecimentoValues = [
       body.nome,
       Number(body.tipo),
       session.user?.name || "",
       session.user?.email || "",
-      body.descricao
+      categoriaValue,
+      body.descricao,
+      linkValue
     ];
 
     const insertResult = await executeQueryAsti({ query: insertConhecimentoQuery, values: insertConhecimentoValues }) as
@@ -154,6 +161,7 @@ export async function GET(req: NextRequest) {
     const nome = searchParams.get("nome") || "";
     const data = searchParams.get("data") || "";
     const tipoStr = searchParams.get("tipo"); // recebe string "0" ou "1" ou null
+    const categoria = searchParams.get("categoria");
 
     let query = `
       SELECT 
@@ -162,6 +170,8 @@ export async function GET(req: NextRequest) {
         c.dt_publicacao,
         c.tipo,
         c.descricao,
+        c.categoria,
+        c.link,
         c.anexo_id,
         a.nome_arquivo,
         a.google_drive_link
@@ -181,6 +191,11 @@ export async function GET(req: NextRequest) {
     if (tipoStr !== null && (tipoStr === "0" || tipoStr === "1")) {
       query += ` AND c.tipo = ?`;
       values.push(tipoStr);
+    }
+
+    if (categoria && KNOWLEDGE_CATEGORIES.includes(categoria as (typeof KNOWLEDGE_CATEGORIES)[number])) {
+      query += ` AND c.categoria = ?`;
+      values.push(categoria);
     }
 
     // ordenar alfabeticamente pelo nome

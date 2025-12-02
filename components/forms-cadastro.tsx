@@ -1,14 +1,17 @@
 "use client";
 import { useState, useRef } from "react";
-import { Check, FolderOpen, X } from "lucide-react";
+import { Check, CheckCircle, FolderOpen, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { KNOWLEDGE_CATEGORIES } from "@/lib/constants";
 
 export default function FormsCadastro() {
   const router = useRouter();
   const [form, setForm] = useState({
     nome: "",
     tipo: null as number | null,
-    descricao: ""
+    categoria: "",
+    descricao: "",
+    link: ""
   });
   const [mensagem, setMensagem] = useState("");
   const [fileData, setFileData] = useState<{
@@ -20,12 +23,12 @@ export default function FormsCadastro() {
   const [fileError, setFileError] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-  const { name, value } = e.target;
-  setForm({
-    ...form,
-    [name]: name === "tipo" ? (value === "" ? null : Number(value)) : value
-  });
-}
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name === "tipo" ? (value === "" ? null : Number(value)) : value
+    });
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files && e.target.files[0];
@@ -86,11 +89,18 @@ export default function FormsCadastro() {
     type Payload = {
       nome: string;
       tipo: number | null;
+      categoria: string;
       descricao: string;
+      link?: string;
       anexo?: AnexoPayload;
     };
 
     const payload: Payload = { ...form };
+    if (payload.link) {
+      const trimmedLink = payload.link.trim();
+      if (trimmedLink) payload.link = trimmedLink;
+      else delete payload.link;
+    }
     if (fileData) {
       payload.anexo = {
         nome_arquivo: fileData.name,
@@ -108,7 +118,7 @@ export default function FormsCadastro() {
     const result = await resp.json();
     if (resp.ok) {
       setMensagem(result.mensagem);
-      setForm({ nome: "", tipo: null, descricao: "" });
+      setForm({ nome: "", tipo: null, categoria: "", descricao: "", link: "" });
       setFileData(null);
     } else {
       setMensagem(result.erro || "Falha ao cadastrar.");
@@ -116,131 +126,181 @@ export default function FormsCadastro() {
   }
 
   return (
-    <div className="flex justify-center p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-5 border border-gray-100 rounded-xl shadow-md p-6">
-        <h2 className="text-2xl font-semibold mb-4">Formulário de Cadastro</h2>
-
-        <div>
-          <label htmlFor="nome" className="block text-sm font-medium mb-1">
-            Nome do Material
-          </label>
-          <input
-            id="nome"
-            name="nome"
-            type="text"
-            value={form.nome}
-            onChange={handleChange}
-            placeholder="Digite o nome"
-            required
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+    <div className="flex justify-center px-4 py-8">
+      <div className="w-full max-w-5xl space-y-6">
+        <div className="rounded-3xl border border-emerald-100 bg-white p-6 text-center shadow-sm">
+          <p className="mt-2 text-3xl font-semibold leading-tight text-gray-900">Área de conhecimento</p>
+          <p className="mt-3 text-sm text-gray-500">
+            Preencha os campos abaixo e anexe o PDF final. Assim que salvar, o documento já fica disponível para consulta e download no dashboard.
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="tipo" className="block text-sm font-medium mb-1">
-            Tipo do Material
-          </label>
-          <select
-            id="tipo"
-            name="tipo"
-            value={form.tipo === null ? "" : form.tipo}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-          >
-            <option value="">Selecione o tipo</option>
-            <option value={0}>Tutorial</option>
-            <option value={1}>Pop</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="descricao" className="block text-sm font-medium mb-1">
-            Descrição
-          </label>
-          <textarea
-            id="descricao"
-            name="descricao"
-            value={form.descricao}
-            onChange={handleChange}
-            placeholder="Descrição"
-            required
-            rows={4}
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
-          />
-        </div>
-
-      <div>
-            <label className="block text-sm font-medium mb-1">Arquivo</label>
-            <div className="w-full flex items-center px-4 py-2 border rounded-md cursor-pointer focus-within:ring-2 focus-within:ring-emerald-500 bg-white">
-      <label htmlFor="arquivo" className="flex items-center w-full cursor-pointer relative">
-        <FolderOpen className="w-5 h-5 text-emerald-800 mr-2" />
-        <span className="text-sm text-gray-700 flex-1">
-          {fileData ? `Arquivo selecionado: ${fileData.name}` : "Escolher arquivo"}
-        </span>
-        {fileData && (
-          <button
-            type="button"
-            onClick={(e) => clearFile(e)}
-            aria-label="Remover arquivo"
-            className="ml-2 text-red-600 bg-red-100 rounded-full w-6 h-6 flex items-center justify-center text-xs"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          id="arquivo"
-          name="arquivo"
-          accept="application/pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-      </label>
-    </div>
-    {fileError && <div className="text-sm text-red-600 mt-2">{fileError}</div>}
-        </div>
-
-
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 px-6 py-2 bg-white-200 text-emerald-800 border font-medium rounded-md shadow hover:bg-emerald-500/15  transition "
-          >
-            <Check className="w-4 h-4" />
-            Cadastrar
-          </button>
-        </div>
-
-        
-
-{mensagem && (
-  <>
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-20 flex justify-center items-center z-50" 
-      style={{ marginTop: 0, paddingTop: 0 }}
-    >
-      <div className="bg-white p-6 rounded-md shadow-lg max-w-xs w-full justify-center items-center text-center">
-        <p className="text-sm text-gray-900">{mensagem}</p>
-        <button
-          onClick={() => {
-            setMensagem("");
-            if (mensagem === "Tutorial cadastrado!") {
-              router.push("/asti/area-conhecimento/consultar");
-            }
-          }}
-          className="mt-4 px-6 py-2 bg-white-300 text-red-600 rounded-sm border border-gray-200 shadow-md transition-transform duration-200 hover:bg-red-500 hover:text-white"
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-3xl border border-gray-100 bg-white/95 p-6 shadow-lg md:p-8 space-y-6"
         >
-          Fechar
-        </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label htmlFor="nome" className="text-sm font-medium text-gray-700">
+                Nome do Material
+              </label>
+              <input
+                id="nome"
+                name="nome"
+                type="text"
+                value={form.nome}
+                onChange={handleChange}
+                placeholder="Digite o nome"
+                required
+                className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="tipo" className="text-sm font-medium text-gray-700">
+                Tipo do Material
+              </label>
+              <select
+                id="tipo"
+                name="tipo"
+                value={form.tipo === null ? "" : form.tipo}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="">Selecione o tipo</option>
+                <option value={0}>Tutorial</option>
+                <option value={1}>Pop</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="categoria" className="text-sm font-medium text-gray-700">
+                Categoria
+              </label>
+              <select
+                id="categoria"
+                name="categoria"
+                value={form.categoria}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="">Selecione a categoria</option>
+                {KNOWLEDGE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="link" className="text-sm font-medium text-gray-700">
+                Link de apoio (opcional)
+              </label>
+              <input
+                id="link"
+                name="link"
+                type="url"
+                value={form.link}
+                onChange={handleChange}
+                placeholder="https://..."
+                className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="descricao" className="text-sm font-medium text-gray-700">
+              Descrição
+            </label>
+            <textarea
+              id="descricao"
+              name="descricao"
+              value={form.descricao}
+              onChange={handleChange}
+              placeholder="Explique do que trata esse material"
+              required
+              rows={5}
+              className="w-full rounded-2xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <p className="text-xs text-gray-400">Descreva o conteúdo para facilitar buscas futuras.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Anexo em PDF</label>
+            <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-4">
+              <label htmlFor="arquivo" className="flex flex-col items-center justify-center gap-2 text-center cursor-pointer">
+                {fileData ? (
+                  <CheckCircle className="w-9 h-9 text-emerald-600" />
+                ) : (
+                  <FolderOpen className="w-8 h-8 text-emerald-700" />
+                )}
+                <div className="text-sm text-gray-700">
+                  {fileData ? (
+                    <span className="font-medium">{fileData.name}</span>
+                  ) : (
+                    <>
+                      Arraste e solte ou <span className="text-emerald-700 underline">clique para selecionar</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">Somente arquivos PDF são aceitos.</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  id="arquivo"
+                  name="arquivo"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+              {fileData && (
+                <button
+                  type="button"
+                  onClick={(e) => clearFile(e)}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600"
+                >
+                  <X className="w-3 h-3" /> Remover arquivo
+                </button>
+              )}
+            </div>
+            {fileError && <p className="text-sm text-red-600">{fileError}</p>}
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs text-gray-500">Ao cadastrar você confirma que o conteúdo segue o padrão ASTI.</p>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700"
+            >
+              <Check className="w-4 h-4" />
+              Cadastrar material
+            </button>
+          </div>
+
+          {mensagem && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-2xl">
+                <p className="text-sm text-gray-900">{mensagem}</p>
+                <button
+                  onClick={() => {
+                    setMensagem("");
+                    if (mensagem === "Tutorial cadastrado!") {
+                      router.push("/asti/area-conhecimento/consultar");
+                    }
+                  }}
+                  className="mt-4 inline-flex items-center justify-center rounded-xl border border-red-200 px-6 py-2 text-sm font-medium text-red-600 transition hover:bg-red-500 hover:text-white"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
       </div>
-    </div>
-  </>
-)}
-
-
-      </form>
     </div>
   );
 }

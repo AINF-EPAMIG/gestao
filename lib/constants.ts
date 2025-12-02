@@ -10,6 +10,16 @@ export const SYSTEM_CONFIG = {
   MAX_COMPRESSED_SIZE: 10 * 1024 * 1024, // 10MB
 } as const;
 
+export const KNOWLEDGE_CATEGORIES = [
+  "Sistemas e Aplicações",
+  "Processos Internos",
+  "Infraestrutura",
+  "Políticas e POPs",
+  "Ferramentas e Guias"
+] as const;
+
+export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number];
+
 // Função para calcular o limite mínimo de tarefas baseado no percentual
 // Exemplo: com 100 tarefas e 10%, retorna 10 tarefas mínimas
 export function getMinimumTasksThreshold(totalTasks: number, percentage: number = SYSTEM_CONFIG.RADAR_CHART_MIN_PERCENTAGE): number {

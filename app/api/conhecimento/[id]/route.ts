@@ -4,6 +4,7 @@ import { executeQueryAsti } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { deleteFileFromDrive, uploadFileToDrive } from "@/lib/google-drive";
+import { KNOWLEDGE_CATEGORIES } from "@/lib/constants";
 
 function extractBase64Payload(raw: string | undefined | null) {
   if (!raw) return null;
@@ -41,18 +42,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<Record
 
     // aceita tipo vindo como string "0"/"1" ou como número
     const tipo = Number(body.tipo);
-    if (!body.nome || isNaN(tipo) || (tipo !== 0 && tipo !== 1) || !body.descricao) {
+    const categoriaValue = typeof body.categoria === "string" ? body.categoria.trim() : "";
+    if (
+      !body.nome ||
+      isNaN(tipo) ||
+      (tipo !== 0 && tipo !== 1) ||
+      !body.descricao ||
+      !categoriaValue ||
+      !KNOWLEDGE_CATEGORIES.includes(categoriaValue as (typeof KNOWLEDGE_CATEGORIES)[number])
+    ) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes ou inválidos" }, { status: 400 });
     }
+
+    const linkValue = typeof body.link === "string" && body.link.trim() !== "" ? body.link.trim() : null;
 
     // Atualiza apenas campos principais primeiro. Fazemos a atualização das colunas
     // de modificação em uma query separada para evitar falha caso tais colunas não existam.
     const queryMain = `
       UPDATE conhecimento
-      SET nome = ?, tipo = ?, descricao = ?
+      SET nome = ?, tipo = ?, descricao = ?, categoria = ?, link = ?
       WHERE id = ?
     `;
-    const valuesMain = [body.nome, tipo, body.descricao, id];
+    const valuesMain = [body.nome, tipo, body.descricao, categoriaValue, linkValue, id];
     await executeQueryAsti({ query: queryMain, values: valuesMain });
 
     // Se veio anexo no body, apagar anexo antigo, inserir novo anexo e atualizar o conhecimento.anexo_id
