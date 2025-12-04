@@ -50,3 +50,46 @@ export interface AutorizacaoUsuario {
   setor: string;
   permissoes: PermissoesUsuario;
 } 
+
+export type TvEntryKind = "news" | "media";
+
+export interface TvNews {
+  id: number;
+  title: string;
+  message: string;
+  publishedAt: string;
+  createdBy: string | null;
+}
+
+export interface TvContent {
+  id: number;
+  title: string;
+  description: string;
+  imageDataUrl: string | null;
+  imageMimeType: string | null;
+  imageName: string | null;
+  publishedAt: string;
+  createdBy: string | null;
+}
+
+export interface TvImagePayload {
+  base64: string;
+  mimeType: string;
+  fileName: string;
+  size: number;
+}
+
+export interface TvNewsPayload {
+  title: string;
+  message: string;
+  createdByName?: string | null;
+  createdByEmail?: string | null;
+}
+
+export interface TvContentPayload {
+  title: string;
+  description: string;
+  createdByName?: string | null;
+  createdByEmail?: string | null;
+  image: TvImagePayload;
+}

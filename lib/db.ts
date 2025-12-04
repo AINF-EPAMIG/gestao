@@ -1,5 +1,7 @@
 import mysql from 'mysql2/promise';
 
+type QueryValue = string | number | null | Buffer;
+
 const trimEnv = (value?: string | null) => value?.trim() ?? '';
 
 const mainDatabase = trimEnv(process.env.DB_DATABASE);
@@ -80,7 +82,7 @@ export async function executeQuery<T>({
   values 
 }: { 
   query: string; 
-  values?: Array<string | number | null> 
+  values?: QueryValue[] 
 }): Promise<T> {
   try {
     const [results] = await db.execute(query, values);
@@ -97,7 +99,7 @@ export async function executeQueryFuncionarios<T>({
   values 
 }: { 
   query: string; 
-  values?: Array<string | number | null> 
+  values?: QueryValue[] 
 }): Promise<T> {
   try {
     const [results] = await dbFuncionarios.execute(query, values);
@@ -114,7 +116,7 @@ export async function executeQueryAtendimento<T>({
   values 
 }: { 
   query: string; 
-  values?: Array<string | number | null> 
+  values?: QueryValue[] 
 }): Promise<T> {
   try {
     const [results] = await dbAtendimento.execute(query, values);
@@ -131,7 +133,7 @@ export async function executeQueryAsti<T>({
   values 
 }: { 
   query: string; 
-  values?: Array<string | number | null>;
+  values?: QueryValue[];
 }): Promise<T> {
   try {
     const [results] = await dbAsti.execute(query, values);
