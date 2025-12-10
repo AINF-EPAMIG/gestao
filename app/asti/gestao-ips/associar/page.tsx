@@ -190,7 +190,7 @@ export default function AssociarIpPage() {
 				<div className="p-4 sm:p-6 lg:p-8">
 					<div className="mb-8 flex flex-col gap-2">
 						<Link
-							href="/asti/gestao-ips"
+							href="/asti/home"
 							className="inline-flex items-center text-gray-600 transition-colors hover:text-gray-900"
 							aria-label="Voltar para a página de gestão de IPs"
 						>

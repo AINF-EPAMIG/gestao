@@ -98,15 +98,15 @@ const modules: ModuleCard[] = [
       { label: "Consultar Projeto", href: "/asti/gestao-sistema/consultar", variant: "secondary" },
     ],
   },
-    {
-    title: "TV ASTI",
-    description: "Gerencia conteúdos exibidos na TV interna da ASTI.",
-    icon: Monitor,
-    actions: [
-      { label: "Cadastrar Conteúdo", href: "/asti/tv-asti/cadastro", variant: "primary" },
-      { label: "Consultar Conteúdo", href: "/asti/tv-asti/consulta", variant: "secondary" },
-    ],
-  },
+  //   {
+  //   title: "TV ASTI",
+  //   description: "Gerencia conteúdos exibidos na TV interna da ASTI.",
+  //   icon: Monitor,
+  //   actions: [
+  //     { label: "Cadastrar Conteúdo", href: "/asti/tv-asti/cadastro", variant: "primary" },
+  //     { label: "Consultar Conteúdo", href: "/asti/tv-asti/consulta", variant: "secondary" },
+  //   ],
+  // },
 ];
 
 function ModuleCard({ module }: { module: ModuleCard }) {

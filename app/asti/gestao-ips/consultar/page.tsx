@@ -641,7 +641,7 @@ export default function ConsultarIpsPage() {
         <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
-              href="/asti/gestao-ips"
+              href="/asti/home"
               className="inline-flex w-fit items-center gap-2 text-sm font-medium text-emerald-900 transition hover:text-emerald-700"
             >
               <ArrowLeft className="h-4 w-4" />

@@ -332,15 +332,16 @@ export default function ConsultarEstoquePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 overflow-x-hidden">
       <SidebarSistema />
 
-      <div className="px-4 py-8 lg:px-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <main className="flex-1 min-w-0 w-full min-h-screen flex flex-col">
+        <div className="px-4 py-8 lg:px-6">
+          <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
             <Link
-              href="/asti/controle-estoque"
+              href="/asti/home"
               className="inline-flex justify-center items-center hover:text-gray-700/80 transition-colors duration-200 w-10 h-10 p-2"
             >
               <ArrowLeft />
@@ -674,7 +675,8 @@ export default function ConsultarEstoquePage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+        </div>
+      </main>
 
       {/* Modal de Visualização */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
