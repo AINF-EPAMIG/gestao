@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { SidebarSistema } from "@/components/sidebar-sistema";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
@@ -67,7 +66,6 @@ const tabLabels: Record<TabType, { title: string; description: string }> = {
 };
 
 export default function CadastroEstoquePage() {
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>("equipamento");
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,20 +116,31 @@ export default function CadastroEstoquePage() {
     setIsSubmitting(true);
 
     try {
-      // Simulação de envio – substituir por chamada real à API futuramente
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const itemType = activeTab === "equipamento" ? "Equipamento" : "Periférico";
-      toast({
-        title: `${itemType} cadastrado`,
-        description: `"${formData.nome}" foi adicionado ao estoque.`
+      const response = await fetch('/api/controle-estoque/cadastrar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          tipo: activeTab,
+        }),
       });
 
-      setFeedback({ type: "success", message: `${itemType} cadastrado com sucesso!` });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.erro || 'Falha ao cadastrar item');
+      }
+
+      const data = await response.json();
+
+      const itemType = activeTab === "equipamento" ? "Equipamento" : "Periférico";
+
+      setFeedback({ type: "success", message: data.mensagem || `${itemType} cadastrado com sucesso!` });
       setFormData(initialFormData);
     } catch (err) {
       console.error(err);
-      setFeedback({ type: "error", message: "Falha ao cadastrar item. Tente novamente." });
+      setFeedback({ type: "error", message: err instanceof Error ? err.message : "Falha ao cadastrar item. Tente novamente." });
     } finally {
       setIsSubmitting(false);
     }
