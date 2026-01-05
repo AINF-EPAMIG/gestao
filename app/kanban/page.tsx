@@ -40,7 +40,7 @@ export default function KanbanPage() {
   const isChefePlus = useIsChefePlus()
   const [responsavelFilter, setResponsavelFilter] = useState<string | null>(null)
   const [prioridadeFilter, setPrioridadeFilter] = useState<string | null>(null)
-  const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>("este_ano")
+  const [periodoFilter, setPeriodoFilter] = useState<PeriodoFilter>("todos")
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [projetoFilter, setProjetoFilter] = useState<string | null>(null)
   const [responsaveisSetor, setResponsaveisSetor] = useState<ResponsavelRM[]>([])
