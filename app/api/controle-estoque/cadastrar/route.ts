@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeQueryAsti } from "@/lib/db";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ erro: "Não autorizado" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { nome, quantidade, patrimonio, dataAquisicao, marca, tipo } = body;
 
@@ -23,21 +30,21 @@ export async function POST(req: NextRequest) {
     // Inserir na tabela correspondente
     if (tipo === 'equipamento') {
       const query = `
-        INSERT INTO equipamentos (nome, quantidade, patrimonio, data_aquisicao, marca)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO equipamentos (nome, quantidade, patrimonio, data_aquisicao, marca, quem_cadastrou, data_cadastro, email_cadastro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
       await executeQueryAsti({
         query,
-        values: [nome.trim(), qtd, patrimonio?.trim() || null, dataAquisicao, marca?.trim() || null]
+        values: [nome.trim(), qtd, patrimonio?.trim() || null, dataAquisicao, marca?.trim() || null, session.user.name, new Date(), session.user.email]
       });
     } else {
       const query = `
-        INSERT INTO perifericos (nome, quantidade, patrimonio, data_aquisicao, marca)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO perifericos (nome, quantidade, patrimonio, data_aquisicao, marca, quem_cadastrou, data_cadastro, email_cadastro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
       await executeQueryAsti({
         query,
-        values: [nome.trim(), qtd, patrimonio?.trim() || null, dataAquisicao, marca?.trim() || null]
+        values: [nome.trim(), qtd, patrimonio?.trim() || null, dataAquisicao, marca?.trim() || null, session.user.name, new Date(), session.user.email]
       });
     }
 

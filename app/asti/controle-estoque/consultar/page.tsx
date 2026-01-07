@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -53,7 +53,7 @@ import { PageHeader } from "@/components/page-header";
 
 // Tipos
 interface ItemEstoque {
-  id: number;
+  id: string;
   nome: string;
   quantidade: number;
   patrimonio: string;
@@ -61,61 +61,8 @@ interface ItemEstoque {
   dataAquisicao: string;
   quemCadastrou: string;
   dataCadastro: string;
+  tipo?: string;
 }
-
-// Dados de exemplo
-const dadosExemplo: ItemEstoque[] = [
-  {
-    id: 1,
-    nome: 'Monitor Dell 24"',
-    quantidade: 5,
-    patrimonio: "PAT-00123",
-    marca: "Dell",
-    dataAquisicao: "2024-01-15",
-    quemCadastrou: "João Silva",
-    dataCadastro: "2024-01-20"
-  },
-  {
-    id: 2,
-    nome: "Mouse sem fio",
-    quantidade: 15,
-    patrimonio: "PER-00456",
-    marca: "Logitech",
-    dataAquisicao: "2024-02-10",
-    quemCadastrou: "Maria Santos",
-    dataCadastro: "2024-02-12"
-  },
-  {
-    id: 3,
-    nome: "Teclado mecânico",
-    quantidade: 8,
-    patrimonio: "PER-00789",
-    marca: "Redragon",
-    dataAquisicao: "2024-03-05",
-    quemCadastrou: "João Silva",
-    dataCadastro: "2024-03-06"
-  },
-  {
-    id: 4,
-    nome: "Notebook Lenovo",
-    quantidade: 3,
-    patrimonio: "PAT-00234",
-    marca: "Lenovo",
-    dataAquisicao: "2024-04-01",
-    quemCadastrou: "Carlos Oliveira",
-    dataCadastro: "2024-04-02"
-  },
-  {
-    id: 5,
-    nome: "Headset USB",
-    quantidade: 10,
-    patrimonio: "PER-00321",
-    marca: "HyperX",
-    dataAquisicao: "2024-05-20",
-    quemCadastrou: "Maria Santos",
-    dataCadastro: "2024-05-21"
-  }
-];
 
 // Função para formatar data
 const formatDate = (dateString: string) => {
@@ -129,8 +76,8 @@ export default function ConsultarEstoquePage() {
   const { toast } = useToast();
 
   // Estados de dados
-  const [itens, setItens] = useState<ItemEstoque[]>(dadosExemplo);
-  const [isLoading] = useState(false);
+  const [itens, setItens] = useState<ItemEstoque[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Estados de filtros
   const [filtroNome, setFiltroNome] = useState("");
@@ -145,6 +92,36 @@ export default function ConsultarEstoquePage() {
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const hasFetched = useRef(false);
+
+  // Fetch dados da API
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    const fetchItens = async () => {
+      try {
+        const response = await fetch('/api/controle-estoque/consultar');
+        if (!response.ok) {
+          throw new Error('Erro ao buscar dados');
+        }
+        const data = await response.json();
+        setItens(data);
+      } catch (error) {
+        console.error('Erro ao carregar itens:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os itens do estoque.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchItens();
+  }, [toast]);
 
   // Estados de modais
   const [selectedItem, setSelectedItem] = useState<ItemEstoque | null>(null);
@@ -165,49 +142,73 @@ export default function ConsultarEstoquePage() {
 
   // Filtragem dos itens
   const itensFiltrados = useMemo(() => {
-    return itens.filter((item) => {
-      // Filtro por nome
-      if (filtroNome && !item.nome.toLowerCase().includes(filtroNome.toLowerCase())) {
-        return false;
-      }
+      // helper para parsear datas com formatos diferentes (ISO ou americano MM/DD/YYYY)
+      const parseDate = (dateString?: string | null) => {
+        if (!dateString) return null;
+        // ISO-ish (YYYY-MM-DD or full ISO)
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+          const d = new Date(dateString);
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+        // americano MM/DD/YYYY ou MM/DD/YYYY HH:MM:SS
+        const m = dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m) {
+          const mm = m[1].padStart(2, "0");
+          const dd = m[2].padStart(2, "0");
+          const yyyy = m[3];
+          const d = new Date(`${yyyy}-${mm}-${dd}`);
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+        // fallback
+        const d = new Date(dateString);
+        return Number.isNaN(d.getTime()) ? null : d;
+      };
 
-      // Filtro por patrimônio
-      if (filtroPatrimonio && !item.patrimonio.toLowerCase().includes(filtroPatrimonio.toLowerCase())) {
-        return false;
-      }
+      // Converte filtros de input (YYYY-MM-DD) para início/fim do dia
+      const startAq = filtroDataAquisicaoInicio ? new Date(`${filtroDataAquisicaoInicio}T00:00:00`) : null;
+      const endAq = filtroDataAquisicaoFim ? new Date(`${filtroDataAquisicaoFim}T23:59:59.999`) : null;
+      const startCad = filtroDataCadastroInicio ? new Date(`${filtroDataCadastroInicio}T00:00:00`) : null;
+      const endCad = filtroDataCadastroFim ? new Date(`${filtroDataCadastroFim}T23:59:59.999`) : null;
 
-      // Filtro por marca
-      if (filtroMarca && !item.marca.toLowerCase().includes(filtroMarca.toLowerCase())) {
-        return false;
-      }
+      return itens.filter((item) => {
+        // Filtro por nome
+        if (filtroNome && !item.nome?.toLowerCase().includes(filtroNome.toLowerCase())) {
+          return false;
+        }
 
-      // Filtro por quem cadastrou
-      if (filtroQuemCadastrou !== "todos" && item.quemCadastrou !== filtroQuemCadastrou) {
-        return false;
-      }
+        // Filtro por patrimônio
+        if (filtroPatrimonio && !item.patrimonio?.toLowerCase().includes(filtroPatrimonio.toLowerCase())) {
+          return false;
+        }
 
-      // Filtro por data de aquisição (início)
-      if (filtroDataAquisicaoInicio && item.dataAquisicao < filtroDataAquisicaoInicio) {
-        return false;
-      }
+        // Filtro por marca
+        if (filtroMarca && !item.marca?.toLowerCase().includes(filtroMarca.toLowerCase())) {
+          return false;
+        }
 
-      // Filtro por data de aquisição (fim)
-      if (filtroDataAquisicaoFim && item.dataAquisicao > filtroDataAquisicaoFim) {
-        return false;
-      }
+        // Filtro por quem cadastrou
+        if (filtroQuemCadastrou !== "todos" && item.quemCadastrou !== filtroQuemCadastrou) {
+          return false;
+        }
 
-      // Filtro por data de cadastro (início)
-      if (filtroDataCadastroInicio && item.dataCadastro < filtroDataCadastroInicio) {
-        return false;
-      }
+        // Filtro por data de aquisição (intervalo)
+        if (startAq || endAq) {
+          const itemAq = parseDate(item.dataAquisicao);
+          if (!itemAq) return false;
+          if (startAq && itemAq < startAq) return false;
+          if (endAq && itemAq > endAq) return false;
+        }
 
-      // Filtro por data de cadastro (fim)
-      if (filtroDataCadastroFim && item.dataCadastro > filtroDataCadastroFim) {
-        return false;
-      }
+        // Filtro por data de cadastro (intervalo)
+        if (startCad || endCad) {
+          const itemCad = parseDate(item.dataCadastro);
+          if (!itemCad) return false;
+          if (startCad && itemCad < startCad) return false;
+          if (endCad && itemCad > endCad) return false;
+        }
 
-      return true;
-    });
+        return true;
+      });
   }, [
     itens,
     filtroNome,
