@@ -64,9 +64,20 @@ interface ItemEstoque {
   tipo?: string;
 }
 
-// Função para formatar data
-const formatDate = (dateString: string) => {
+// Função para formatar data (trata YYYY-MM-DD como data local para evitar shift de fuso)
+const formatDate = (dateString?: string | null) => {
   if (!dateString) return "—";
+  // Detecta padrão YYYY-MM-DD exato e cria Date no fuso local
+  const isoDateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDateMatch) {
+    const year = Number(isoDateMatch[1]);
+    const month = Number(isoDateMatch[2]) - 1;
+    const day = Number(isoDateMatch[3]);
+    const d = new Date(year, month, day);
+    if (Number.isNaN(d.getTime())) return "Data inválida";
+    return d.toLocaleDateString("pt-BR");
+  }
+
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "Data inválida";
   return date.toLocaleDateString("pt-BR");
@@ -145,9 +156,13 @@ export default function ConsultarEstoquePage() {
       // helper para parsear datas com formatos diferentes (ISO ou americano MM/DD/YYYY)
       const parseDate = (dateString?: string | null) => {
         if (!dateString) return null;
-        // ISO-ish (YYYY-MM-DD or full ISO)
-        if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
-          const d = new Date(dateString);
+        // ISO-ish (YYYY-MM-DD or full ISO) - tratar YYYY-MM-DD como data local
+        const isoMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+          const yyyy = Number(isoMatch[1]);
+          const mm = Number(isoMatch[2]) - 1;
+          const dd = Number(isoMatch[3]);
+          const d = new Date(yyyy, mm, dd);
           return Number.isNaN(d.getTime()) ? null : d;
         }
         // americano MM/DD/YYYY ou MM/DD/YYYY HH:MM:SS
@@ -273,31 +288,57 @@ export default function ConsultarEstoquePage() {
   // Salvar edição
   const handleSaveEdit = async () => {
     if (!selectedItem) return;
-
     setIsSaving(true);
     try {
-      // Simulação de API - substituir por chamada real
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const dash = selectedItem.id.indexOf('-');
+      const tipo = dash > -1 ? selectedItem.id.substring(0, dash) : selectedItem.id;
+      const itemId = dash > -1 ? selectedItem.id.substring(dash + 1) : selectedItem.id;
+
+      const payload = {
+        id: itemId,
+        tipo,
+        nome: editForm.nome ?? selectedItem.nome,
+        quantidade: editForm.quantidade ?? selectedItem.quantidade,
+        patrimonio: editForm.patrimonio ?? selectedItem.patrimonio,
+        marca: editForm.marca ?? selectedItem.marca,
+        dataAquisicao: editForm.dataAquisicao ?? selectedItem.dataAquisicao
+      };
+
+      const res = await fetch('/api/controle-estoque/atualizar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Erro ao atualizar');
 
       setItens((prev) =>
         prev.map((item) =>
           item.id === selectedItem.id
-            ? { ...item, ...editForm }
+            ? {
+                ...item,
+                nome: payload.nome,
+                quantidade: payload.quantidade,
+                patrimonio: payload.patrimonio,
+                marca: payload.marca,
+                dataAquisicao: payload.dataAquisicao
+              }
             : item
         )
       );
 
       toast({
-        title: "Item atualizado",
-        description: `"${editForm.nome}" foi atualizado com sucesso.`
+        title: 'Item atualizado',
+        description: `"${payload.nome}" foi atualizado com sucesso.`
       });
 
       closeModals();
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o item.",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'Não foi possível atualizar o item.',
+        variant: 'destructive'
       });
     } finally {
       setIsSaving(false);
@@ -307,25 +348,34 @@ export default function ConsultarEstoquePage() {
   // Excluir item
   const handleDelete = async () => {
     if (!selectedItem) return;
-
     setIsDeleting(true);
     try {
-      // Simulação de API - substituir por chamada real
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const dash = selectedItem.id.indexOf('-');
+      const tipo = dash > -1 ? selectedItem.id.substring(0, dash) : selectedItem.id;
+      const itemId = dash > -1 ? selectedItem.id.substring(dash + 1) : selectedItem.id;
+
+      const res = await fetch('/api/controle-estoque/excluir', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemId, tipo })
+      });
+
+      if (!res.ok) throw new Error('Erro ao excluir');
 
       setItens((prev) => prev.filter((item) => item.id !== selectedItem.id));
 
       toast({
-        title: "Item excluído",
+        title: 'Item excluído',
         description: `"${selectedItem.nome}" foi removido do estoque.`
       });
 
       closeModals();
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast({
-        title: "Erro",
-        description: "Não foi possível excluir o item.",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'Não foi possível excluir o item.',
+        variant: 'destructive'
       });
     } finally {
       setIsDeleting(false);
@@ -516,7 +566,7 @@ export default function ConsultarEstoquePage() {
                   type="button"
                   variant="outline"
                   onClick={limparFiltros}
-                  className="rounded-xl gap-2 w-full"
+                  className="rounded-xl gap-2 w-full hover:bg-red-100 hover:border-red-200"
                 >
                   <X className="h-4 w-4" />
                   Limpar Filtros
@@ -745,7 +795,7 @@ export default function ConsultarEstoquePage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={closeModals} className="rounded-xl">
+            <Button variant="outline" onClick={closeModals} className="rounded-xl hover:bg-gray-100">
               Fechar
             </Button>
           </DialogFooter>
@@ -815,13 +865,13 @@ export default function ConsultarEstoquePage() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeModals} disabled={isSaving} className="rounded-xl">
+            <Button variant="outline" onClick={closeModals} disabled={isSaving} className="rounded-xl hover:bg-gray-100">
               Cancelar
             </Button>
             <Button
               onClick={handleSaveEdit}
               disabled={isSaving}
-              className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700"
+              className="gap-2 rounded-xl border border-white-600 hover:bg-emerald-100 hover:border-emerald-200"
             >
               {isSaving ? (
                 <>
@@ -858,14 +908,15 @@ export default function ConsultarEstoquePage() {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeModals} disabled={isDeleting} className="rounded-xl">
+            <Button variant="outline" onClick={closeModals} disabled={isDeleting} className="rounded-xl hover:bg-gray-100">
               Cancelar
+
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="gap-2 rounded-xl"
+              className="gap-2 rounded-xl border border-white-600 hover:bg-red-100 hover:border-red-200"
             >
               {isDeleting ? (
                 <>
