@@ -503,7 +503,11 @@ export function CreateTaskModal() {
       const response = await fetch('/api/projetos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: nomeCapitalizado })
+        body: JSON.stringify({ 
+          nome: nomeCapitalizado,
+          tipo: 1,
+          status: 2
+        })
       })
 
       if (response.ok) {

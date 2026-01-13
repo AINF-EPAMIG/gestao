@@ -84,7 +84,7 @@ export function createTaskAssignmentEmail(
         </div>
 
         <div style="margin-top: 20px;">
-          <a href="https://gestao.epamigsistema.com.br/kanban" 
+          <a href="https://gestao.epamigsistema.online/kanban" 
              style="display: inline-block; background-color: #2E7D32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Acessar o Sistema
           </a>
@@ -130,7 +130,7 @@ export function createTaskNewResponsibleEmail(
         </div>
 
         <div style="margin-top: 20px;">
-          <a href="https://gestao.epamigsistema.com.br/kanban" 
+          <a href="https://gestao.epamigsistema.onlina/kanban" 
              style="display: inline-block; background-color: #2E7D32; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Acessar o Sistema
           </a>

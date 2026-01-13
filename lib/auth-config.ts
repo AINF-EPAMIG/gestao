@@ -6,7 +6,7 @@ import { NivelHierarquico, PermissoesUsuario, Funcionario } from './types';
 
 // Lista de emails que devem ter privilégios de chefia independente do cargo/hierarquia formal
 export const EXCEPTION_EMAILS_CHEFIA: string[] = [
-  // "exemplo@epamig.br",
+  "arthur.souza@epamig.br",
 ];
 
 /**

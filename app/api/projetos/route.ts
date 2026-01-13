@@ -55,15 +55,19 @@ export async function POST(request: NextRequest) {
     // Se for um POST simples (compatibilidade com versão antiga)
     if (body.nome && !body.tipo) {
       const nomeCapitalizado = capitalizeFirstLetter(body.nome);
+      const status = body.status || 2; // Default: Em Desenvolvimento
+      const tipo = body.tipo || 1; // Default: Sistema
       
       const result = await executeQuery({
-        query: 'INSERT INTO u711845530_gestao.projetos (nome) VALUES (?)',
-        values: [nomeCapitalizado],
+        query: 'INSERT INTO u711845530_gestao.projetos (nome, tipo, status) VALUES (?, ?, ?)',
+        values: [nomeCapitalizado, tipo, status],
       }) as QueryResult;
 
       const novoProjeto = {
         id: result.insertId,
-        nome: nomeCapitalizado
+        nome: nomeCapitalizado,
+        tipo,
+        status
       };
       
       return NextResponse.json(novoProjeto);
