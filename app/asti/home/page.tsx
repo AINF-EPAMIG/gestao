@@ -46,7 +46,8 @@ const modules: ModuleCard[] = [
     actions: [
       { label: "Cadastrar Estoque", href: "/asti/controle-estoque/cadastrar", variant: "primary" },
       { label: "Consultar Estoque", href: "/asti/controle-estoque/consultar", variant: "secondary" },
-      { label: "Movimentação", href: "/asti/controle-estoque/movimentacao", variant: "secondary" },
+      { label: "Movimentação", href: "/asti/controle-estoque/movimentar", variant: "secondary" },
+      { label: "Acompanhar Movimentações", href: "/asti/controle-estoque/consulta-movimentação", variant: "secondary" },
     ],
   },
   {

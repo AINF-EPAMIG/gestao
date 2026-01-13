@@ -14,11 +14,15 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  Network
+  Network,
+  Monitor,
+  Mouse
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -43,7 +47,9 @@ interface Equipamento {
   nome: string;
   patrimonio: string;
   marca: string;
+  tipo: "equipamento" | "periferico";
 }
+
 
 interface Unidade {
   id: number;
@@ -64,11 +70,11 @@ interface Pessoa {
 
 // Dados de exemplo - substituir por chamadas à API
 const equipamentosExemplo: Equipamento[] = [
-  { id: 1, nome: 'Monitor Dell 24"', patrimonio: "PAT-00123", marca: "Dell" },
-  { id: 2, nome: "Mouse sem fio", patrimonio: "PER-00456", marca: "Logitech" },
-  { id: 3, nome: "Teclado mecânico", patrimonio: "PER-00789", marca: "Redragon" },
-  { id: 4, nome: "Notebook Lenovo", patrimonio: "PAT-00234", marca: "Lenovo" },
-  { id: 5, nome: "Headset USB", patrimonio: "PER-00321", marca: "HyperX" }
+  { id: 1, nome: 'Monitor Dell 24"', patrimonio: "PAT-00123", marca: "Dell", tipo: "equipamento" },
+  { id: 2, nome: "Mouse sem fio", patrimonio: "PER-00456", marca: "Logitech", tipo: "periferico" },
+  { id: 3, nome: "Teclado mecânico", patrimonio: "PER-00789", marca: "Redragon", tipo: "periferico" },
+  { id: 4, nome: "Notebook Lenovo", patrimonio: "PAT-00234", marca: "Lenovo", tipo: "equipamento" },
+  { id: 5, nome: "Headset USB", patrimonio: "PER-00321", marca: "HyperX", tipo: "periferico" }
 ];
 
 const unidadesExemplo: Unidade[] = [
@@ -104,23 +110,36 @@ const pessoasExemplo: Pessoa[] = [
   { id: 10, nome: "Camila Souza", setorId: 9 }
 ];
 
+type TabType = "equipamento" | "periferico";
+
 interface FormData {
   equipamentoId: string;
   unidadeId: string;
   setorId: string;
   pessoaId: string;
+  quantidade: string;
+  chamadoNumero: string;
+  movimentoTipo: "entrada" | "saida";
+  motivo: string;
+  tipo: TabType;
 }
 
 const initialFormData: FormData = {
   equipamentoId: "",
   unidadeId: "",
   setorId: "",
-  pessoaId: ""
+  pessoaId: "",
+  quantidade: "1",
+  chamadoNumero: "",
+  movimentoTipo: "entrada",
+  motivo: "",
+  tipo: "equipamento"
 };
 
 export default function MovimentarEstoquePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [activeTab, setActiveTab] = useState<TabType>("equipamento");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -129,6 +148,10 @@ export default function MovimentarEstoquePage() {
     unidade: Unidade | null;
     setor: Setor | null;
     pessoa: Pessoa | null;
+    quantidade?: string;
+    chamadoNumero?: string;
+    movimentoTipo?: string;
+    motivo?: string;
   } | null>(null);
 
   // Filtrar setores pela unidade selecionada
@@ -142,6 +165,11 @@ export default function MovimentarEstoquePage() {
     if (!formData.setorId) return [];
     return pessoasExemplo.filter((pessoa) => pessoa.setorId === Number(formData.setorId));
   }, [formData.setorId]);
+
+  // Itens filtrados pelo tipo selecionado (equipamento / periferico)
+  const itensFiltradosPorTipo = useMemo(() => {
+    return equipamentosExemplo.filter((item) => item.tipo === activeTab);
+  }, [activeTab]);
 
   // Obter equipamento selecionado
   const equipamentoSelecionado = useMemo(() => {
@@ -164,7 +192,15 @@ export default function MovimentarEstoquePage() {
       newErrors.setorId = "Selecione um setor";
     }
 
+    if (!formData.movimentoTipo) {
+      newErrors.movimentoTipo = "Selecione o tipo de movimentação";
+    }
+
     // pessoaId é opcional, não precisa validar
+    const qtd = Number(formData.quantidade);
+    if (!formData.quantidade || Number.isNaN(qtd) || qtd < 1) {
+      newErrors.quantidade = "Informe uma quantidade válida (mínimo 1)";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -210,7 +246,16 @@ export default function MovimentarEstoquePage() {
         : null;
 
       // Salvar dados da última movimentação para o modal
-      setLastMovimentacao({ equipamento, unidade, setor, pessoa });
+      setLastMovimentacao({
+        equipamento,
+        unidade,
+        setor,
+        pessoa,
+        quantidade: formData.quantidade,
+        chamadoNumero: formData.chamadoNumero,
+        movimentoTipo: formData.movimentoTipo,
+        motivo: formData.motivo
+      });
 
       setFormData(initialFormData);
       
@@ -238,7 +283,9 @@ export default function MovimentarEstoquePage() {
   const handleReset = () => {
     setFormData(initialFormData);
     setErrors({});
+    setActiveTab("equipamento");
   };
+
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 overflow-x-hidden">
@@ -260,23 +307,35 @@ export default function MovimentarEstoquePage() {
 
             {/* Formulário */}
             <Card className="rounded-3xl border-gray-100 shadow-lg">
-              <CardHeader className="space-y-2 pb-4">
-                <CardTitle className="flex items-center gap-2 text-xl">
+              <div className="px-4 pt-4">
+                <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabType); setFormData((prev) => ({ ...prev, tipo: v as TabType, equipamentoId: "" })); }} className="w-full">
+                  <TabsList className="grid grid-cols-2 w-full rounded-xl bg-gray-100 p-1">
+                      <TabsTrigger value="equipamento" className="flex items-center justify-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        <Monitor className="h-4 w-4" /> Equipamento
+                      </TabsTrigger>
+                      <TabsTrigger value="periferico" className="flex items-center justify-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        <Mouse className="h-4 w-4" /> Periférico
+                      </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+              </div>
+              <CardHeader className="space-y-2 pb-4 pt-1">
+                <div className="flex items-center gap-2">
                   <ArrowRightLeft className="h-5 w-5 text-emerald-600" />
-                  Registrar Movimentação
-                </CardTitle>
-                <CardDescription>
-                  Selecione o equipamento e o destino para registrar a movimentação.
-                </CardDescription>
+                  <div>
+                    <CardTitle className="text-xl">Registrar Movimentação</CardTitle>
+                    <CardDescription>Selecione o item e o destino para registrar a movimentação.</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
 
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Equipamento */}
+                  {/* Equipamento / Periférico */}
                   <div className="space-y-2">
                     <Label htmlFor="equipamento" className="flex items-center gap-2 text-sm font-medium">
                       <Package className="h-4 w-4 text-gray-400" />
-                      Equipamento <span className="text-red-500">*</span>
+                      {activeTab === "equipamento" ? "Equipamento" : "Periférico"} <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formData.equipamentoId}
@@ -285,10 +344,10 @@ export default function MovimentarEstoquePage() {
                       <SelectTrigger
                         className={`rounded-xl ${errors.equipamentoId ? "border-red-300 focus-visible:ring-red-200" : ""}`}
                       >
-                        <SelectValue placeholder="Selecione um equipamento" />
+                        <SelectValue placeholder={activeTab === "equipamento" ? "Selecione um equipamento" : "Selecione um periférico"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipamentosExemplo.map((equipamento) => (
+                        {itensFiltradosPorTipo.map((equipamento) => (
                           <SelectItem key={equipamento.id} value={String(equipamento.id)}>
                             {equipamento.nome} ({equipamento.patrimonio})
                           </SelectItem>
@@ -302,10 +361,105 @@ export default function MovimentarEstoquePage() {
                     )}
                   </div>
 
+                  {/* Quantidade e Tipo de Movimentação (lado a lado) */}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="quantidade" className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        Quantidade <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="quantidade"
+                        type="number"
+                        min={1}
+                        value={formData.quantidade}
+                        onChange={(e) => handleChange("quantidade", e.target.value)}
+                        className={`rounded-xl ${errors.quantidade ? "border-red-300 focus-visible:ring-red-200" : ""}`}
+                      />
+                      {errors.quantidade && (
+                        <p className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" /> {errors.quantidade}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="movimentoTipo" className="flex items-center gap-2 text-sm font-medium">
+                        <ArrowRightLeft className="h-4 w-4 text-gray-400" />
+                        Tipo de Movimentação <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={formData.movimentoTipo}
+                        onValueChange={(value) => handleChange("movimentoTipo", value)}
+                      >
+                        <SelectTrigger
+                          className={`rounded-xl ${errors.movimentoTipo ? "border-red-300 focus-visible:ring-red-200" : ""}`}
+                        >
+                          <SelectValue placeholder="Selecione o tipo de movimentação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="entrada">Entrada</SelectItem>
+                          <SelectItem value="saida">Saída</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.movimentoTipo && (
+                        <p className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" /> {errors.movimentoTipo}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Unidade e Número do Chamado (lado a lado) */}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="unidade" className="flex items-center gap-2 text-sm font-medium">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        Unidade <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={formData.unidadeId}
+                        onValueChange={(value) => handleChange("unidadeId", value)}
+                      >
+                        <SelectTrigger
+                          className={`rounded-xl ${errors.unidadeId ? "border-red-300 focus-visible:ring-red-200" : ""}`}
+                        >
+                          <SelectValue placeholder="Selecione uma unidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unidadesExemplo.map((unidade) => (
+                            <SelectItem key={unidade.id} value={String(unidade.id)}>
+                              {unidade.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.unidadeId && (
+                        <p className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" /> {errors.unidadeId}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="chamadoNumero" className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        Número do Chamado <span className="text-gray-400">(opcional)</span>
+                      </Label>
+                      <Input
+                        id="chamadoNumero"
+                        placeholder="Ex: 123456"
+                        value={formData.chamadoNumero}
+                        onChange={(e) => handleChange("chamadoNumero", e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  </div>
+
                   {/* Detalhes do equipamento selecionado */}
                   {equipamentoSelecionado && (
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
-                      <p className="text-sm font-medium text-emerald-800 mb-2">Equipamento Selecionado</p>
+                      <p className="text-sm font-medium text-emerald-800 mb-2">Item Selecionado</p>
                       <div className="grid grid-cols-2 gap-2 text-sm text-emerald-700">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
@@ -319,101 +473,87 @@ export default function MovimentarEstoquePage() {
                     </div>
                   )}
 
-                  {/* Unidade */}
-                  <div className="space-y-2">
-                    <Label htmlFor="unidade" className="flex items-center gap-2 text-sm font-medium">
-                      <Building2 className="h-4 w-4 text-gray-400" />
-                      Unidade <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.unidadeId}
-                      onValueChange={(value) => handleChange("unidadeId", value)}
-                    >
-                      <SelectTrigger
-                        className={`rounded-xl ${errors.unidadeId ? "border-red-300 focus-visible:ring-red-200" : ""}`}
+
+                  {/* Setor e Responsável (lado a lado) */}
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="setor" className="flex items-center gap-2 text-sm font-medium">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        Setor <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={formData.setorId}
+                        onValueChange={(value) => handleChange("setorId", value)}
+                        disabled={!formData.unidadeId}
                       >
-                        <SelectValue placeholder="Selecione uma unidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {unidadesExemplo.map((unidade) => (
-                          <SelectItem key={unidade.id} value={String(unidade.id)}>
-                            {unidade.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.unidadeId && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" /> {errors.unidadeId}
-                      </p>
-                    )}
+                        <SelectTrigger
+                          className={`rounded-xl ${errors.setorId ? "border-red-300 focus-visible:ring-red-200" : ""}`}
+                        >
+                          <SelectValue
+                            placeholder={
+                              formData.unidadeId
+                                ? "Selecione um setor"
+                                : "Selecione uma unidade primeiro"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {setoresFiltrados.map((setor) => (
+                            <SelectItem key={setor.id} value={String(setor.id)}>
+                              {setor.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.setorId && (
+                        <p className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle className="h-3 w-3" /> {errors.setorId}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pessoa" className="flex items-center gap-2 text-sm font-medium">
+                        <User className="h-4 w-4 text-gray-400" />
+                        Responsável <span className="text-gray-400">(opcional)</span>
+                      </Label>
+                      <Select
+                        value={formData.pessoaId}
+                        onValueChange={(value) => handleChange("pessoaId", value)}
+                        disabled={!formData.setorId}
+                      >
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue
+                            placeholder={
+                              formData.setorId
+                                ? "Selecione um responsável (opcional)"
+                                : "Selecione um setor primeiro"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pessoasFiltradas.map((pessoa) => (
+                            <SelectItem key={pessoa.id} value={String(pessoa.id)}>
+                              {pessoa.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  {/* Setor */}
+                  {/* Motivo (último campo, sozinho) */}
                   <div className="space-y-2">
-                    <Label htmlFor="setor" className="flex items-center gap-2 text-sm font-medium">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      Setor <span className="text-red-500">*</span>
+                    <Label htmlFor="motivo" className="flex items-center gap-2 text-sm font-medium">
+                      <FileText className="h-4 w-4 text-gray-400" />
+                      Motivo <span className="text-gray-400">(opcional)</span>
                     </Label>
-                    <Select
-                      value={formData.setorId}
-                      onValueChange={(value) => handleChange("setorId", value)}
-                      disabled={!formData.unidadeId}
-                    >
-                      <SelectTrigger
-                        className={`rounded-xl ${errors.setorId ? "border-red-300 focus-visible:ring-red-200" : ""}`}
-                      >
-                        <SelectValue
-                          placeholder={
-                            formData.unidadeId
-                              ? "Selecione um setor"
-                              : "Selecione uma unidade primeiro"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {setoresFiltrados.map((setor) => (
-                          <SelectItem key={setor.id} value={String(setor.id)}>
-                            {setor.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.setorId && (
-                      <p className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="h-3 w-3" /> {errors.setorId}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Pessoa (Opcional) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="pessoa" className="flex items-center gap-2 text-sm font-medium">
-                      <User className="h-4 w-4 text-gray-400" />
-                      Responsável <span className="text-gray-400">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={formData.pessoaId}
-                      onValueChange={(value) => handleChange("pessoaId", value)}
-                      disabled={!formData.setorId}
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue
-                          placeholder={
-                            formData.setorId
-                              ? "Selecione um responsável (opcional)"
-                              : "Selecione um setor primeiro"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pessoasFiltradas.map((pessoa) => (
-                          <SelectItem key={pessoa.id} value={String(pessoa.id)}>
-                            {pessoa.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <textarea
+                      id="motivo"
+                      value={formData.motivo}
+                      onChange={(e) => handleChange("motivo", e.target.value)}
+                      className="w-full rounded-xl border px-3 py-2 resize-none h-28"
+                    />
                   </div>
 
                   {/* Botões */}
@@ -469,6 +609,26 @@ export default function MovimentarEstoquePage() {
               <p className="text-sm text-emerald-600 mt-1">
                 Patrimônio: {lastMovimentacao.equipamento.patrimonio}
               </p>
+              {lastMovimentacao.quantidade && (
+                <p className="text-sm text-emerald-600">
+                  Quantidade: {lastMovimentacao.quantidade}
+                </p>
+              )}
+              {lastMovimentacao.chamadoNumero && (
+                <p className="text-sm text-emerald-600">
+                  Chamado: {lastMovimentacao.chamadoNumero}
+                </p>
+              )}
+              {lastMovimentacao.movimentoTipo && (
+                <p className="text-sm text-emerald-600">
+                  Tipo: {lastMovimentacao.movimentoTipo === 'entrada' ? 'Entrada' : 'Saída'}
+                </p>
+              )}
+              {lastMovimentacao.motivo && (
+                <p className="text-sm text-emerald-600">
+                  Motivo: {lastMovimentacao.motivo}
+                </p>
+              )}
               <p className="text-sm text-emerald-600">
                 Destino: {lastMovimentacao.setor?.nome} - {lastMovimentacao.unidade?.nome}
               </p>
